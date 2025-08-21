@@ -14,6 +14,9 @@ curl -s http://localhost:8080/hello | jq .
 echo -e "\nTesting /files endpoint..."
 curl -s http://localhost:8080/files | jq .
 
+echo -e "\nTesting /sync endpoint..."
+curl -s -X POST http://localhost:8080/sync | jq .
+
 # Clean up
 kill $SERVER_PID 2>/dev/null
 wait $SERVER_PID 2>/dev/null

@@ -54,6 +54,22 @@ Returns a list of all org-roam files with metadata.
 }
 ```
 
+### POST /sync
+Synchronizes the org-roam database by scanning for new or modified files.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Database sync completed",
+  "initial-count": 2,
+  "final-count": 3,
+  "nodes-changed": 1,
+  "directory": "/Users/user/org-roam",
+  "timestamp": "2024-01-01 12:00:00"
+}
+```
+
 ## Testing
 
 Test the endpoints with curl:
@@ -63,4 +79,7 @@ curl http://localhost:8080/hello
 
 # Files endpoint
 curl http://localhost:8080/files
+
+# Sync database endpoint
+curl -X POST http://localhost:8080/sync
 ```

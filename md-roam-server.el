@@ -73,6 +73,34 @@
      (list `((error . ,(format "Error accessing org-roam: %s" (error-message-string err)))
            (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set")))))))
 
+(defun md-roam-server-sync-database ()
+  "Sync org-roam database and return status information."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get initial node count
+        (let ((initial-count (length (org-roam-node-list))))
+          
+          ;; Perform sync
+          (org-roam-db-sync)
+          
+          ;; Get final node count
+          (let ((final-count (length (org-roam-node-list))))
+            `((status . "success")
+              (message . "Database sync completed")
+              (initial-count . ,initial-count)
+              (final-count . ,final-count)
+              (nodes-changed . ,(- final-count initial-count))
+              (directory . ,org-roam-directory)
+              (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
+    (error
+     `((status . "error")
+       (message . ,(format "Error syncing database: %s" (error-message-string err)))
+       (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set"))
+       (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
+
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
   (setq md-roam-server-request-buffer (concat md-roam-server-request-buffer string))
@@ -98,6 +126,10 @@
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode `((files . ,files)
                                                   (count . ,(length files)))))))
+     ((and (string= method "POST") (string= path "/sync"))
+      (let ((sync-result (md-roam-server-sync-database)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode sync-result))))
      (t
       (md-roam-server-send-response proc 404 "application/json"
                                    (json-encode '((error . "Not Found")
