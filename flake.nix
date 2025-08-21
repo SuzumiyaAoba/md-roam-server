@@ -12,7 +12,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         
         # Emacs configuration with required packages
-        emacsWithPackages = pkgs.emacsWithPackages (epkgs: with epkgs; [
+        emacsWithPackages = pkgs.emacs.pkgs.withPackages (epkgs: with epkgs; [
           org-roam
           web-server
           json-mode
