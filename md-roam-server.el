@@ -7,6 +7,7 @@
 
 (require 'json)
 (require 'cl-lib)
+(require 'org-roam)
 
 (defvar md-roam-server-port 8080
   "Port for the md-roam HTTP server.")
@@ -16,6 +17,61 @@
 
 (defvar md-roam-server-request-buffer ""
   "Buffer to accumulate request data.")
+
+(defun md-roam-server-init-org-roam ()
+  "Initialize org-roam with proper configuration."
+  (unless (bound-and-true-p org-roam-directory)
+    ;; Try to find org-roam directory
+    (let ((possible-dirs '("~/org-roam" "~/Documents/org-roam" "~/.org-roam" "~/org")))
+      (dolist (dir possible-dirs)
+        (let ((expanded-dir (expand-file-name dir)))
+          (when (file-directory-p expanded-dir)
+            (setq org-roam-directory expanded-dir)
+            (break))))))
+  
+  ;; Set default directory if none found
+  (unless (bound-and-true-p org-roam-directory)
+    (setq org-roam-directory (expand-file-name "~/org-roam")))
+  
+  ;; Ensure directory exists
+  (unless (file-directory-p org-roam-directory)
+    (make-directory org-roam-directory t))
+  
+  ;; Set database location
+  (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+  
+  ;; Initialize database
+  (org-roam-db-autosync-mode 1)
+  
+  ;; Sync database to ensure it's up to date
+  (org-roam-db-sync))
+
+(defun md-roam-server-get-files ()
+  "Get list of org-roam files with metadata."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get all nodes
+        (let ((nodes (org-roam-node-list)))
+          (if nodes
+              (mapcar (lambda (node)
+                        `((id . ,(org-roam-node-id node))
+                          (title . ,(org-roam-node-title node))
+                          (file . ,(org-roam-node-file node))
+                          (level . ,(org-roam-node-level node))
+                          (tags . ,(org-roam-node-tags node))
+                          (aliases . ,(org-roam-node-aliases node))))
+                      nodes)
+            ;; If no nodes, return info about the setup
+            (list `((info . "No org-roam nodes found")
+                   (directory . ,org-roam-directory)
+                   (db-location . ,org-roam-db-location)
+                   (db-exists . ,(file-exists-p org-roam-db-location)))))))
+    (error
+     (list `((error . ,(format "Error accessing org-roam: %s" (error-message-string err)))
+           (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set")))))))
 
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
@@ -37,6 +93,11 @@
                                    (json-encode '((message . "Hello, World!")
                                                 (service . "md-roam-server")
                                                 (status . "running")))))
+     ((and (string= method "GET") (string= path "/files"))
+      (let ((files (md-roam-server-get-files)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode `((files . ,files)
+                                                  (count . ,(length files)))))))
      (t
       (md-roam-server-send-response proc 404 "application/json"
                                    (json-encode '((error . "Not Found")

@@ -34,9 +34,33 @@ Returns a simple hello world message.
 }
 ```
 
+### GET /files
+Returns a list of all org-roam files with metadata.
+
+**Response:**
+```json
+{
+  "files": [
+    {
+      "id": "node-id",
+      "title": "Node Title",
+      "file": "/path/to/file.org",
+      "level": 0,
+      "tags": ["tag1", "tag2"],
+      "aliases": ["alias1"]
+    }
+  ],
+  "count": 1
+}
+```
+
 ## Testing
 
-Test the endpoint with curl:
+Test the endpoints with curl:
 ```bash
+# Hello endpoint
 curl http://localhost:8080/hello
+
+# Files endpoint
+curl http://localhost:8080/files
 ```
