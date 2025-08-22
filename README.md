@@ -56,6 +56,36 @@ Returns a list of all org-roam files with metadata.
 }
 ```
 
+### GET /nodes/:id
+Returns a single org-roam node by its ID.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (200 - Success):**
+```json
+{
+  "status": "success",
+  "message": "Node retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Node Title",
+  "file": "/path/to/file.org",
+  "level": 0,
+  "tags": ["tag1", "tag2"],
+  "aliases": ["alias1"]
+}
+```
+
+**Response (404 - Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Node with ID 'invalid-id' not found",
+  "timestamp": "2024-01-01 12:00:00"
+}
+```
+
 ### POST /sync
 Synchronizes the org-roam database by scanning for new or modified files.
 
@@ -127,6 +157,9 @@ curl http://localhost:8080/hello
 
 # Files endpoint
 curl http://localhost:8080/files
+
+# Get single node by ID endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID
 
 # Sync database endpoint
 curl -X POST http://localhost:8080/sync

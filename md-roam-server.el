@@ -75,6 +75,22 @@
               (cdr (assoc param body))) 
             param-names)))
 
+(defun md-roam-server--extract-path-param (path pattern)
+  "Extract parameter from PATH using PATTERN. 
+   Pattern should use :param for parameter placeholders.
+   Returns the parameter value or nil if no match."
+  (let* ((pattern-parts (split-string pattern "/"))
+         (path-parts (split-string path "/"))
+         (param-index nil))
+    (when (= (length pattern-parts) (length path-parts))
+      ;; Find parameter position
+      (dotimes (i (length pattern-parts))
+        (when (string-prefix-p ":" (nth i pattern-parts))
+          (setq param-index i)))
+      ;; Return parameter value if found
+      (when param-index
+        (nth param-index path-parts)))))
+
 (defun md-roam-server-init-org-roam ()
   "Initialize org-roam and md-roam with proper configuration."
   (unless (bound-and-true-p org-roam-directory)
@@ -137,6 +153,31 @@
      (list (md-roam-server--create-error-response 
             (format "Error accessing org-roam: %s" (error-message-string err))
             `((directory . ,(md-roam-server--safe-directory))))))))
+
+(defun md-roam-server-get-node-by-id (node-id)
+  "Get a single org-roam node by its ID."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Find node by ID
+        (let ((node (org-roam-node-from-id node-id)))
+          (if node
+              (md-roam-server--create-success-response
+               "Node retrieved successfully"
+               `((id . ,(org-roam-node-id node))
+                 (title . ,(org-roam-node-title node))
+                 (file . ,(org-roam-node-file node))
+                 (level . ,(org-roam-node-level node))
+                 (tags . ,(org-roam-node-tags node))
+                 (aliases . ,(org-roam-node-aliases node))))
+            (md-roam-server--create-error-response
+             (format "Node with ID '%s' not found" node-id)))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving node: %s" (error-message-string err))
+      `((node-id . ,node-id))))))
 
 (defun md-roam-server-sync-database ()
   "Sync org-roam database and return status information."
@@ -251,6 +292,18 @@
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode `((files . ,files)
                                                   (count . ,(length files)))))))
+     ((and (string= method "GET") (string-prefix-p "/nodes/" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
+        (if node-id
+            (let ((result (md-roam-server-get-node-by-id node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID is required")))))))
      ((and (string= method "POST") (string= path "/sync"))
       (let ((sync-result (md-roam-server-sync-database)))
         (md-roam-server-send-response proc 200 "application/json"
@@ -281,6 +334,7 @@
                                                          (version . "1.0.0")))
                                                 (paths . (("/hello" . "Health check")
                                                          ("/files" . "Get files")
+                                                         ("/nodes/:id" . "Get single node")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
      (t
