@@ -135,4 +135,25 @@ curl -X POST http://localhost:8080/sync
 curl -X POST http://localhost:8080/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Note", "category": "#testing #example", "tags": ["test"], "aliases": ["Testing"], "refs": ["https://example.com"], "content": "This is a test note."}'
+
+# OpenAPI specification
+curl http://localhost:8080/openapi.json
+```
+
+## OpenAPI Specification
+
+The server provides an OpenAPI 3.0 specification at `/openapi.json` endpoint. This specification documents all available endpoints and can be used to generate client libraries or import into API testing tools like Postman or Swagger UI.
+
+**Endpoint:** `GET /openapi.json`
+
+**Response:** OpenAPI 3.0 JSON specification including:
+- API information (title, version)
+- Available endpoints with descriptions
+- Request/response schemas
+- Parameter definitions
+
+The specification can be used with tools like:
+- **Swagger UI**: For interactive API documentation
+- **Postman**: Import the OpenAPI spec to generate requests
+- **Code generators**: Generate client libraries in various languages
 ```

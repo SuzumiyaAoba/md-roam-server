@@ -274,6 +274,15 @@
         (md-roam-server-send-response proc 400 "application/json"
                                      (json-encode '((error . "Bad Request")
                                                   (message . "JSON body required"))))))
+     ((and (string= method "GET") (string= path "/openapi.json"))
+      (md-roam-server-send-response proc 200 "application/json"
+                                   (json-encode '((openapi . "3.0.0")
+                                                (info . ((title . "md-roam Server API")
+                                                         (version . "1.0.0")))
+                                                (paths . (("/hello" . "Health check")
+                                                         ("/files" . "Get files")
+                                                         ("/sync" . "Sync database")
+                                                         ("/nodes" . "Create node")))))))
      (t
       (md-roam-server-send-response proc 404 "application/json"
                                    (json-encode '((error . "Not Found")
