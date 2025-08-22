@@ -20,6 +20,61 @@
 (defvar md-roam-server-request-buffer ""
   "Buffer to accumulate request data.")
 
+(defun md-roam-server--current-timestamp ()
+  "Return current timestamp in standard format."
+  (format-time-string "%Y-%m-%d %H:%M:%S"))
+
+(defun md-roam-server--safe-directory ()
+  "Return org-roam directory safely or 'not set' if not available."
+  (if (boundp 'org-roam-directory) org-roam-directory "not set"))
+
+(defun md-roam-server--format-list-value (value)
+  "Format VALUE as space-separated string if it's a list, otherwise return as-is."
+  (if (listp value)
+      (mapconcat 'identity value " ")
+    value))
+
+(defun md-roam-server--create-error-response (message &optional extra-fields)
+  "Create standardized error response with MESSAGE and optional EXTRA-FIELDS."
+  `((status . "error")
+    (message . ,message)
+    (timestamp . ,(md-roam-server--current-timestamp))
+    ,@extra-fields))
+
+(defun md-roam-server--create-success-response (message &optional extra-fields)
+  "Create standardized success response with MESSAGE and optional EXTRA-FIELDS."
+  `((status . "success")
+    (message . ,message)
+    (timestamp . ,(md-roam-server--current-timestamp))
+    ,@extra-fields))
+
+(defun md-roam-server--build-yaml-front-matter (id title category aliases refs)
+  "Build YAML front matter with ID, TITLE, CATEGORY, ALIASES, and REFS."
+  (let ((fields (list (format "id: %s" id)
+                      (format "title: %s" title))))
+    (when category
+      (setq fields (append fields (list (format "category: %s" (md-roam-server--format-list-value category))))))
+    (when aliases
+      (setq fields (append fields (list (format "roam_aliases: [%s]" 
+                                               (mapconcat (lambda (alias) (format "\"%s\"" alias)) aliases ", "))))))
+    (when refs
+      (setq fields (append fields (list (format "roam_refs: %s" (md-roam-server--format-list-value refs))))))
+    (format "---\n%s\n---\n\n" (mapconcat 'identity fields "\n"))))
+
+(defun md-roam-server--parse-request-line (request)
+  "Parse HTTP request line and return (method path) tuple."
+  (let* ((lines (split-string request "\r\n"))
+         (request-line (car lines))
+         (parts (split-string request-line)))
+    (list (car parts) (cadr parts))))
+
+(defun md-roam-server--extract-body-params (body param-names)
+  "Extract parameters from BODY JSON using PARAM-NAMES list."
+  (when body
+    (mapcar (lambda (param) 
+              (cdr (assoc param body))) 
+            param-names)))
+
 (defun md-roam-server-init-org-roam ()
   "Initialize org-roam and md-roam with proper configuration."
   (unless (bound-and-true-p org-roam-directory)
@@ -79,8 +134,9 @@
                    (db-location . ,org-roam-db-location)
                    (db-exists . ,(file-exists-p org-roam-db-location)))))))
     (error
-     (list `((error . ,(format "Error accessing org-roam: %s" (error-message-string err)))
-           (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set")))))))
+     (list (md-roam-server--create-error-response 
+            (format "Error accessing org-roam: %s" (error-message-string err))
+            `((directory . ,(md-roam-server--safe-directory))))))))
 
 (defun md-roam-server-sync-database ()
   "Sync org-roam database and return status information."
@@ -97,18 +153,16 @@
           
           ;; Get final node count
           (let ((final-count (length (org-roam-node-list))))
-            `((status . "success")
-              (message . "Database sync completed")
-              (initial-count . ,initial-count)
-              (final-count . ,final-count)
-              (nodes-changed . ,(- final-count initial-count))
-              (directory . ,org-roam-directory)
-              (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
+            (md-roam-server--create-success-response
+             "Database sync completed"
+             `((initial-count . ,initial-count)
+               (final-count . ,final-count)
+               (nodes-changed . ,(- final-count initial-count))
+               (directory . ,org-roam-directory))))))
     (error
-     `((status . "error")
-       (message . ,(format "Error syncing database: %s" (error-message-string err)))
-       (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set"))
-       (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
+     (md-roam-server--create-error-response 
+      (format "Error syncing database: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
 
 (defun md-roam-server-create-node (title &optional tags content aliases category refs)
   "Create a new org-roam node with TITLE, optional TAGS, CONTENT, ALIASES, CATEGORY, and REFS."
@@ -125,12 +179,7 @@
                                slug))
                (filepath (expand-file-name filename org-roam-directory))
                (tag-list (if tags (mapcar (lambda (tag) (format "#%s" tag)) tags) '()))
-               (yaml-front-matter (format "---\nid: %s\ntitle: %s\n%s%s%s---\n\n"
-                                        id
-                                        title
-                                        (if category (format "category: %s\n" (if (listp category) (mapconcat 'identity category " ") category)) "")
-                                        (if aliases (format "roam_aliases: [%s]\n" (mapconcat (lambda (alias) (format "\"%s\"" alias)) aliases ", ")) "")
-                                        (if refs (format "roam_refs: %s\n" (if (listp refs) (mapconcat 'identity refs " ") refs)) "")))
+               (yaml-front-matter (md-roam-server--build-yaml-front-matter id title category aliases refs))
                (tag-line (if tag-list (format "%s\n\n" (mapconcat 'identity tag-list " ")) ""))
                (file-content (format "%s%s%s"
                                    yaml-front-matter
@@ -154,20 +203,18 @@
           (org-roam-db-sync)
           
           ;; Return node information
-          `((status . "success")
-            (message . "Node created successfully")
-            (id . ,id)
-            (title . ,title)
-            (file . ,filepath)
-            (category . ,(or category ""))
-            (tags . ,(or tags []))
-            (aliases . ,(or aliases []))
-            (refs . ,(or refs []))
-            (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S")))))
+          (md-roam-server--create-success-response
+           "Node created successfully"
+           `((id . ,id)
+             (title . ,title)
+             (file . ,filepath)
+             (category . ,(or category ""))
+             (tags . ,(or tags []))
+             (aliases . ,(or aliases []))
+             (refs . ,(or refs []))))))
     (error
-     `((status . "error")
-       (message . ,(format "Error creating node: %s" (error-message-string err)))
-       (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
+     (md-roam-server--create-error-response 
+      (format "Error creating node: %s" (error-message-string err))))))
 
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
@@ -189,11 +236,9 @@
 
 (defun md-roam-server-handle-request (proc request)
   "Handle HTTP REQUEST from PROC."
-  (let* ((lines (split-string request "\r\n"))
-         (request-line (car lines))
-         (parts (split-string request-line))
-         (method (car parts))
-         (path (cadr parts))
+  (let* ((request-parts (md-roam-server--parse-request-line request))
+         (method (car request-parts))
+         (path (cadr request-parts))
          (body (md-roam-server-parse-request-body request)))
     (cond
      ((and (string= method "GET") (string= path "/hello"))
@@ -212,12 +257,13 @@
                                      (json-encode sync-result))))
      ((and (string= method "POST") (string= path "/nodes"))
       (if body
-          (let* ((title (cdr (assoc 'title body)))
-                 (tags (cdr (assoc 'tags body)))
-                 (content (cdr (assoc 'content body)))
-                 (aliases (cdr (assoc 'aliases body)))
-                 (category (cdr (assoc 'category body)))
-                 (refs (cdr (assoc 'refs body))))
+          (let* ((params (md-roam-server--extract-body-params body '(title tags content aliases category refs)))
+                 (title (nth 0 params))
+                 (tags (nth 1 params))
+                 (content (nth 2 params))
+                 (aliases (nth 3 params))
+                 (category (nth 4 params))
+                 (refs (nth 5 params)))
             (if title
                 (let ((result (md-roam-server-create-node title tags content aliases category refs)))
                   (md-roam-server-send-response proc 200 "application/json"
