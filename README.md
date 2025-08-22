@@ -1,6 +1,8 @@
 # md-roam-server
 
-HTTP server that exposes org-roam functionality via REST API.
+HTTP server that exposes org-roam and md-roam functionality via REST API.
+
+This server supports both Org-mode (.org) and Markdown (.md) files using [md-roam](https://github.com/nobiot/md-roam), which extends org-roam to work with Markdown files.
 
 ## Setup
 
@@ -70,6 +72,48 @@ Synchronizes the org-roam database by scanning for new or modified files.
 }
 ```
 
+### POST /nodes
+Creates a new md-roam node (Markdown file) with the specified title, tags, content, and aliases.
+
+**Request Body:**
+```json
+{
+  "title": "My New Note",
+  "tags": ["tag1", "tag2"],
+  "aliases": ["Alternative Name", "Short Name"],
+  "content": "Initial content for the note."
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Node created successfully",
+  "id": "unique-node-id",
+  "title": "My New Note",
+  "file": "/path/to/new/file.md",
+  "tags": ["tag1", "tag2"],
+  "aliases": ["Alternative Name", "Short Name"],
+  "timestamp": "2024-01-01 12:00:00"
+}
+```
+
+**Generated Markdown File Format:**
+```markdown
+---
+id: unique-node-id
+title: My New Note
+tags: [tag1, tag2]
+alias: Alternative Name
+alias: Short Name
+---
+
+#tag1 #tag2
+
+Initial content for the note.
+```
+
 ## Testing
 
 Test the endpoints with curl:
@@ -82,4 +126,9 @@ curl http://localhost:8080/files
 
 # Sync database endpoint
 curl -X POST http://localhost:8080/sync
+
+# Create new node endpoint
+curl -X POST http://localhost:8080/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test Note", "tags": ["test"], "aliases": ["Testing"], "content": "This is a test note."}'
 ```

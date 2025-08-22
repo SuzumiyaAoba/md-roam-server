@@ -8,6 +8,8 @@
 (require 'json)
 (require 'cl-lib)
 (require 'org-roam)
+(require 'org-id)
+(require 'md-roam)
 
 (defvar md-roam-server-port 8080
   "Port for the md-roam HTTP server.")
@@ -19,7 +21,7 @@
   "Buffer to accumulate request data.")
 
 (defun md-roam-server-init-org-roam ()
-  "Initialize org-roam with proper configuration."
+  "Initialize org-roam and md-roam with proper configuration."
   (unless (bound-and-true-p org-roam-directory)
     ;; Try to find org-roam directory
     (let ((possible-dirs '("~/org-roam" "~/Documents/org-roam" "~/.org-roam" "~/org")))
@@ -40,8 +42,15 @@
   ;; Set database location
   (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
   
+  ;; Configure md-roam
+  (setq org-roam-file-extensions '("org" "md"))
+  (setq md-roam-file-extension "md")
+  
   ;; Initialize database
   (org-roam-db-autosync-mode 1)
+  
+  ;; Enable md-roam mode
+  (md-roam-mode 1)
   
   ;; Sync database to ensure it's up to date
   (org-roam-db-sync))
@@ -101,6 +110,65 @@
        (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set"))
        (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
 
+(defun md-roam-server-create-node (title &optional tags content aliases)
+  "Create a new org-roam node with TITLE, optional TAGS, CONTENT, and ALIASES."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Generate unique ID
+        (let* ((id (org-id-new))
+               (slug (org-roam-node-slug (org-roam-node-create :title title)))
+               (filename (format "%s-%s.md" 
+                               (format-time-string "%Y%m%d%H%M%S")
+                               slug))
+               (filepath (expand-file-name filename org-roam-directory))
+               (tag-list (if tags (mapcar (lambda (tag) (format "#%s" tag)) tags) '()))
+               (alias-lines (if aliases 
+                                (mapconcat (lambda (alias) (format "alias: %s" alias)) aliases "\n")
+                              ""))
+               (yaml-front-matter (format "---\nid: %s\ntitle: %s\n%s%s---\n\n"
+                                        id
+                                        title
+                                        (if tags (format "tags: [%s]\n" (mapconcat 'identity tags ", ")) "")
+                                        (if aliases (format "%s\n" alias-lines) "")))
+               (tag-line (if tag-list (format "%s\n\n" (mapconcat 'identity tag-list " ")) ""))
+               (file-content (format "%s%s%s"
+                                   yaml-front-matter
+                                   tag-line
+                                   (or content ""))))
+          
+          ;; Write file
+          (with-temp-file filepath
+            (insert file-content))
+          
+          ;; Try to register aliases manually in database if possible
+          (when aliases
+            (with-temp-buffer
+              (insert-file-contents filepath)
+              (goto-char (point-min))
+              ;; Force org-roam to process this file
+              (org-mode)
+              (org-roam-db-update-file filepath)))
+          
+          ;; Sync database to register the new node
+          (org-roam-db-sync)
+          
+          ;; Return node information
+          `((status . "success")
+            (message . "Node created successfully")
+            (id . ,id)
+            (title . ,title)
+            (file . ,filepath)
+            (tags . ,(or tags []))
+            (aliases . ,(or aliases []))
+            (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S")))))
+    (error
+     `((status . "error")
+       (message . ,(format "Error creating node: %s" (error-message-string err)))
+       (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
+
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
   (setq md-roam-server-request-buffer (concat md-roam-server-request-buffer string))
@@ -108,13 +176,25 @@
     (md-roam-server-handle-request proc md-roam-server-request-buffer)
     (setq md-roam-server-request-buffer "")))
 
+(defun md-roam-server-parse-request-body (request)
+  "Parse JSON body from HTTP REQUEST."
+  (let* ((lines (split-string request "\r\n"))
+         (body-start (cl-position "" lines :test 'string=)))
+    (when body-start
+      (let ((body (mapconcat 'identity (nthcdr (1+ body-start) lines) "\r\n")))
+        (when (> (length (string-trim body)) 0)
+          (condition-case err
+              (json-read-from-string body)
+            (error nil)))))))
+
 (defun md-roam-server-handle-request (proc request)
   "Handle HTTP REQUEST from PROC."
   (let* ((lines (split-string request "\r\n"))
          (request-line (car lines))
          (parts (split-string request-line))
          (method (car parts))
-         (path (cadr parts)))
+         (path (cadr parts))
+         (body (md-roam-server-parse-request-body request)))
     (cond
      ((and (string= method "GET") (string= path "/hello"))
       (md-roam-server-send-response proc 200 "application/json"
@@ -130,6 +210,22 @@
       (let ((sync-result (md-roam-server-sync-database)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode sync-result))))
+     ((and (string= method "POST") (string= path "/nodes"))
+      (if body
+          (let* ((title (cdr (assoc 'title body)))
+                 (tags (cdr (assoc 'tags body)))
+                 (content (cdr (assoc 'content body)))
+                 (aliases (cdr (assoc 'aliases body))))
+            (if title
+                (let ((result (md-roam-server-create-node title tags content aliases)))
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result)))
+              (md-roam-server-send-response proc 400 "application/json"
+                                           (json-encode '((error . "Bad Request")
+                                                        (message . "Title is required"))))))
+        (md-roam-server-send-response proc 400 "application/json"
+                                     (json-encode '((error . "Bad Request")
+                                                  (message . "JSON body required"))))))
      (t
       (md-roam-server-send-response proc 404 "application/json"
                                    (json-encode '((error . "Not Found")

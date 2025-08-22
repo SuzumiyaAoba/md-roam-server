@@ -11,6 +11,24 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         
+        # md-roam package from GitHub
+        md-roam = pkgs.emacs.pkgs.melpaBuild {
+          pname = "md-roam";
+          version = "1.0.0";
+          src = pkgs.fetchFromGitHub {
+            owner = "nobiot";
+            repo = "md-roam";
+            rev = "1113a568138c1e1084a3cd41a04a9cff2ff14a72";
+            sha256 = "sha256-YxkL6vqabh2qkmgH2zUNFhUoQBQ07sjj9bFdFrWGlf0=";
+          };
+          packageRequires = with pkgs.emacs.pkgs; [ org-roam markdown-mode ];
+          meta = {
+            description = "Roam Research replica with Org-mode and Markdown";
+            homepage = "https://github.com/nobiot/md-roam";
+            license = pkgs.lib.licenses.gpl3Plus;
+          };
+        };
+
         # Emacs configuration with required packages
         emacsWithPackages = pkgs.emacs.pkgs.withPackages (epkgs: with epkgs; [
           org-roam
@@ -22,6 +40,7 @@
           f
           ht
           request
+          md-roam
         ]);
         
       in {
