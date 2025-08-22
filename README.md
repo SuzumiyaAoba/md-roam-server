@@ -56,6 +56,34 @@ Returns a list of all org-roam files with metadata.
 }
 ```
 
+### GET /tags
+Returns a list of all unique tags used across org-roam nodes with usage counts.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Tags retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "tags": [
+    {
+      "tag": "research",
+      "count": 5
+    },
+    {
+      "tag": "project",
+      "count": 3
+    },
+    {
+      "tag": "meeting",
+      "count": 2
+    }
+  ],
+  "total-tags": 3,
+  "total-usage": 10
+}
+```
+
 ### GET /nodes/:id
 Returns a single org-roam node by its ID.
 
@@ -157,6 +185,9 @@ curl http://localhost:8080/hello
 
 # Files endpoint
 curl http://localhost:8080/files
+
+# Tags endpoint
+curl http://localhost:8080/tags
 
 # Get single node by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID

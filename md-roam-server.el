@@ -179,6 +179,53 @@
       (format "Error retrieving node: %s" (error-message-string err))
       `((node-id . ,node-id))))))
 
+(defun md-roam-server-get-tags ()
+  "Get list of all unique tags from org-roam nodes."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get all nodes and collect tags
+        (let ((nodes (org-roam-node-list))
+              (all-tags '())
+              (tag-counts (make-hash-table :test 'equal)))
+          (if nodes
+              (progn
+                ;; Collect all tags from all nodes
+                (dolist (node nodes)
+                  (let ((node-tags (org-roam-node-tags node)))
+                    (when node-tags
+                      (dolist (tag node-tags)
+                        (when tag
+                          (setq all-tags (cons tag all-tags))
+                          (puthash tag (1+ (gethash tag tag-counts 0)) tag-counts))))))
+                
+                ;; Remove duplicates and create result
+                (let ((unique-tags (delete-dups all-tags))
+                      (tag-list '()))
+                  (dolist (tag unique-tags)
+                    (push `((tag . ,tag)
+                           (count . ,(gethash tag tag-counts 0)))
+                          tag-list))
+                  
+                  (md-roam-server--create-success-response
+                   "Tags retrieved successfully"
+                   `((tags . ,(nreverse tag-list))
+                     (total-tags . ,(length unique-tags))
+                     (total-usage . ,(length all-tags))))))
+            
+            ;; If no nodes, return empty list
+            (md-roam-server--create-success-response
+             "No tags found"
+             `((tags . [])
+               (total-tags . 0)
+               (total-usage . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving tags: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-sync-database ()
   "Sync org-roam database and return status information."
   (condition-case err
@@ -292,6 +339,10 @@
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode `((files . ,files)
                                                   (count . ,(length files)))))))
+     ((and (string= method "GET") (string= path "/tags"))
+      (let ((result (md-roam-server-get-tags)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
      ((and (string= method "GET") (string-prefix-p "/nodes/" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
         (if node-id
@@ -334,6 +385,7 @@
                                                          (version . "1.0.0")))
                                                 (paths . (("/hello" . "Health check")
                                                          ("/files" . "Get files")
+                                                         ("/tags" . "Get tags list")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
