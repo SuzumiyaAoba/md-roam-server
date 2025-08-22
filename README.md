@@ -73,14 +73,16 @@ Synchronizes the org-roam database by scanning for new or modified files.
 ```
 
 ### POST /nodes
-Creates a new md-roam node (Markdown file) with the specified title, tags, content, and aliases.
+Creates a new md-roam node (Markdown file) with the specified title, category, tags, content, aliases, and references.
 
 **Request Body:**
 ```json
 {
   "title": "My New Note",
+  "category": "#research #important",
   "tags": ["tag1", "tag2"],
   "aliases": ["Alternative Name", "Short Name"],
+  "refs": ["https://example.com", "https://github.com/user/repo"],
   "content": "Initial content for the note."
 }
 ```
@@ -93,8 +95,10 @@ Creates a new md-roam node (Markdown file) with the specified title, tags, conte
   "id": "unique-node-id",
   "title": "My New Note",
   "file": "/path/to/new/file.md",
+  "category": "#research #important",
   "tags": ["tag1", "tag2"],
   "aliases": ["Alternative Name", "Short Name"],
+  "refs": ["https://example.com", "https://github.com/user/repo"],
   "timestamp": "2024-01-01 12:00:00"
 }
 ```
@@ -104,9 +108,9 @@ Creates a new md-roam node (Markdown file) with the specified title, tags, conte
 ---
 id: unique-node-id
 title: My New Note
-tags: [tag1, tag2]
-alias: Alternative Name
-alias: Short Name
+category: #research #important
+roam_aliases: ["Alternative Name", "Short Name"]
+roam_refs: https://example.com https://github.com/user/repo
 ---
 
 #tag1 #tag2
@@ -130,5 +134,5 @@ curl -X POST http://localhost:8080/sync
 # Create new node endpoint
 curl -X POST http://localhost:8080/nodes \
   -H "Content-Type: application/json" \
-  -d '{"title": "Test Note", "tags": ["test"], "aliases": ["Testing"], "content": "This is a test note."}'
+  -d '{"title": "Test Note", "category": "#testing #example", "tags": ["test"], "aliases": ["Testing"], "refs": ["https://example.com"], "content": "This is a test note."}'
 ```

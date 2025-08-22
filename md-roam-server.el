@@ -110,8 +110,8 @@
        (directory . ,(if (boundp 'org-roam-directory) org-roam-directory "not set"))
        (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S"))))))
 
-(defun md-roam-server-create-node (title &optional tags content aliases)
-  "Create a new org-roam node with TITLE, optional TAGS, CONTENT, and ALIASES."
+(defun md-roam-server-create-node (title &optional tags content aliases category refs)
+  "Create a new org-roam node with TITLE, optional TAGS, CONTENT, ALIASES, CATEGORY, and REFS."
   (condition-case err
       (progn
         ;; Initialize org-roam
@@ -125,14 +125,12 @@
                                slug))
                (filepath (expand-file-name filename org-roam-directory))
                (tag-list (if tags (mapcar (lambda (tag) (format "#%s" tag)) tags) '()))
-               (alias-lines (if aliases 
-                                (mapconcat (lambda (alias) (format "alias: %s" alias)) aliases "\n")
-                              ""))
-               (yaml-front-matter (format "---\nid: %s\ntitle: %s\n%s%s---\n\n"
+               (yaml-front-matter (format "---\nid: %s\ntitle: %s\n%s%s%s---\n\n"
                                         id
                                         title
-                                        (if tags (format "tags: [%s]\n" (mapconcat 'identity tags ", ")) "")
-                                        (if aliases (format "%s\n" alias-lines) "")))
+                                        (if category (format "category: %s\n" (if (listp category) (mapconcat 'identity category " ") category)) "")
+                                        (if aliases (format "roam_aliases: [%s]\n" (mapconcat (lambda (alias) (format "\"%s\"" alias)) aliases ", ")) "")
+                                        (if refs (format "roam_refs: %s\n" (if (listp refs) (mapconcat 'identity refs " ") refs)) "")))
                (tag-line (if tag-list (format "%s\n\n" (mapconcat 'identity tag-list " ")) ""))
                (file-content (format "%s%s%s"
                                    yaml-front-matter
@@ -161,8 +159,10 @@
             (id . ,id)
             (title . ,title)
             (file . ,filepath)
+            (category . ,(or category ""))
             (tags . ,(or tags []))
             (aliases . ,(or aliases []))
+            (refs . ,(or refs []))
             (timestamp . ,(format-time-string "%Y-%m-%d %H:%M:%S")))))
     (error
      `((status . "error")
@@ -215,9 +215,11 @@
           (let* ((title (cdr (assoc 'title body)))
                  (tags (cdr (assoc 'tags body)))
                  (content (cdr (assoc 'content body)))
-                 (aliases (cdr (assoc 'aliases body))))
+                 (aliases (cdr (assoc 'aliases body)))
+                 (category (cdr (assoc 'category body)))
+                 (refs (cdr (assoc 'refs body))))
             (if title
-                (let ((result (md-roam-server-create-node title tags content aliases)))
+                (let ((result (md-roam-server-create-node title tags content aliases category refs)))
                   (md-roam-server-send-response proc 200 "application/json"
                                                (json-encode result)))
               (md-roam-server-send-response proc 400 "application/json"
