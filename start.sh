@@ -28,8 +28,8 @@ echo "Starting md-roam server in daemon mode..."
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Enter nix environment and start daemon with eval
-nix develop -c bash -c "cd '$SCRIPT_DIR' && emacs --daemon --eval \"(progn (add-to-list 'load-path \\\"$SCRIPT_DIR\\\") (load-file \\\"$SCRIPT_DIR/md-roam-server.el\\\") (md-roam-server-start) (message \\\"md-roam server started in daemon mode\\\"))\""
+# Enter nix environment and start daemon with modular elisp
+nix develop -c bash -c "cd '$SCRIPT_DIR' && emacs --daemon --eval \"(progn (add-to-list 'load-path \\\"$SCRIPT_DIR\\\") (add-to-list 'load-path \\\"$SCRIPT_DIR/elisp\\\") (require 'md-roam-server) (md-roam-server-start) (message \\\"md-roam server started in daemon mode\\\"))\""
 
 # Wait for daemon to start
 sleep 3

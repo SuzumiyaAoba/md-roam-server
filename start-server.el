@@ -6,11 +6,12 @@
 
 ;;; Code:
 
-;; Add current directory to load path
+;; Add current directory and elisp subdirectory to load path
 (add-to-list 'load-path default-directory)
+(add-to-list 'load-path (expand-file-name "elisp" default-directory))
 
-;; Load the server with full path
-(load-file (expand-file-name "md-roam-server.el" default-directory))
+;; Load the modular server
+(require 'md-roam-server)
 
 ;; Start the server
 (md-roam-server-start)

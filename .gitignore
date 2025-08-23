@@ -11,6 +11,7 @@ org-roam-ui-web
 # Temporary files
 temp_file
 test-server.el
+md-roam-server-old.el
 
 # Emacs files
 *~
