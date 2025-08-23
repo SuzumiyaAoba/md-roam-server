@@ -323,6 +323,41 @@ Returns a single org-roam node by its ID.
 }
 ```
 
+### GET /nodes/:id/content
+Returns the full file content of a single org-roam node by its ID, including all metadata.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "File content retrieved successfully for node: Node Title",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "title": "Node Title",
+  "file_path": "relative/path/to/file.md",
+  "full_path": "/full/path/to/file.md",
+  "level": 0,
+  "size": 1024,
+  "modified": "2024-01-01 10:30:00",
+  "tags": ["tag1", "tag2"],
+  "aliases": ["alias1"],
+  "content": "# Node Title\n\nThis is the full content of the file..."
+}
+```
+
+**Response (404 - Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Node not found: invalid-id",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "invalid-id"
+}
+```
+
 ### GET /nodes/:id/aliases
 Returns the aliases for a single org-roam node by its ID.
 
@@ -505,6 +540,9 @@ curl "http://localhost:8080/search/Study%20Note"
 
 # Get single node by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID
+
+# Get node file content by ID endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID/content
 
 # Get node aliases by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID/aliases

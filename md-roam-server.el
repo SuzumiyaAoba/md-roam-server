@@ -266,6 +266,80 @@
       `((filepath . ,filepath)
         (directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-get-file-content-by-node-id (node-id)
+  "Get file content of a specific node by its node ID."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get node information from database
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (id (nth 0 node-info))
+                     (title (nth 1 node-info))
+                     (file-path (nth 2 node-info))
+                     (level (nth 3 node-info)))
+                
+                ;; Validate file exists and is readable
+                (unless (and file-path 
+                            (file-exists-p file-path)
+                            (file-regular-p file-path))
+                  (error "Node file not found or not accessible"))
+                
+                ;; Security check - ensure file is within org-roam directory
+                (let ((directory org-roam-directory))
+                  (unless (string-prefix-p (file-truename directory)
+                                          (file-truename file-path))
+                    (error "File access denied - not within org-roam directory")))
+                
+                ;; Check file extension
+                (unless (string-match-p "\\.\\(md\\|org\\)$" file-path)
+                  (error "Only .md and .org files are supported"))
+                
+                ;; Read file content
+                (let* ((content (with-temp-buffer
+                                 (insert-file-contents file-path)
+                                 (buffer-string)))
+                       (file-attrs (file-attributes file-path))
+                       (size (nth 7 file-attrs))
+                       (modified (nth 5 file-attrs))
+                       (relative-path (file-relative-name file-path org-roam-directory))
+                       (tags (mapcar #'car (org-roam-db-query 
+                                            [:select [tag] :from tags :where (= node-id $s1)] 
+                                            id)))
+                       (aliases (mapcar #'car (org-roam-db-query 
+                                              [:select [alias] :from aliases :where (= node-id $s1)] 
+                                              id))))
+                  
+                  (md-roam-server--create-success-response
+                   (format "File content retrieved successfully for node: %s" title)
+                   `((node_id . ,id)
+                     (title . ,title)
+                     (file_path . ,relative-path)
+                     (full_path . ,file-path)
+                     (level . ,level)
+                     (size . ,size)
+                     (modified . ,(format-time-string "%Y-%m-%d %H:%M:%S" modified))
+                     (tags . ,(or tags []))
+                     (aliases . ,(or aliases []))
+                     (content . ,content)))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error reading file content for node '%s': %s" node-id (error-message-string err))
+      `((node_id . ,node-id)
+        (directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-get-node-by-id (node-id)
   "Get a single org-roam node by its ID."
   (condition-case err
@@ -856,6 +930,18 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Search query is required")))))))
+     ((and (string= method "GET") (string-match "^/nodes/.*/content$" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id/content")))
+        (if node-id
+            (let ((result (md-roam-server-get-file-content-by-node-id node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID is required")))))))
      ((and (string= method "GET") (string-prefix-p "/nodes/" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
         (if node-id
@@ -906,6 +992,7 @@
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/search/:query" . "Search nodes by title or alias")
                                                          ("/nodes/:id" . "Get single node")
+                                                         ("/nodes/:id/content" . "Get node file content")
                                                          ("/nodes/:id/aliases" . "Get node aliases")
                                                          ("/nodes/:id/refs" . "Get node refs")
                                                          ("/sync" . "Sync database")
