@@ -29,13 +29,20 @@
           };
         };
 
-        # org-roam-ui with web assets
+        # org-roam-ui source with web assets
         org-roam-ui-src = pkgs.fetchFromGitHub {
           owner = "org-roam";
           repo = "org-roam-ui";
           rev = "5ac74960231db0bf7783c2ba7a19a60f582e91ab";
           sha256 = "sha256-dCoEQRi86eMerkMQPy3Ow/Kj9kzHxXRSrDk4cl8uLHo=";
         };
+        
+        # Extract org-roam-ui web assets to local directory
+        org-roam-ui-web = pkgs.runCommand "org-roam-ui-web" {} ''
+          mkdir -p $out
+          cp -r ${org-roam-ui-src}/out $out/
+          echo "org-roam-ui web assets extracted to: $out/out"
+        '';
         
         org-roam-ui = pkgs.emacs.pkgs.melpaBuild {
           pname = "org-roam-ui";
@@ -85,20 +92,40 @@
             git
             curl
             jq
+            org-roam-ui-web
           ];
 
           shellHook = ''
             echo "md-roam HTTP server development environment"
             echo "Emacs with org-roam and web-server packages available"
             echo ""
+            
+            # Setup org-roam-ui web assets
+            if [ ! -d "org-roam-ui-web" ] || [ ! -f "org-roam-ui-web/out/index.html" ]; then
+              echo "Setting up org-roam-ui web assets..."
+              if [ -d "org-roam-ui-web" ]; then
+                rm -rf org-roam-ui-web
+              fi
+              ln -sf ${org-roam-ui-web} org-roam-ui-web
+              echo "✅ org-roam-ui web assets linked successfully"
+            else
+              echo "✅ org-roam-ui web assets already available"
+            fi
+            
+            echo ""
             echo "Available commands:"
             echo "  emacs - Start Emacs with org-roam and web-server"
             echo "  sqlite3 - SQLite database CLI"
             echo "  curl - Test HTTP endpoints"
             echo "  jq - JSON processor"
+            echo ""
+            echo "Web assets location: ./org-roam-ui-web/out/"
           '';
         };
 
-        packages.default = emacsWithPackages;
+        packages = {
+          default = emacsWithPackages;
+          org-roam-ui-web = org-roam-ui-web;
+        };
       });
 }

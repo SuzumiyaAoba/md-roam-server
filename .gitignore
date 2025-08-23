@@ -1,2 +1,30 @@
 .claude/*
 !.claude/settings.json
+
+# Nix build results
+result
+result-*
+
+# Nix-managed web assets (symlinked by flake.nix)
+org-roam-ui-web
+
+# Temporary files
+temp_file
+test-server.el
+
+# Emacs files
+*~
+\#*\#
+.\#*
+
+# org-roam database
+org-roam.db
+org-roam.db-shm
+org-roam.db-wal
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
