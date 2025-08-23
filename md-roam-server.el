@@ -1437,6 +1437,178 @@
       (format "Error retrieving statistics: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-add-tag-to-node (node-id tag)
+  "Add a TAG to a specific NODE-ID."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        
+        ;; Get node information from database
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (title (nth 1 node-info))
+                     (file-path (nth 2 node-info))
+                     (current-tags (mapcar #'car (org-roam-db-query 
+                                                  [:select [tag] :from tags :where (= node-id $s1)] 
+                                                  node-id))))
+                
+                ;; Check if tag already exists
+                (if (member tag current-tags)
+                    (md-roam-server--create-error-response
+                     (format "Tag '%s' already exists on node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (tag . ,tag)
+                       (existing_tags . ,(or current-tags []))))
+                  
+                  ;; Add tag by updating the file content
+                  (let* ((content (with-temp-buffer
+                                   (insert-file-contents file-path)
+                                   (buffer-string)))
+                         (updated-content (md-roam-server--add-tag-to-content content tag))
+                         (new-tags (append current-tags (list tag))))
+                    
+                    ;; Write updated content to file
+                    (with-temp-file file-path
+                      (insert updated-content))
+                    
+                    ;; Update org-roam database
+                    (org-roam-db-sync)
+                    
+                    ;; Return success response
+                    (md-roam-server--create-success-response
+                     (format "Tag '%s' added to node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (title . ,title)
+                       (tag_added . ,tag)
+                       (current_tags . ,(or new-tags [])))))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error adding tag to node: %s" (error-message-string err))
+      `((node_id . ,node-id)
+        (tag . ,tag))))))
+
+(defun md-roam-server-remove-tag-from-node (node-id tag)
+  "Remove a TAG from a specific NODE-ID."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        
+        ;; Get node information from database
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (title (nth 1 node-info))
+                     (file-path (nth 2 node-info))
+                     (current-tags (mapcar #'car (org-roam-db-query 
+                                                  [:select [tag] :from tags :where (= node-id $s1)] 
+                                                  node-id))))
+                
+                ;; Check if tag exists
+                (if (not (member tag current-tags))
+                    (md-roam-server--create-error-response
+                     (format "Tag '%s' does not exist on node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (tag . ,tag)
+                       (existing_tags . ,(or current-tags []))))
+                  
+                  ;; Remove tag by updating the file content
+                  (let* ((content (with-temp-buffer
+                                   (insert-file-contents file-path)
+                                   (buffer-string)))
+                         (updated-content (md-roam-server--remove-tag-from-content content tag))
+                         (new-tags (remove tag current-tags)))
+                    
+                    ;; Write updated content to file
+                    (with-temp-file file-path
+                      (insert updated-content))
+                    
+                    ;; Update org-roam database
+                    (org-roam-db-sync)
+                    
+                    ;; Return success response
+                    (md-roam-server--create-success-response
+                     (format "Tag '%s' removed from node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (title . ,title)
+                       (tag_removed . ,tag)
+                       (current_tags . ,(or new-tags [])))))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error removing tag from node: %s" (error-message-string err))
+      `((node_id . ,node-id)
+        (tag . ,tag))))))
+
+(defun md-roam-server--add-tag-to-content (content tag)
+  "Add TAG to file CONTENT, handling both Markdown and Org formats."
+  (cond
+   ;; Markdown file with YAML front matter
+   ((string-match "\\`---\n\\(\\(?:.\\|\n\\)*?\\)\n---\n\\(\\(?:.\\|\n\\)*\\)\\'" content)
+    (let ((yaml-content (match-string 1 content))
+          (body-content (match-string 2 content)))
+      ;; For now, add tag as #tag in the body content
+      (concat "---\n" yaml-content "\n---\n\n#" tag "\n\n" (string-trim body-content))))
+   
+   ;; Org mode file
+   ((string-match "^#\\+" content)
+    ;; Add tag as #+FILETAGS: or append to existing tags line
+    (if (string-match "^#\\+FILETAGS:\\s-*\\(.*\\)$" content)
+        (let ((existing-tags (match-string 1 content)))
+          (replace-match (format "#+FILETAGS: %s %s" existing-tags tag) nil nil content))
+      ;; Add new FILETAGS line at the beginning
+      (concat "#+FILETAGS: " tag "\n" content)))
+   
+   ;; Default: add as #tag at the beginning
+   (t (concat "#" tag "\n\n" content))))
+
+(defun md-roam-server--remove-tag-from-content (content tag)
+  "Remove TAG from file CONTENT, handling both Markdown and Org formats."
+  (cond
+   ;; Remove #tag from body content (Markdown style)
+   ((string-match (concat "^#" (regexp-quote tag) "\n") content)
+    (replace-match "" nil nil content))
+   
+   ;; Remove from #+FILETAGS: line (Org mode)
+   ((string-match (concat "^#\\+FILETAGS:\\s-*\\(.*\\)$") content)
+    (let* ((filetags-line (match-string 0 content))
+           (existing-tags (match-string 1 content))
+           (tags-list (split-string existing-tags))
+           (updated-tags (remove tag tags-list)))
+      (if updated-tags
+          (replace-match (format "#+FILETAGS: %s" (string-join updated-tags " ")) nil nil content)
+        ;; Remove entire FILETAGS line if no tags left
+        (replace-match "" nil nil content))))
+   
+   ;; Remove standalone #tag line
+   ((string-match (concat "^#" (regexp-quote tag) "\\s-*\n") content)
+    (replace-match "" nil nil content))
+   
+   ;; Default: remove any occurrence of #tag
+   (t (replace-regexp-in-string (concat "#" (regexp-quote tag) "\\b") "" content))))
+
+(defun md-roam-server--extract-tag-param (path)
+  "Extract tag parameter from PATH like /nodes/ID/tags/TAG."
+  (when (string-match "^/nodes/[^/]+/tags/\\(.+\\)$" path)
+    (url-unhex-string (match-string 1 path))))
+
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
   (setq md-roam-server-request-buffer (concat md-roam-server-request-buffer string))
@@ -1565,6 +1737,39 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Invalid node ID parameter")))))))
+     ((and (string= method "POST") (string-match "^/nodes/.*/tags$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/nodes/:id/tags")))
+        (if (and params body)
+            (let* ((node-id (cdr (assoc 'id params)))
+                   (body-params (md-roam-server--extract-body-params body '(tag)))
+                   (tag (nth 0 body-params)))
+              (if tag
+                  (let ((result (md-roam-server-add-tag-to-node node-id tag)))
+                    (if (string= (cdr (assoc 'status result)) "success")
+                        (md-roam-server-send-response proc 200 "application/json"
+                                                     (json-encode result))
+                      (md-roam-server-send-response proc 400 "application/json"
+                                                   (json-encode result))))
+                (md-roam-server-send-response proc 400 "application/json"
+                                             (json-encode '((error . "Bad Request")
+                                                          (message . "Tag is required"))))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID and JSON body with tag required")))))))
+     ((and (string= method "DELETE") (string-match "^/nodes/.*/tags/.+$" path))
+      (let ((node-id (when (string-match "^/nodes/\\([^/]+\\)/tags/.+$" path)
+                       (match-string 1 path)))
+            (tag (md-roam-server--extract-tag-param path)))
+        (if (and node-id tag)
+            (let ((result (md-roam-server-remove-tag-from-node node-id tag)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 400 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID and tag are required")))))))
      ((and (string= method "GET") (string-match "^/search/.*" path))
       (let ((query (substring path (length "/search/"))))
         (if (and query (> (length query) 0))
@@ -1722,6 +1927,8 @@
                                                          ("/nodes/:id/links" . "Get node forward links")
                                                          ("/nodes/:id/aliases" . "Get node aliases")
                                                          ("/nodes/:id/refs" . "Get node refs")
+                                                         ("/nodes/:id/tags" . "Add tag to node (POST)")
+                                                         ("/nodes/:id/tags/:tag" . "Remove tag from node (DELETE)")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
      (t

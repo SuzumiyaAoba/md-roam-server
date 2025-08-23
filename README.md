@@ -56,6 +56,10 @@ The server provides a comprehensive REST API with the following categories of en
 - `GET /nodes/:id/aliases` - Get node aliases
 - `GET /nodes/:id/refs` - Get node references
 
+### Node Tag Management
+- `POST /nodes/:id/tags` - Add a tag to a node
+- `DELETE /nodes/:id/tags/:tag` - Remove a tag from a node
+
 ### Search & Discovery
 - `GET /search/:query` - Search nodes by title or alias
 - `GET /tags/:tag/nodes` - Get nodes with specific tag
@@ -869,6 +873,76 @@ Returns comprehensive statistics about the org-roam database.
 }
 ```
 
+### POST /nodes/:id/tags
+Adds a tag to a specific node by updating the file content.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Request Body:**
+```json
+{
+  "tag": "new-tag"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Tag 'new-tag' added to node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "title": "Node Title",
+  "tag_added": "new-tag",
+  "current_tags": ["existing-tag", "new-tag"]
+}
+```
+
+**Response (Tag Already Exists):**
+```json
+{
+  "status": "error",
+  "message": "Tag 'existing-tag' already exists on node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "tag": "existing-tag",
+  "existing_tags": ["existing-tag"]
+}
+```
+
+### DELETE /nodes/:id/tags/:tag
+Removes a specific tag from a node by updating the file content.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+- `tag` (path parameter) - The tag to remove
+
+**Response (Success):**
+```json
+{
+  "status": "success", 
+  "message": "Tag 'old-tag' removed from node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "title": "Node Title",
+  "tag_removed": "old-tag",
+  "current_tags": ["remaining-tag"]
+}
+```
+
+**Response (Tag Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Tag 'nonexistent-tag' does not exist on node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "tag": "nonexistent-tag",
+  "existing_tags": ["existing-tag"]
+}
+```
+
 ## Testing
 
 Test the endpoints with curl:
@@ -947,6 +1021,14 @@ curl http://localhost:8080/citations/smith2023/nodes
 
 # Get database statistics endpoint
 curl http://localhost:8080/stats
+
+# Add tag to node endpoint
+curl -X POST http://localhost:8080/nodes/YOUR_NODE_ID/tags \
+  -H "Content-Type: application/json" \
+  -d '{"tag": "new-tag"}'
+
+# Remove tag from node endpoint
+curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID/tags/old-tag
 
 # Create new node endpoint
 curl -X POST http://localhost:8080/nodes \
