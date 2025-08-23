@@ -292,53 +292,6 @@
       `((node-id . ,node-id))))))
 
 (defun md-roam-server-get-tags ()
-  "Get list of all unique tags from org-roam nodes."
-  (condition-case err
-      (progn
-        ;; Initialize org-roam
-        (md-roam-server-init-org-roam)
-        
-        ;; Get all nodes and collect tags
-        (let ((nodes (org-roam-node-list))
-              (all-tags '())
-              (tag-counts (make-hash-table :test 'equal)))
-          (if nodes
-              (progn
-                ;; Collect all tags from all nodes
-                (dolist (node nodes)
-                  (let ((node-tags (org-roam-node-tags node)))
-                    (when node-tags
-                      (dolist (tag node-tags)
-                        (when tag
-                          (setq all-tags (cons tag all-tags))
-                          (puthash tag (1+ (gethash tag tag-counts 0)) tag-counts))))))
-                
-                ;; Remove duplicates and create result
-                (let ((unique-tags (delete-dups all-tags))
-                      (tag-list '()))
-                  (dolist (tag unique-tags)
-                    (push `((tag . ,tag)
-                           (count . ,(gethash tag tag-counts 0)))
-                          tag-list))
-                  
-                  (md-roam-server--create-success-response
-                   "Tags retrieved successfully"
-                   `((tags . ,(nreverse tag-list))
-                     (total-tags . ,(length unique-tags))
-                     (total-usage . ,(length all-tags))))))
-            
-            ;; If no nodes, return empty list
-            (md-roam-server--create-success-response
-             "No tags found"
-             `((tags . [])
-               (total-tags . 0)
-               (total-usage . 0))))))
-    (error
-     (md-roam-server--create-error-response 
-      (format "Error retrieving tags: %s" (error-message-string err))
-      `((directory . ,(md-roam-server--safe-directory)))))))
-
-(defun md-roam-server-get-tags-detailed ()
   "Get list of all unique tags from org-roam nodes with node IDs."
   (condition-case err
       (progn
@@ -374,7 +327,7 @@
                            tag-data)
                   
                   (md-roam-server--create-success-response
-                   "Tags with node IDs retrieved successfully"
+                   "Tags retrieved successfully"
                    `((tags . ,(nreverse tag-list))
                      (total-tags . ,(hash-table-count tag-data))))))
             
@@ -385,57 +338,11 @@
                (total-tags . 0))))))
     (error
      (md-roam-server--create-error-response 
-      (format "Error retrieving detailed tags: %s" (error-message-string err))
+      (format "Error retrieving tags: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
+
 
 (defun md-roam-server-get-aliases ()
-  "Get list of all unique aliases from org-roam nodes."
-  (condition-case err
-      (progn
-        ;; Initialize org-roam
-        (md-roam-server-init-org-roam)
-        
-        ;; Get all nodes and collect aliases
-        (let ((nodes (org-roam-node-list))
-              (all-aliases '())
-              (alias-counts (make-hash-table :test 'equal)))
-          (if nodes
-              (progn
-                ;; Collect all aliases from all nodes
-                (dolist (node nodes)
-                  (let ((node-aliases (org-roam-node-aliases node)))
-                    (when node-aliases
-                      (dolist (alias node-aliases)
-                        (when alias
-                          (setq all-aliases (cons alias all-aliases))
-                          (puthash alias (1+ (gethash alias alias-counts 0)) alias-counts))))))
-                
-                ;; Remove duplicates and create result
-                (let ((unique-aliases (delete-dups all-aliases))
-                      (alias-list '()))
-                  (dolist (alias unique-aliases)
-                    (push `((alias . ,alias)
-                           (count . ,(gethash alias alias-counts 0)))
-                          alias-list))
-                  
-                  (md-roam-server--create-success-response
-                   "Aliases retrieved successfully"
-                   `((aliases . ,(nreverse alias-list))
-                     (total-aliases . ,(length unique-aliases))
-                     (total-usage . ,(length all-aliases))))))
-            
-            ;; If no nodes, return empty list
-            (md-roam-server--create-success-response
-             "No aliases found"
-             `((aliases . [])
-               (total-aliases . 0)
-               (total-usage . 0))))))
-    (error
-     (md-roam-server--create-error-response 
-      (format "Error retrieving aliases: %s" (error-message-string err))
-      `((directory . ,(md-roam-server--safe-directory)))))))
-
-(defun md-roam-server-get-aliases-detailed ()
   "Get list of all unique aliases from org-roam nodes with node IDs."
   (condition-case err
       (progn
@@ -471,7 +378,7 @@
                            alias-data)
                   
                   (md-roam-server--create-success-response
-                   "Aliases with node IDs retrieved successfully"
+                   "Aliases retrieved successfully"
                    `((aliases . ,(nreverse alias-list))
                      (total-aliases . ,(hash-table-count alias-data))))))
             
@@ -482,57 +389,11 @@
                (total-aliases . 0))))))
     (error
      (md-roam-server--create-error-response 
-      (format "Error retrieving detailed aliases: %s" (error-message-string err))
+      (format "Error retrieving aliases: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
+
 
 (defun md-roam-server-get-refs ()
-  "Get list of all unique refs from org-roam nodes."
-  (condition-case err
-      (progn
-        ;; Initialize org-roam
-        (md-roam-server-init-org-roam)
-        
-        ;; Get all nodes and collect refs
-        (let ((nodes (org-roam-node-list))
-              (all-refs '())
-              (ref-counts (make-hash-table :test 'equal)))
-          (if nodes
-              (progn
-                ;; Collect all refs from all nodes
-                (dolist (node nodes)
-                  (let ((node-refs (org-roam-node-refs node)))
-                    (when node-refs
-                      (dolist (ref node-refs)
-                        (when ref
-                          (setq all-refs (cons ref all-refs))
-                          (puthash ref (1+ (gethash ref ref-counts 0)) ref-counts))))))
-                
-                ;; Remove duplicates and create result
-                (let ((unique-refs (delete-dups all-refs))
-                      (ref-list '()))
-                  (dolist (ref unique-refs)
-                    (push `((ref . ,ref)
-                           (count . ,(gethash ref ref-counts 0)))
-                          ref-list))
-                  
-                  (md-roam-server--create-success-response
-                   "Refs retrieved successfully"
-                   `((refs . ,(nreverse ref-list))
-                     (total-refs . ,(length unique-refs))
-                     (total-usage . ,(length all-refs))))))
-            
-            ;; If no nodes, return empty list
-            (md-roam-server--create-success-response
-             "No refs found"
-             `((refs . [])
-               (total-refs . 0)
-               (total-usage . 0))))))
-    (error
-     (md-roam-server--create-error-response 
-      (format "Error retrieving refs: %s" (error-message-string err))
-      `((directory . ,(md-roam-server--safe-directory)))))))
-
-(defun md-roam-server-get-refs-detailed ()
   "Get list of all unique refs from org-roam nodes with node IDs."
   (condition-case err
       (progn
@@ -568,7 +429,7 @@
                            ref-data)
                   
                   (md-roam-server--create-success-response
-                   "Refs with node IDs retrieved successfully"
+                   "Refs retrieved successfully"
                    `((refs . ,(nreverse ref-list))
                      (total-refs . ,(hash-table-count ref-data))))))
             
@@ -579,8 +440,9 @@
                (total-refs . 0))))))
     (error
      (md-roam-server--create-error-response 
-      (format "Error retrieving detailed refs: %s" (error-message-string err))
+      (format "Error retrieving refs: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
+
 
 (defun md-roam-server-get-node-refs (node-id)
   "Get refs for the org-roam node with the specified NODE-ID."
@@ -816,24 +678,12 @@
       (let ((result (md-roam-server-get-tags)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
-     ((and (string= method "GET") (string= path "/tags/detailed"))
-      (let ((result (md-roam-server-get-tags-detailed)))
-        (md-roam-server-send-response proc 200 "application/json"
-                                     (json-encode result))))
      ((and (string= method "GET") (string= path "/aliases"))
       (let ((result (md-roam-server-get-aliases)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
-     ((and (string= method "GET") (string= path "/aliases/detailed"))
-      (let ((result (md-roam-server-get-aliases-detailed)))
-        (md-roam-server-send-response proc 200 "application/json"
-                                     (json-encode result))))
      ((and (string= method "GET") (string= path "/refs"))
       (let ((result (md-roam-server-get-refs)))
-        (md-roam-server-send-response proc 200 "application/json"
-                                     (json-encode result))))
-     ((and (string= method "GET") (string= path "/refs/detailed"))
-      (let ((result (md-roam-server-get-refs-detailed)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
      ((and (string= method "GET") (string-match "^/tags/.*/nodes$" path))
@@ -916,12 +766,9 @@
                                                          ("/files" . "Get files")
                                                          ("/files/raw" . "Get raw file listing")
                                                          ("/files/content/:filepath" . "Get file content")
-                                                         ("/tags" . "Get tags list")
-                                                         ("/tags/detailed" . "Get tags with node IDs")
-                                                         ("/aliases" . "Get aliases list")
-                                                         ("/aliases/detailed" . "Get aliases with node IDs")
-                                                         ("/refs" . "Get refs list")
-                                                         ("/refs/detailed" . "Get refs with node IDs")
+                                                         ("/tags" . "Get tags list with node IDs")
+                                                         ("/aliases" . "Get aliases list with node IDs")
+                                                         ("/refs" . "Get refs list with node IDs")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/nodes/:id/aliases" . "Get node aliases")

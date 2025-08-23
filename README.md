@@ -112,7 +112,7 @@ Returns the content of a specific file by its relative filepath.
 ```
 
 ### GET /tags
-Returns a list of all unique tags used across org-roam nodes with usage counts.
+Returns a list of all unique tags used across org-roam nodes with usage counts and the node IDs that use each tag.
 
 **Response:**
 ```json
@@ -123,24 +123,21 @@ Returns a list of all unique tags used across org-roam nodes with usage counts.
   "tags": [
     {
       "tag": "research",
-      "count": 5
+      "count": 3,
+      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
     },
     {
       "tag": "project",
-      "count": 3
-    },
-    {
-      "tag": "meeting",
-      "count": 2
+      "count": 2,
+      "node-ids": ["node-id-4", "node-id-5"]
     }
   ],
-  "total-tags": 3,
-  "total-usage": 10
+  "total-tags": 2
 }
 ```
 
 ### GET /aliases
-Returns a list of all unique aliases used across org-roam nodes with usage counts.
+Returns a list of all unique aliases used across org-roam nodes with usage counts and the node IDs that use each alias.
 
 **Response:**
 ```json
@@ -151,19 +148,16 @@ Returns a list of all unique aliases used across org-roam nodes with usage count
   "aliases": [
     {
       "alias": "Research Paper",
-      "count": 3
+      "count": 2,
+      "node-ids": ["node-id-1", "node-id-3"]
     },
     {
       "alias": "Project Notes",
-      "count": 2
-    },
-    {
-      "alias": "Meeting Summary",
-      "count": 1
+      "count": 1,
+      "node-ids": ["node-id-4"]
     }
   ],
-  "total-aliases": 3,
-  "total-usage": 6
+  "total-aliases": 2
 }
 ```
 
@@ -218,7 +212,7 @@ Returns a list of all unique aliases used across org-roam nodes with usage count
 ```
 
 ### GET /refs
-Returns a list of all unique refs used across org-roam nodes with usage counts.
+Returns a list of all unique refs used across org-roam nodes with usage counts and the node IDs that use each ref.
 
 **Response:**
 ```json
@@ -229,19 +223,16 @@ Returns a list of all unique refs used across org-roam nodes with usage counts.
   "refs": [
     {
       "ref": "https://example.com",
-      "count": 5
-    },
-    {
-      "ref": "https://github.com/user/repo",
-      "count": 3
+      "count": 3,
+      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
     },
     {
       "ref": "roam://node-id-123",
-      "count": 2
+      "count": 2,
+      "node-ids": ["node-id-4", "node-id-5"]
     }
   ],
-  "total-refs": 3,
-  "total-usage": 10
+  "total-refs": 2
 }
 ```
 
