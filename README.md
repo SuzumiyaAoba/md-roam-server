@@ -14,6 +14,8 @@ HTTP REST API server that exposes org-roam and md-roam functionality for buildin
 - **Statistics Dashboard**: Comprehensive database statistics and health metrics
 - **Snake_case Responses**: Consistent JSON field naming across all endpoints
 - **Visual Graph Interface**: Integrated [org-roam-ui](https://github.com/org-roam/org-roam-ui) for interactive knowledge graph visualization
+- **Daemon Mode**: Stable server operation with automatic startup/shutdown scripts
+- **Production Ready**: Persistent server with proper process management and error handling
 
 ## Setup
 
@@ -23,13 +25,38 @@ nix develop
 ```
 
 2. Start the server:
+
+### Quick Start (Recommended)
 ```bash
-emacs --batch -l start-server.el
+# Start server in daemon mode (most stable)
+./start.sh
+
+# Stop server
+./stop.sh
 ```
 
-Or interactively:
+The server will start in daemon mode and provide access to:
+- **REST API**: http://localhost:8080
+- **Graph UI**: http://localhost:35901 (org-roam-ui)
+
+### Manual Start Options
+
+**Daemon Mode (Production Ready):**
 ```bash
-emacs -l md-roam-server.el
+# Start daemon with all features
+nix develop -c bash -c "cd . && emacs --daemon --eval \"(progn (add-to-list 'load-path \".\" ) (load-file \"md-roam-server.el\") (md-roam-server-start) (message \"md-roam server started in daemon mode\"))\""
+
+# Check if running
+curl -s http://localhost:8080/stats
+
+# Stop daemon gracefully
+nix develop -c emacsclient -e "(md-roam-server-stop)" && pkill -f "emacs.*daemon"
+```
+
+**Interactive Development Mode:**
+```bash
+# For development and debugging
+nix develop -c emacs -l md-roam-server.el
 # Then run: M-x md-roam-server-start
 ```
 
@@ -1017,6 +1044,21 @@ Removes a specific category from a node by updating the `category:` field in the
   "category": "nonexistent-category",
   "existing_categories": ["existing-category"]
 }
+```
+
+## Server Status
+
+Check server status and health:
+```bash
+# Check if server is running
+curl -s http://localhost:8080/stats
+
+# Check UI status
+curl -s http://localhost:8080/ui
+
+# Monitor server processes
+ps aux | grep emacs
+lsof -i:8080,35901
 ```
 
 ## Testing

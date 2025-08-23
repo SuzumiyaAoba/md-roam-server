@@ -1,18 +1,24 @@
-;;; start-server.el --- Script to start md-roam server
+;;; start-server.el --- md-roam server startup script for daemon mode
 
 ;;; Commentary:
-;; Simple script to load and start the md-roam HTTP server
+;; This script starts the md-roam server in Emacs daemon mode
+;; for better stability and persistence.
 
 ;;; Code:
 
-;; Load the server
-(load-file "md-roam-server.el")
+;; Add current directory to load path
+(add-to-list 'load-path default-directory)
+
+;; Load the server with full path
+(load-file (expand-file-name "md-roam-server.el" default-directory))
 
 ;; Start the server
 (md-roam-server-start)
 
-;; Keep Emacs running
-(message "md-roam server is running. Press C-c C-c to stop.")
-(while t (sleep-for 1))
+;; Daemon mode messages
+(message "md-roam server started in daemon mode")
+(message "Access REST API at: http://localhost:8080")
+(message "Access Graph UI at: http://localhost:35901")
+(message "Stop server with: emacsclient -e '(md-roam-server-stop)' && pkill emacs")
 
 ;;; start-server.el ends here

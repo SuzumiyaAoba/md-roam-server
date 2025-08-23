@@ -2186,7 +2186,7 @@
   (setq org-roam-ui-sync-theme t
         org-roam-ui-follow t
         org-roam-ui-update-on-save t
-        org-roam-ui-open-on-start t
+        org-roam-ui-open-on-start nil  ; Don't auto-open browser in daemon mode
         org-roam-ui-port md-roam-server-ui-port))
 
 (defun md-roam-server-start-ui ()
@@ -2194,8 +2194,50 @@
   (condition-case err
       (progn
         (md-roam-server-configure-ui)
+        ;; Ensure org-roam is initialized first
+        (unless org-roam-directory
+          (org-roam-db-sync))
+        
+        ;; Load required packages
+        (require 'simple-httpd)
+        (require 'websocket)
+        
+        ;; Configure simple-httpd server for org-roam-ui
+        (setq httpd-port md-roam-server-ui-port)
+        
+        ;; Try multiple locations for org-roam-ui web assets
+        (let ((possible-roots (list
+                               ;; Local web assets directory (preferred)
+                               (expand-file-name "org-roam-ui-web/out" default-directory)
+                               ;; Package out directory
+                               (expand-file-name "out" (file-name-directory (locate-library "org-roam-ui")))
+                               ;; Package ui directory (fallback)
+                               (expand-file-name "ui" (file-name-directory (locate-library "org-roam-ui"))))))
+          (setq httpd-root nil)
+          (dolist (root possible-roots)
+            (when (and (not httpd-root) (file-exists-p root) (file-exists-p (expand-file-name "index.html" root)))
+              (setq httpd-root root)
+              (message "Found org-roam-ui web assets at: %s" httpd-root)))
+          (unless httpd-root
+            (setq httpd-root (car possible-roots))
+            (message "Using default web root: %s (may not work)" httpd-root)))
+        
+        ;; Start org-roam-ui
+        (setq org-roam-ui--ws-current-node nil)
         (org-roam-ui-mode 1)
-        (message "org-roam-ui started on port %d" md-roam-server-ui-port))
+        
+        ;; Start the HTTP server if it's not running
+        (unless (process-status "httpd")
+          (httpd-start))
+        
+        ;; Give it time to start
+        (run-with-timer 3 nil 
+                       (lambda () 
+                         (message "org-roam-ui web interface available at: http://localhost:%d" 
+                                  md-roam-server-ui-port)))
+        (message "org-roam-ui starting on port %d (root: %s)" 
+                 md-roam-server-ui-port 
+                 (or httpd-root "default")))
     (error
      (message "Failed to start org-roam-ui: %s" (error-message-string err)))))
 

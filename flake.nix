@@ -29,17 +29,28 @@
           };
         };
 
-        # org-roam-ui package from GitHub
+        # org-roam-ui with web assets
+        org-roam-ui-src = pkgs.fetchFromGitHub {
+          owner = "org-roam";
+          repo = "org-roam-ui";
+          rev = "5ac74960231db0bf7783c2ba7a19a60f582e91ab";
+          sha256 = "sha256-dCoEQRi86eMerkMQPy3Ow/Kj9kzHxXRSrDk4cl8uLHo=";
+        };
+        
         org-roam-ui = pkgs.emacs.pkgs.melpaBuild {
           pname = "org-roam-ui";
           version = "1.0.0";
-          src = pkgs.fetchFromGitHub {
-            owner = "org-roam";
-            repo = "org-roam-ui";
-            rev = "5ac74960231db0bf7783c2ba7a19a60f582e91ab";
-            sha256 = "sha256-dCoEQRi86eMerkMQPy3Ow/Kj9kzHxXRSrDk4cl8uLHo=";
-          };
+          src = org-roam-ui-src;
           packageRequires = with pkgs.emacs.pkgs; [ org-roam simple-httpd websocket ];
+          
+          postInstall = ''
+            # Copy web assets to package directory
+            if [ -d $src/out ]; then
+              mkdir -p $out/share/emacs/site-lisp/elpa/org-roam-ui-1.0.0/out
+              cp -r $src/out/* $out/share/emacs/site-lisp/elpa/org-roam-ui-1.0.0/out/
+            fi
+          '';
+          
           meta = {
             description = "A graphical frontend for exploring your org-roam Zettelkasten";
             homepage = "https://github.com/org-roam/org-roam-ui";
