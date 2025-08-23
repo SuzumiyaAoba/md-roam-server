@@ -385,6 +385,81 @@
       (format "Error retrieving aliases: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-get-refs ()
+  "Get list of all unique refs from org-roam nodes."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get all nodes and collect refs
+        (let ((nodes (org-roam-node-list))
+              (all-refs '())
+              (ref-counts (make-hash-table :test 'equal)))
+          (if nodes
+              (progn
+                ;; Collect all refs from all nodes
+                (dolist (node nodes)
+                  (let ((node-refs (org-roam-node-refs node)))
+                    (when node-refs
+                      (dolist (ref node-refs)
+                        (when ref
+                          (setq all-refs (cons ref all-refs))
+                          (puthash ref (1+ (gethash ref ref-counts 0)) ref-counts))))))
+                
+                ;; Remove duplicates and create result
+                (let ((unique-refs (delete-dups all-refs))
+                      (ref-list '()))
+                  (dolist (ref unique-refs)
+                    (push `((ref . ,ref)
+                           (count . ,(gethash ref ref-counts 0)))
+                          ref-list))
+                  
+                  (md-roam-server--create-success-response
+                   "Refs retrieved successfully"
+                   `((refs . ,(nreverse ref-list))
+                     (total-refs . ,(length unique-refs))
+                     (total-usage . ,(length all-refs))))))
+            
+            ;; If no nodes, return empty list
+            (md-roam-server--create-success-response
+             "No refs found"
+             `((refs . [])
+               (total-refs . 0)
+               (total-usage . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving refs: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
+
+(defun md-roam-server-get-node-refs (node-id)
+  "Get refs for the org-roam node with the specified NODE-ID."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Find node by ID
+        (let ((node (org-roam-node-from-id node-id)))
+          (if node
+              (let ((refs (org-roam-node-refs node)))
+                (md-roam-server--create-success-response
+                 (if refs
+                     (format "Found %d refs for node '%s'" (length refs) (org-roam-node-title node))
+                   (format "No refs found for node '%s'" (org-roam-node-title node)))
+                 `((id . ,node-id)
+                   (title . ,(org-roam-node-title node))
+                   (refs . ,(or refs []))
+                   (count . ,(if refs (length refs) 0)))))
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node with ID '%s' not found" node-id)))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving refs for node '%s': %s" node-id (error-message-string err))
+      `((id . ,node-id)
+        (directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-get-node-aliases (node-id)
   "Get aliases for the org-roam node with the specified NODE-ID."
   (condition-case err
@@ -595,6 +670,10 @@
       (let ((result (md-roam-server-get-aliases)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
+     ((and (string= method "GET") (string= path "/refs"))
+      (let ((result (md-roam-server-get-refs)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
      ((and (string= method "GET") (string-match "^/tags/.*/nodes$" path))
       (let ((params (md-roam-server--match-path-pattern path "/tags/:tag/nodes")))
         (if params
@@ -610,6 +689,19 @@
         (if params
             (let* ((node-id (cdr (assoc 'id params)))
                    (result (md-roam-server-get-node-aliases node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Invalid node ID parameter")))))))
+     ((and (string= method "GET") (string-match "^/nodes/.*/refs$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/nodes/:id/refs")))
+        (if params
+            (let* ((node-id (cdr (assoc 'id params)))
+                   (result (md-roam-server-get-node-refs node-id)))
               (if (string= (cdr (assoc 'status result)) "success")
                   (md-roam-server-send-response proc 200 "application/json"
                                                (json-encode result))
@@ -664,9 +756,11 @@
                                                          ("/files/content/:filepath" . "Get file content")
                                                          ("/tags" . "Get tags list")
                                                          ("/aliases" . "Get aliases list")
+                                                         ("/refs" . "Get refs list")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/nodes/:id/aliases" . "Get node aliases")
+                                                         ("/nodes/:id/refs" . "Get node refs")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
      (t

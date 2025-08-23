@@ -167,6 +167,34 @@ Returns a list of all unique aliases used across org-roam nodes with usage count
 }
 ```
 
+### GET /refs
+Returns a list of all unique refs used across org-roam nodes with usage counts.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Refs retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "refs": [
+    {
+      "ref": "https://example.com",
+      "count": 5
+    },
+    {
+      "ref": "https://github.com/user/repo",
+      "count": 3
+    },
+    {
+      "ref": "roam://node-id-123",
+      "count": 2
+    }
+  ],
+  "total-refs": 3,
+  "total-usage": 10
+}
+```
+
 ### GET /tags/:tag/nodes
 Returns a list of nodes that have the specified tag.
 
@@ -285,6 +313,51 @@ Returns the aliases for a single org-roam node by its ID.
 }
 ```
 
+### GET /nodes/:id/refs
+Returns the refs for a single org-roam node by its ID.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 3 refs for node 'Research Paper 1'",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Research Paper 1",
+  "refs": [
+    "https://example.com",
+    "https://github.com/user/repo",
+    "roam://another-node-id"
+  ],
+  "count": 3
+}
+```
+
+**Response (No refs):**
+```json
+{
+  "status": "success",
+  "message": "No refs found for node 'Simple Note'",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Simple Note",
+  "refs": [],
+  "count": 0
+}
+```
+
+**Response (404 - Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Node with ID 'invalid-id' not found",
+  "timestamp": "2024-01-01 12:00:00"
+}
+```
+
 ### POST /sync
 Synchronizes the org-roam database by scanning for new or modified files.
 
@@ -369,6 +442,9 @@ curl http://localhost:8080/tags
 # Aliases endpoint
 curl http://localhost:8080/aliases
 
+# Refs endpoint
+curl http://localhost:8080/refs
+
 # Get nodes by tag endpoint  
 curl http://localhost:8080/tags/research/nodes
 
@@ -377,6 +453,9 @@ curl http://localhost:8080/nodes/YOUR_NODE_ID
 
 # Get node aliases by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID/aliases
+
+# Get node refs by ID endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID/refs
 
 # Sync database endpoint
 curl -X POST http://localhost:8080/sync
