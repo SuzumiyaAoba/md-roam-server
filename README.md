@@ -4,11 +4,14 @@ HTTP REST API server that exposes org-roam and md-roam functionality for buildin
 
 ## Features
 
+- **Complete CRUD Operations**: Create, read, update, and delete nodes with full metadata support
+- **Bidirectional Links**: org-roam's signature backlink and forward link discovery
 - **Unified File Support**: Both Org-mode (.org) and Markdown (.md) files via [md-roam](https://github.com/nobiot/md-roam)
 - **Database-Driven**: Uses org-roam SQLite database for fast queries and search
-- **Complete API Coverage**: File operations, node management, search, metadata collections
+- **Advanced Search**: Search by title, alias, tags, references, citations with database optimization
 - **Advanced Parsing**: Separates metadata from content for both YAML front matter and Org properties
 - **Citation Support**: Extracts and tracks citations in `[@citation-key]` and `[[cite:citation-key]]` formats  
+- **Statistics Dashboard**: Comprehensive database statistics and health metrics
 - **Snake_case Responses**: Consistent JSON field naming across all endpoints
 
 ## Setup
@@ -44,20 +47,28 @@ The server provides a comprehensive REST API with the following categories of en
 - `GET /nodes/:id/content` - Get complete file content by node ID
 - `GET /nodes/:id/parse` - Parse file and separate metadata from body
 - `POST /nodes` - Create new node
+- `PUT /nodes/:id` - Update existing node
+- `DELETE /nodes/:id` - Delete node and file
 
-### Node Metadata
+### Node Relationships
+- `GET /nodes/:id/backlinks` - Get nodes that link to this node
+- `GET /nodes/:id/links` - Get nodes this node links to
 - `GET /nodes/:id/aliases` - Get node aliases
 - `GET /nodes/:id/refs` - Get node references
 
 ### Search & Discovery
 - `GET /search/:query` - Search nodes by title or alias
 - `GET /tags/:tag/nodes` - Get nodes with specific tag
+- `GET /aliases/:alias/nodes` - Get nodes with specific alias
+- `GET /refs/:ref/nodes` - Get nodes with specific reference
+- `GET /citations/:citation/nodes` - Get nodes with specific citation
 
 ### Metadata Collections
 - `GET /tags` - List all tags with usage counts
 - `GET /aliases` - List all aliases with usage counts  
 - `GET /refs` - List all references with usage counts
 - `GET /citations` - List all citations with usage counts
+- `GET /stats` - Get comprehensive database statistics
 
 ### Database Management
 - `POST /sync` - Synchronize org-roam database
@@ -643,6 +654,221 @@ roam_refs: https://example.com https://github.com/user/repo
 Initial content for the note.
 ```
 
+### PUT /nodes/:id
+Updates an existing org-roam node with new content and metadata.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node to update
+
+**Request Body:**
+```json
+{
+  "title": "Updated Node Title",
+  "category": "#updated #category",
+  "tags": ["new-tag1", "new-tag2"],
+  "aliases": ["New Alias"],
+  "refs": ["https://updated.example.com"],
+  "content": "Updated content for the node."
+}
+```
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Node updated successfully: Updated Node Title",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Updated Node Title",
+  "file": "relative/path/to/file.md",
+  "category": "#updated #category",
+  "tags": ["new-tag1", "new-tag2"],
+  "aliases": ["New Alias"],
+  "refs": ["https://updated.example.com"]
+}
+```
+
+### DELETE /nodes/:id
+Deletes an org-roam node and its associated file.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node to delete
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Node deleted successfully: Node Title",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Node Title",
+  "file": "relative/path/to/file.md"
+}
+```
+
+### GET /nodes/:id/backlinks
+Returns all nodes that link to the specified node (backlinks).
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 2 backlinks for node",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "target-node-id",
+  "backlinks": [
+    {
+      "id": "source-node-1",
+      "title": "Source Node 1",
+      "file": "path/to/source1.md",
+      "level": 0,
+      "link_type": "id"
+    },
+    {
+      "id": "source-node-2", 
+      "title": "Source Node 2",
+      "file": "path/to/source2.md",
+      "level": 0,
+      "link_type": "id"
+    }
+  ],
+  "count": 2
+}
+```
+
+### GET /nodes/:id/links
+Returns all nodes that the specified node links to (forward links).
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 1 forward links from node",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "source-node-id",
+  "links": [
+    {
+      "id": "target-node-id",
+      "title": "Target Node",
+      "file": "path/to/target.md",
+      "level": 0,
+      "link_type": "id"
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /aliases/:alias/nodes
+Returns all nodes that have the specified alias.
+
+**Parameters:**
+- `alias` (path parameter) - The alias to search for
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 1 nodes with alias 'MyAlias'",
+  "timestamp": "2024-01-01 12:00:00",
+  "alias": "MyAlias",
+  "nodes": [
+    {
+      "id": "node-id",
+      "title": "Node Title",
+      "file": "path/to/file.md",
+      "level": 0,
+      "tags": ["tag1"],
+      "aliases": ["MyAlias", "OtherAlias"]
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /refs/:ref/nodes  
+Returns all nodes that reference the specified URL.
+
+**Parameters:**
+- `ref` (path parameter, URL-encoded) - The reference URL to search for
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 2 nodes with ref 'https://example.com'",
+  "timestamp": "2024-01-01 12:00:00",
+  "ref": "https://example.com",
+  "nodes": [
+    {
+      "id": "node-id-1",
+      "title": "Research Paper",
+      "file": "research/paper.md",
+      "level": 0,
+      "tags": ["research"],
+      "aliases": []
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /citations/:citation/nodes
+Returns all nodes that contain the specified citation.
+
+**Parameters:**
+- `citation` (path parameter) - The citation key to search for
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 1 nodes with citation 'smith2023'",
+  "timestamp": "2024-01-01 12:00:00", 
+  "citation": "smith2023",
+  "nodes": [
+    {
+      "id": "node-id",
+      "title": "Literature Review",
+      "file": "reviews/literature.md",
+      "level": 0,
+      "tags": ["literature", "review"],
+      "aliases": []
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /stats
+Returns comprehensive statistics about the org-roam database.
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Statistics retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "total_nodes": 150,
+  "total_links": 320,
+  "total_tags": 45,
+  "total_aliases": 28,
+  "total_refs": 67,
+  "total_citations": 89,
+  "file_types": {
+    "md": 120,
+    "org": 30
+  },
+  "avg_links_per_node": 2.13
+}
+```
+
 ## Testing
 
 Test the endpoints with curl:
@@ -695,6 +921,32 @@ curl http://localhost:8080/nodes/YOUR_NODE_ID/refs
 
 # Sync database endpoint
 curl -X POST http://localhost:8080/sync
+
+# Update node endpoint
+curl -X PUT http://localhost:8080/nodes/YOUR_NODE_ID \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Updated Title", "category": "#updated", "tags": ["updated"], "content": "Updated content."}'
+
+# Delete node endpoint
+curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID
+
+# Get node backlinks endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID/backlinks
+
+# Get node forward links endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID/links
+
+# Get nodes by alias endpoint
+curl http://localhost:8080/aliases/MyAlias/nodes
+
+# Get nodes by ref endpoint (URL-encoded)
+curl "http://localhost:8080/refs/https%3A%2F%2Fexample.com/nodes"
+
+# Get nodes by citation endpoint
+curl http://localhost:8080/citations/smith2023/nodes
+
+# Get database statistics endpoint
+curl http://localhost:8080/stats
 
 # Create new node endpoint
 curl -X POST http://localhost:8080/nodes \

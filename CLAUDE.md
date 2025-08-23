@@ -51,6 +51,18 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 - Unified format for both Markdown (YAML front matter) and Org mode (properties drawer)
 - File type detection returning "md", "org", or "unknown"
 
+**Complete CRUD Operations:**
+- Node creation with YAML front matter generation (`POST /nodes`)
+- Node updates with file rewriting (`PUT /nodes/:id`)
+- Safe node deletion with security validation (`DELETE /nodes/:id`)
+- Complete metadata and content management
+
+**org-roam Core Features:**
+- Bidirectional link discovery (`/nodes/:id/backlinks`, `/nodes/:id/links`)
+- Database-driven link analysis using org-roam links table
+- Link type detection and relationship mapping
+- Complete graph traversal capabilities
+
 ## Common Commands
 
 **Start Server:**
@@ -75,10 +87,18 @@ curl -X POST http://localhost:8080/sync
 curl http://localhost:8080/nodes/NODE_ID
 curl http://localhost:8080/nodes/NODE_ID/content
 curl http://localhost:8080/nodes/NODE_ID/parse
+curl http://localhost:8080/nodes/NODE_ID/backlinks
+curl http://localhost:8080/nodes/NODE_ID/links
 
 # Search and discovery  
 curl http://localhost:8080/search/query
 curl http://localhost:8080/tags/tagname/nodes
+curl http://localhost:8080/aliases/aliasname/nodes
+curl http://localhost:8080/refs/https%3A%2F%2Fexample.com/nodes
+curl http://localhost:8080/citations/citation-key/nodes
+
+# Statistics and overview
+curl http://localhost:8080/stats
 ```
 
 **Create Node via API:**
@@ -86,6 +106,18 @@ curl http://localhost:8080/tags/tagname/nodes
 curl -X POST http://localhost:8080/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Note", "category": "#test", "tags": ["example"], "content": "Note content"}'
+```
+
+**Update Node via API:**
+```bash
+curl -X PUT http://localhost:8080/nodes/NODE_ID \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Updated Title", "content": "Updated content"}'
+```
+
+**Delete Node via API:**
+```bash
+curl -X DELETE http://localhost:8080/nodes/NODE_ID
 ```
 
 **Kill Server Process:**
@@ -111,7 +143,10 @@ pkill -f "emacs.*start-server.el"
 - Direct `org-roam-db-query` usage for better performance
 - Search implemented with SQL LIKE queries (case-insensitive)
 - Citations table integration for reference tracking
+- Links table integration for bidirectional relationship discovery
 - Hash table deduplication for search results
+- Statistical aggregation using SQL COUNT and DISTINCT functions
+- Complete database schema utilization (nodes, links, tags, aliases, refs, citations)
 
 **Error Handling:**
 - Consistent error response format across all endpoints
