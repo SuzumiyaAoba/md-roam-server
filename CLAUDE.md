@@ -57,7 +57,6 @@ nix develop -c emacs --batch -l start-server.el
 
 **Individual Endpoint Testing:**
 ```bash
-curl http://localhost:8080/hello
 curl http://localhost:8080/files
 curl http://localhost:8080/tags
 curl http://localhost:8080/nodes/NODE_ID

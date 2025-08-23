@@ -24,18 +24,6 @@ emacs -l md-roam-server.el
 
 ## API Endpoints
 
-### GET /hello
-Returns a simple hello world message.
-
-**Response:**
-```json
-{
-  "message": "Hello, World!",
-  "service": "md-roam-server", 
-  "status": "running"
-}
-```
-
 ### GET /files
 Returns a list of all org-roam files with metadata.
 
@@ -161,56 +149,6 @@ Returns a list of all unique aliases used across org-roam nodes with usage count
 }
 ```
 
-### GET /tags/detailed
-Returns a list of all unique tags used across org-roam nodes with usage counts and the node IDs that use each tag.
-
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "Tags with node IDs retrieved successfully",
-  "timestamp": "2024-01-01 12:00:00",
-  "tags": [
-    {
-      "tag": "research",
-      "count": 3,
-      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
-    },
-    {
-      "tag": "project",
-      "count": 2,
-      "node-ids": ["node-id-4", "node-id-5"]
-    }
-  ],
-  "total-tags": 2
-}
-```
-
-### GET /aliases/detailed
-Returns a list of all unique aliases used across org-roam nodes with usage counts and the node IDs that use each alias.
-
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "Aliases with node IDs retrieved successfully",
-  "timestamp": "2024-01-01 12:00:00",
-  "aliases": [
-    {
-      "alias": "Research Paper",
-      "count": 2,
-      "node-ids": ["node-id-1", "node-id-3"]
-    },
-    {
-      "alias": "Project Notes",
-      "count": 1,
-      "node-ids": ["node-id-4"]
-    }
-  ],
-  "total-aliases": 2
-}
-```
-
 ### GET /refs
 Returns a list of all unique refs used across org-roam nodes with usage counts and the node IDs that use each ref.
 
@@ -219,31 +157,6 @@ Returns a list of all unique refs used across org-roam nodes with usage counts a
 {
   "status": "success",
   "message": "Refs retrieved successfully",
-  "timestamp": "2024-01-01 12:00:00",
-  "refs": [
-    {
-      "ref": "https://example.com",
-      "count": 3,
-      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
-    },
-    {
-      "ref": "roam://node-id-123",
-      "count": 2,
-      "node-ids": ["node-id-4", "node-id-5"]
-    }
-  ],
-  "total-refs": 2
-}
-```
-
-### GET /refs/detailed
-Returns a list of all unique refs used across org-roam nodes with usage counts and the node IDs that use each ref.
-
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "Refs with node IDs retrieved successfully",
   "timestamp": "2024-01-01 12:00:00",
   "refs": [
     {
@@ -303,6 +216,53 @@ Returns a list of nodes that have the specified tag.
   "message": "No nodes found with tag 'nonexistent'",
   "timestamp": "2024-01-01 12:00:00",
   "tag": "nonexistent",
+  "nodes": [],
+  "count": 0
+}
+```
+
+### GET /search/:query
+Search for nodes by title or alias matching the query string (case-insensitive partial match).
+
+**Parameters:**
+- `query` (path parameter) - The search query string (URL-encoded)
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 2 nodes matching 'research'",
+  "timestamp": "2024-01-01 12:00:00",
+  "query": "research",
+  "nodes": [
+    {
+      "id": "node-id-1",
+      "title": "Research Paper 1",
+      "file": "/path/to/file1.md",
+      "level": 0,
+      "tags": ["research", "academic"],
+      "aliases": ["Paper 1"]
+    },
+    {
+      "id": "node-id-2", 
+      "title": "My Notes",
+      "file": "/path/to/file2.md",
+      "level": 0,
+      "tags": ["notes"],
+      "aliases": ["Research Notes"]
+    }
+  ],
+  "count": 2
+}
+```
+
+**Response (No matches):**
+```json
+{
+  "status": "success",
+  "message": "No nodes found matching 'nonexistent'",
+  "timestamp": "2024-01-01 12:00:00",
+  "query": "nonexistent",
   "nodes": [],
   "count": 0
 }
@@ -490,9 +450,6 @@ Initial content for the note.
 
 Test the endpoints with curl:
 ```bash
-# Hello endpoint
-curl http://localhost:8080/hello
-
 # Files endpoint
 curl http://localhost:8080/files
 
@@ -502,26 +459,21 @@ curl http://localhost:8080/files/raw
 # File content endpoint
 curl http://localhost:8080/files/content/20250823014345-corrected_alias_format.md
 
-# Tags endpoint
+# Tags endpoint (includes node IDs)
 curl http://localhost:8080/tags
 
-# Tags detailed endpoint (with node IDs)
-curl http://localhost:8080/tags/detailed
-
-# Aliases endpoint
+# Aliases endpoint (includes node IDs)
 curl http://localhost:8080/aliases
 
-# Aliases detailed endpoint (with node IDs)
-curl http://localhost:8080/aliases/detailed
-
-# Refs endpoint
+# Refs endpoint (includes node IDs)
 curl http://localhost:8080/refs
-
-# Refs detailed endpoint (with node IDs)
-curl http://localhost:8080/refs/detailed
 
 # Get nodes by tag endpoint  
 curl http://localhost:8080/tags/research/nodes
+
+# Search nodes by title or alias endpoint
+curl http://localhost:8080/search/research
+curl "http://localhost:8080/search/Study%20Note"
 
 # Get single node by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID

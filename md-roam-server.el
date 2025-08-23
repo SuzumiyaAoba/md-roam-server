@@ -549,6 +549,53 @@
       `((tag . ,tag)
         (directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-search-nodes-by-title-or-alias (query)
+  "Search for nodes by title or alias matching QUERY."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((nodes (org-roam-node-list))
+              (matches '())
+              (query-lower (downcase query)))
+          (dolist (node nodes)
+            (let* ((title (org-roam-node-title node))
+                   (aliases (org-roam-node-aliases node))
+                   (node-id (org-roam-node-id node))
+                   (node-data `((id . ,node-id)
+                               (title . ,title)
+                               (file . ,(org-roam-node-file node))
+                               (level . ,(org-roam-node-level node))
+                               (tags . ,(or (org-roam-node-tags node) []))
+                               (aliases . ,(or aliases []))))
+                   (already-matched (cl-find node-id matches :key (lambda (x) (cdr (assoc 'id x))) :test 'string=)))
+              (unless already-matched
+                ;; Check title match
+                (when (string-match-p (regexp-quote query-lower) (downcase title))
+                  (push node-data matches))
+                ;; Check alias matches (only if not already matched by title)
+                (when (and aliases (not (cl-find node-id matches :key (lambda (x) (cdr (assoc 'id x))) :test 'string=)))
+                  (catch 'found
+                    (dolist (alias aliases)
+                      (when (string-match-p (regexp-quote query-lower) (downcase alias))
+                        (push node-data matches)
+                        (throw 'found t))))))))
+          
+          (if matches
+              (md-roam-server--create-success-response
+               (format "Found %d nodes matching '%s'" (length matches) query)
+               `((query . ,query)
+                 (nodes . ,(nreverse matches))
+                 (count . ,(length matches))))
+            (md-roam-server--create-success-response
+             (format "No nodes found matching '%s'" query)
+             `((query . ,query)
+               (nodes . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response
+      (format "Error searching nodes: %s" (error-message-string err))
+      `((query . ,query))))))
+
 (defun md-roam-server-sync-database ()
   "Sync org-roam database and return status information."
   (condition-case err
@@ -652,11 +699,6 @@
          (path (cadr request-parts))
          (body (md-roam-server-parse-request-body request)))
     (cond
-     ((and (string= method "GET") (string= path "/hello"))
-      (md-roam-server-send-response proc 200 "application/json"
-                                   (json-encode '((message . "Hello, World!")
-                                                (service . "md-roam-server")
-                                                (status . "running")))))
      ((and (string= method "GET") (string= path "/files"))
       (let ((files (md-roam-server-get-files)))
         (md-roam-server-send-response proc 200 "application/json"
@@ -722,6 +764,15 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Invalid node ID parameter")))))))
+     ((and (string= method "GET") (string-match "^/search/.*" path))
+      (let ((query (substring path (length "/search/"))))
+        (if (and query (> (length query) 0))
+            (let ((result (md-roam-server-search-nodes-by-title-or-alias (url-unhex-string query))))
+              (md-roam-server-send-response proc 200 "application/json"
+                                           (json-encode result)))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Search query is required")))))))
      ((and (string= method "GET") (string-prefix-p "/nodes/" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
         (if node-id
@@ -762,14 +813,14 @@
                                    (json-encode '((openapi . "3.0.0")
                                                 (info . ((title . "md-roam Server API")
                                                          (version . "1.0.0")))
-                                                (paths . (("/hello" . "Health check")
-                                                         ("/files" . "Get files")
+                                                (paths . (("/files" . "Get files")
                                                          ("/files/raw" . "Get raw file listing")
                                                          ("/files/content/:filepath" . "Get file content")
                                                          ("/tags" . "Get tags list with node IDs")
                                                          ("/aliases" . "Get aliases list with node IDs")
                                                          ("/refs" . "Get refs list with node IDs")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
+                                                         ("/search/:query" . "Search nodes by title or alias")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/nodes/:id/aliases" . "Get node aliases")
                                                          ("/nodes/:id/refs" . "Get node refs")

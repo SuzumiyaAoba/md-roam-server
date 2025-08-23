@@ -8,10 +8,7 @@ SERVER_PID=$!
 sleep 3
 
 # Test the endpoints
-echo "Testing /hello endpoint..."
-curl -s http://localhost:8080/hello | jq .
-
-echo -e "\nTesting /files endpoint..."
+echo "Testing /files endpoint..."
 curl -s http://localhost:8080/files | jq .
 
 echo -e "\nTesting /sync endpoint..."
