@@ -174,6 +174,31 @@ Returns a list of all unique refs used across org-roam nodes with usage counts a
 }
 ```
 
+### GET /citations
+Returns a list of all unique citations used across org-roam nodes with usage counts and the node IDs that use each citation. Supports both `[@citation-key]` and `[[cite:citation-key]]` formats.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Citations retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "citations": [
+    {
+      "citation": "smith2023",
+      "count": 3,
+      "node_ids": ["node-id-1", "node-id-2", "node-id-3"]
+    },
+    {
+      "citation": "jones2022methodology",
+      "count": 1,
+      "node_ids": ["node-id-4"]
+    }
+  ],
+  "total_citations": 2
+}
+```
+
 ### GET /tags/:tag/nodes
 Returns a list of nodes that have the specified tag.
 
@@ -467,6 +492,9 @@ curl http://localhost:8080/aliases
 
 # Refs endpoint (includes node IDs)
 curl http://localhost:8080/refs
+
+# Citations endpoint (includes node IDs)
+curl http://localhost:8080/citations
 
 # Get nodes by tag endpoint  
 curl http://localhost:8080/tags/research/nodes

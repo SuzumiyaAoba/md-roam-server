@@ -549,36 +549,115 @@
       `((tag . ,tag)
         (directory . ,(md-roam-server--safe-directory)))))))
 
-(defun md-roam-server-search-nodes-by-title-or-alias (query)
-  "Search for nodes by title or alias matching QUERY."
+(defun md-roam-server-get-citations ()
+  "Get list of all unique citations from org-roam database."
   (condition-case err
       (progn
         (md-roam-server-init-org-roam)
-        (let ((nodes (org-roam-node-list))
-              (matches '())
-              (query-lower (downcase query)))
-          (dolist (node nodes)
-            (let* ((title (org-roam-node-title node))
-                   (aliases (org-roam-node-aliases node))
-                   (node-id (org-roam-node-id node))
-                   (node-data `((id . ,node-id)
-                               (title . ,title)
-                               (file . ,(org-roam-node-file node))
-                               (level . ,(org-roam-node-level node))
-                               (tags . ,(or (org-roam-node-tags node) []))
-                               (aliases . ,(or aliases []))))
-                   (already-matched (cl-find node-id matches :key (lambda (x) (cdr (assoc 'id x))) :test 'string=)))
-              (unless already-matched
-                ;; Check title match
-                (when (string-match-p (regexp-quote query-lower) (downcase title))
-                  (push node-data matches))
-                ;; Check alias matches (only if not already matched by title)
-                (when (and aliases (not (cl-find node-id matches :key (lambda (x) (cdr (assoc 'id x))) :test 'string=)))
-                  (catch 'found
-                    (dolist (alias aliases)
-                      (when (string-match-p (regexp-quote query-lower) (downcase alias))
-                        (push node-data matches)
-                        (throw 'found t))))))))
+        (let ((citations (org-roam-db-query [:select [cite-key node-id] :from citations]))
+              (citation-data (make-hash-table :test 'equal)))
+          (if citations
+              (progn
+                ;; Process citations from database
+                (dolist (citation-row citations)
+                  (let ((citation-key (nth 0 citation-row))
+                        (node-id (nth 1 citation-row)))
+                    (when (and citation-key (> (length citation-key) 0))
+                      (let ((existing (gethash citation-key citation-data)))
+                        (if existing
+                            (push node-id (cdr existing))
+                          (puthash citation-key (list 1 node-id) citation-data))))))
+                
+                ;; Create result list
+                (let ((citation-list '()))
+                  (maphash (lambda (citation data)
+                             (let ((count (car data))
+                                   (node-ids (cdr data)))
+                               (push `((citation . ,citation)
+                                      (count . ,(length node-ids))
+                                      (node_ids . ,(nreverse (delete-dups node-ids))))
+                                     citation-list)))
+                           citation-data)
+                  
+                  (md-roam-server--create-success-response
+                   "Citations retrieved successfully"
+                   `((citations . ,(if citation-list (nreverse citation-list) []))
+                     (total_citations . ,(hash-table-count citation-data))))))
+            
+            ;; If no citations, return empty list
+            (md-roam-server--create-success-response
+             "No citations found"
+             `((citations . [])
+               (total_citations . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving citations: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
+
+(defun md-roam-server-search-nodes-by-title-or-alias (query)
+  "Search for nodes by title or alias matching QUERY using database queries."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((matches '())
+              (query-pattern (concat "%" (downcase query) "%"))
+              (node-ids-found (make-hash-table :test 'equal)))
+          
+          ;; Search by title using database query
+          (let ((title-matches (org-roam-db-query 
+                                [:select [id title file level todo pos]
+                                 :from nodes
+                                 :where (like (lower title) $s1)]
+                                query-pattern)))
+            (dolist (match title-matches)
+              (let* ((id (nth 0 match))
+                     (title (nth 1 match))
+                     (file (nth 2 match))
+                     (level (nth 3 match)))
+                (unless (gethash id node-ids-found)
+                  (puthash id t node-ids-found)
+                  (let ((tags (mapcar #'car (org-roam-db-query 
+                                            [:select [tag] :from tags :where (= node-id $s1)] 
+                                            id)))
+                        (aliases (mapcar #'car (org-roam-db-query 
+                                               [:select [alias] :from aliases :where (= node-id $s1)] 
+                                               id))))
+                    (push `((id . ,id)
+                           (title . ,title)
+                           (file . ,file)
+                           (level . ,level)
+                           (tags . ,(or tags []))
+                           (aliases . ,(or aliases [])))
+                          matches))))))
+          
+          ;; Search by alias using database query
+          (let ((alias-matches (org-roam-db-query 
+                               [:select :distinct [nodes:id nodes:title nodes:file nodes:level aliases:alias]
+                                :from nodes
+                                :inner-join aliases
+                                :on (= nodes:id aliases:node-id)
+                                :where (like (lower aliases:alias) $s1)]
+                               query-pattern)))
+            (dolist (match alias-matches)
+              (let* ((id (nth 0 match))
+                     (title (nth 1 match))
+                     (file (nth 2 match))
+                     (level (nth 3 match)))
+                (unless (gethash id node-ids-found)
+                  (puthash id t node-ids-found)
+                  (let ((tags (mapcar #'car (org-roam-db-query 
+                                            [:select [tag] :from tags :where (= node-id $s1)] 
+                                            id)))
+                        (aliases (mapcar #'car (org-roam-db-query 
+                                               [:select [alias] :from aliases :where (= node-id $s1)] 
+                                               id))))
+                    (push `((id . ,id)
+                           (title . ,title)
+                           (file . ,file)
+                           (level . ,level)
+                           (tags . ,(or tags []))
+                           (aliases . ,(or aliases [])))
+                          matches))))))
           
           (if matches
               (md-roam-server--create-success-response
@@ -728,6 +807,10 @@
       (let ((result (md-roam-server-get-refs)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
+     ((and (string= method "GET") (string= path "/citations"))
+      (let ((result (md-roam-server-get-citations)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
      ((and (string= method "GET") (string-match "^/tags/.*/nodes$" path))
       (let ((params (md-roam-server--match-path-pattern path "/tags/:tag/nodes")))
         (if params
@@ -819,6 +902,7 @@
                                                          ("/tags" . "Get tags list with node IDs")
                                                          ("/aliases" . "Get aliases list with node IDs")
                                                          ("/refs" . "Get refs list with node IDs")
+                                                         ("/citations" . "Get citations list with node IDs")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/search/:query" . "Search nodes by title or alias")
                                                          ("/nodes/:id" . "Get single node")
