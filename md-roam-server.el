@@ -174,6 +174,98 @@
             (format "Error accessing org-roam: %s" (error-message-string err))
             `((directory . ,(md-roam-server--safe-directory))))))))
 
+(defun md-roam-server-get-raw-files ()
+  "Get list of physical files in the org-roam directory."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get directory contents
+        (let* ((directory org-roam-directory)
+               (file-extensions '("md" "org"))
+               (files '()))
+          
+          ;; Find all matching files
+          (dolist (extension file-extensions)
+            (let ((pattern (concat "\\." extension "$")))
+              (dolist (file (directory-files directory t pattern))
+                (when (file-regular-p file)
+                  (let* ((relative-path (file-relative-name file directory))
+                         (file-attrs (file-attributes file))
+                         (size (nth 7 file-attrs))
+                         (modified (nth 5 file-attrs))
+                         (created (nth 6 file-attrs)))
+                    (push `((name . ,relative-path)
+                           (path . ,file)
+                           (extension . ,extension)
+                           (size . ,size)
+                           (modified . ,(format-time-string "%Y-%m-%d %H:%M:%S" modified))
+                           (created . ,(format-time-string "%Y-%m-%d %H:%M:%S" created)))
+                          files))))))
+          
+          ;; Sort by modified time (newest first)
+          (setq files (sort files (lambda (a b)
+                                   (let ((mod-a (cdr (assoc 'modified a)))
+                                         (mod-b (cdr (assoc 'modified b))))
+                                     (string> mod-a mod-b)))))
+          
+          (md-roam-server--create-success-response
+           (format "Found %d files in org-roam directory" (length files))
+           `((directory . ,directory)
+             (files . ,files)
+             (count . ,(length files))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error listing files: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
+
+(defun md-roam-server-get-file-content (filepath)
+  "Get content of a specific file by filepath."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Validate and resolve filepath
+        (let* ((directory org-roam-directory)
+               (full-path (if (file-name-absolute-p filepath)
+                             filepath
+                           (expand-file-name filepath directory)))
+               (relative-path (file-relative-name full-path directory)))
+          
+          ;; Security check - ensure file is within org-roam directory
+          (unless (and (file-exists-p full-path)
+                      (file-regular-p full-path)
+                      (string-prefix-p (file-truename directory)
+                                      (file-truename full-path)))
+            (error "File not found or access denied"))
+          
+          ;; Check file extension
+          (unless (string-match-p "\\.\\(md\\|org\\)$" full-path)
+            (error "Only .md and .org files are supported"))
+          
+          ;; Read file content
+          (let* ((content (with-temp-buffer
+                           (insert-file-contents full-path)
+                           (buffer-string)))
+                 (file-attrs (file-attributes full-path))
+                 (size (nth 7 file-attrs))
+                 (modified (nth 5 file-attrs)))
+            
+            (md-roam-server--create-success-response
+             (format "File content retrieved successfully")
+             `((path . ,relative-path)
+               (full-path . ,full-path)
+               (size . ,size)
+               (modified . ,(format-time-string "%Y-%m-%d %H:%M:%S" modified))
+               (content . ,content))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error reading file '%s': %s" filepath (error-message-string err))
+      `((filepath . ,filepath)
+        (directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-get-node-by-id (node-id)
   "Get a single org-roam node by its ID."
   (condition-case err
@@ -483,6 +575,18 @@
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode `((files . ,files)
                                                   (count . ,(length files)))))))
+     ((and (string= method "GET") (string= path "/files/raw"))
+      (let ((result (md-roam-server-get-raw-files)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
+     ((and (string= method "GET") (string-match "^/files/content/.+" path))
+      (let ((filepath (substring path (length "/files/content/"))))
+        (let ((result (md-roam-server-get-file-content filepath)))
+          (if (string= (cdr (assoc 'status result)) "success")
+              (md-roam-server-send-response proc 200 "application/json"
+                                           (json-encode result))
+            (md-roam-server-send-response proc 404 "application/json"
+                                         (json-encode result))))))
      ((and (string= method "GET") (string= path "/tags"))
       (let ((result (md-roam-server-get-tags)))
         (md-roam-server-send-response proc 200 "application/json"
@@ -556,6 +660,8 @@
                                                          (version . "1.0.0")))
                                                 (paths . (("/hello" . "Health check")
                                                          ("/files" . "Get files")
+                                                         ("/files/raw" . "Get raw file listing")
+                                                         ("/files/content/:filepath" . "Get file content")
                                                          ("/tags" . "Get tags list")
                                                          ("/aliases" . "Get aliases list")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")

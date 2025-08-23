@@ -56,6 +56,61 @@ Returns a list of all org-roam files with metadata.
 }
 ```
 
+### GET /files/raw
+Returns a list of physical files in the org-roam directory with file metadata.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Found 20 files in org-roam directory",
+  "timestamp": "2024-01-01 12:00:00",
+  "directory": "/Users/user/org-roam/",
+  "files": [
+    {
+      "name": "20240101120000-example_note.md",
+      "path": "/Users/user/org-roam/20240101120000-example_note.md",
+      "extension": "md",
+      "size": 256,
+      "modified": "2024-01-01 12:00:00",
+      "created": "2024-01-01 12:00:00"
+    }
+  ],
+  "count": 20
+}
+```
+
+### GET /files/content/:filepath
+Returns the content of a specific file by its relative filepath.
+
+**Parameters:**
+- `filepath` (path parameter) - The relative path to the file from org-roam directory
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "File content retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "path": "20240101120000-example_note.md",
+  "full-path": "/Users/user/org-roam/20240101120000-example_note.md",
+  "size": 256,
+  "modified": "2024-01-01 12:00:00",
+  "content": "---\nid: example-id\ntitle: Example Note\n---\n\nThis is the content of the file."
+}
+```
+
+**Response (404 - File Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Error reading file 'nonexistent.md': File not found or access denied",
+  "timestamp": "2024-01-01 12:00:00",
+  "filepath": "nonexistent.md",
+  "directory": "/Users/user/org-roam/"
+}
+```
+
 ### GET /tags
 Returns a list of all unique tags used across org-roam nodes with usage counts.
 
@@ -301,6 +356,12 @@ curl http://localhost:8080/hello
 
 # Files endpoint
 curl http://localhost:8080/files
+
+# Raw files listing endpoint
+curl http://localhost:8080/files/raw
+
+# File content endpoint
+curl http://localhost:8080/files/content/20250823014345-corrected_alias_format.md
 
 # Tags endpoint
 curl http://localhost:8080/tags
