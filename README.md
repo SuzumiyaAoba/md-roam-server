@@ -358,6 +358,61 @@ Returns the full file content of a single org-roam node by its ID, including all
 }
 ```
 
+### GET /nodes/:id/parse
+Parses a node file and returns separated metadata and body content. Supports both Markdown (YAML front matter) and Org mode (properties drawer and #+KEYWORD: format) files with a unified response format.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "File parsed successfully for node: Node Title",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "title": "Node Title",
+  "file_path": "relative/path/to/file.md",
+  "full_path": "/full/path/to/file.md",
+  "file_type": "md",
+  "level": 0,
+  "size": 1024,
+  "modified": "2024-01-01 10:30:00",
+  "tags": ["tag1", "tag2"],
+  "aliases": ["alias1"],
+  "metadata": [
+    {
+      "id": "FC4AE1D6-9650-472E-BFD6-F6AF96B13574"
+    },
+    {
+      "title": "Node Title"
+    },
+    {
+      "category": ["test", "example"]
+    },
+    {
+      "roam_refs": "https://example.com"
+    }
+  ],
+  "body": "# Node Title\n\nThis is the body content after metadata..."
+}
+```
+
+**Supported File Formats:**
+
+- **Markdown (.md)**: YAML front matter between `---` delimiters
+- **Org mode (.org)**: Properties drawer (`:PROPERTIES:` ... `:END:`) and `#+KEYWORD:` format
+
+**Response (404 - Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Node not found: invalid-id",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "invalid-id"
+}
+```
+
 ### GET /nodes/:id/aliases
 Returns the aliases for a single org-roam node by its ID.
 
@@ -543,6 +598,9 @@ curl http://localhost:8080/nodes/YOUR_NODE_ID
 
 # Get node file content by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID/content
+
+# Parse node file (metadata and body) by ID endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID/parse
 
 # Get node aliases by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID/aliases

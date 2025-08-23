@@ -340,6 +340,162 @@
       `((node_id . ,node-id)
         (directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-parse-file-by-node-id (node-id)
+  "Parse file of a specific node by its node ID, separating metadata and body."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get node information from database
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (id (nth 0 node-info))
+                     (title (nth 1 node-info))
+                     (file-path (nth 2 node-info))
+                     (level (nth 3 node-info)))
+                
+                ;; Validate file exists and is readable
+                (unless (and file-path 
+                            (file-exists-p file-path)
+                            (file-regular-p file-path))
+                  (error "Node file not found or not accessible"))
+                
+                ;; Security check - ensure file is within org-roam directory
+                (let ((directory org-roam-directory))
+                  (unless (string-prefix-p (file-truename directory)
+                                          (file-truename file-path))
+                    (error "File access denied - not within org-roam directory")))
+                
+                ;; Check file extension
+                (unless (string-match-p "\\.\\(md\\|org\\)$" file-path)
+                  (error "Only .md and .org files are supported"))
+                
+                ;; Read and parse file content
+                (let* ((content (with-temp-buffer
+                                 (insert-file-contents file-path)
+                                 (buffer-string)))
+                       (file-attrs (file-attributes file-path))
+                       (size (nth 7 file-attrs))
+                       (modified (nth 5 file-attrs))
+                       (relative-path (file-relative-name file-path org-roam-directory))
+                       (tags (mapcar #'car (org-roam-db-query 
+                                            [:select [tag] :from tags :where (= node-id $s1)] 
+                                            id)))
+                       (aliases (mapcar #'car (org-roam-db-query 
+                                              [:select [alias] :from aliases :where (= node-id $s1)] 
+                                              id))))
+                  
+                  ;; Parse metadata and body based on file type
+                  (let ((metadata nil)
+                        (body content)
+                        (parsed-metadata nil)
+                        (file-type (cond
+                                   ((string-match-p "\\.md$" file-path) "md")
+                                   ((string-match-p "\\.org$" file-path) "org")
+                                   (t "unknown"))))
+                    
+                    (cond
+                     ;; Parse Markdown YAML front matter
+                     ((string= file-type "md")
+                      (when (string-match "\\`---\n\\(\\(?:.\\|\n\\)*?\\)\n---\n\\(\\(?:.\\|\n\\)*\\)\\'" content)
+                        (let ((yaml-content (match-string 1 content))
+                              (body-content (match-string 2 content)))
+                          (setq body body-content)
+                          
+                          ;; Parse YAML metadata
+                          (let ((yaml-lines (split-string yaml-content "\n")))
+                            (dolist (line yaml-lines)
+                              (when (string-match "^\\s-*\\([^:]+\\):\\s-*\\(.*\\)$" line)
+                                (let ((key (string-trim (match-string 1 line)))
+                                      (value (string-trim (match-string 2 line))))
+                                  ;; Handle special cases for arrays
+                                  (cond
+                                   ((string-match "^\\[\\(.*\\)\\]$" value)
+                                    ;; Array format like ["item1", "item2"]
+                                    (let ((array-content (match-string 1 value)))
+                                      (if (string-empty-p array-content)
+                                          (push (cons key []) parsed-metadata)
+                                        (let ((items (split-string array-content "," t)))
+                                          (setq items (mapcar (lambda (item)
+                                                               (string-trim item "[ \t\n\r\"']"))
+                                                             items))
+                                          (push (cons key items) parsed-metadata)))))
+                                   ((string-match "^\"\\(.*\\)\"$" value)
+                                    ;; Quoted string
+                                    (push (cons key (match-string 1 value)) parsed-metadata))
+                                   (t
+                                    ;; Regular value
+                                    (push (cons key value) parsed-metadata)))))))
+                          
+                          (setq metadata (nreverse parsed-metadata)))))
+                     
+                     ;; Parse Org mode properties
+                     ((string= file-type "org")
+                      (let ((lines (split-string content "\n"))
+                            (in-properties nil)
+                            (body-lines '())
+                            (property-end-found nil))
+                        (dolist (line lines)
+                          (cond
+                           ;; Org property drawer start
+                           ((string-match "^:PROPERTIES:$" line)
+                            (setq in-properties t))
+                           ;; Org property drawer end
+                           ((string-match "^:END:$" line)
+                            (setq in-properties nil)
+                            (setq property-end-found t))
+                           ;; Inside properties drawer
+                           (in-properties
+                            (when (string-match "^:\\([^:]+\\):\\s-*\\(.*\\)$" line)
+                              (let ((key (match-string 1 line))
+                                    (value (string-trim (match-string 2 line))))
+                                (push (cons key value) parsed-metadata))))
+                           ;; #+KEYWORD: style properties (anywhere in file)
+                           ((string-match "^#\\+\\([^:]+\\):\\s-*\\(.*\\)$" line)
+                            (let ((key (downcase (match-string 1 line)))
+                                  (value (string-trim (match-string 2 line))))
+                              (push (cons key value) parsed-metadata)))
+                           ;; Body content (after properties or regular lines)
+                           ((or property-end-found (not in-properties))
+                            (push line body-lines))))
+                        
+                        (setq metadata (nreverse parsed-metadata))
+                        (setq body (string-join (nreverse body-lines) "\n"))))))
+                    
+                    (md-roam-server--create-success-response
+                     (format "File parsed successfully for node: %s" title)
+                     `((node_id . ,id)
+                       (title . ,title)
+                       (file_path . ,relative-path)
+                       (full_path . ,file-path)
+                       (file_type . ,(cond
+                                     ((string-match-p "\\.md$" file-path) "md")
+                                     ((string-match-p "\\.org$" file-path) "org")
+                                     (t "unknown")))
+                       (level . ,level)
+                       (size . ,size)
+                       (modified . ,(format-time-string "%Y-%m-%d %H:%M:%S" modified))
+                       (tags . ,(or tags []))
+                       (aliases . ,(or aliases []))
+                       (metadata . ,(or metadata []))
+                       (body . ,body))))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error parsing file for node '%s': %s" node-id (error-message-string err))
+      `((node_id . ,node-id)
+        (directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-get-node-by-id (node-id)
   "Get a single org-roam node by its ID."
   (condition-case err
@@ -930,6 +1086,18 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Search query is required")))))))
+     ((and (string= method "GET") (string-match "^/nodes/.*/parse$" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id/parse")))
+        (if node-id
+            (let ((result (md-roam-server-parse-file-by-node-id node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID is required")))))))
      ((and (string= method "GET") (string-match "^/nodes/.*/content$" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id/content")))
         (if node-id
@@ -993,6 +1161,7 @@
                                                          ("/search/:query" . "Search nodes by title or alias")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/nodes/:id/content" . "Get node file content")
+                                                         ("/nodes/:id/parse" . "Parse node file (metadata and body)")
                                                          ("/nodes/:id/aliases" . "Get node aliases")
                                                          ("/nodes/:id/refs" . "Get node refs")
                                                          ("/sync" . "Sync database")
