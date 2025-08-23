@@ -1609,6 +1609,207 @@
   (when (string-match "^/nodes/[^/]+/tags/\\(.+\\)$" path)
     (url-unhex-string (match-string 1 path))))
 
+(defun md-roam-server--extract-category-param (path)
+  "Extract category parameter from PATH like /nodes/ID/categories/TAG."
+  (when (string-match "^/nodes/[^/]+/categories/\\(.+\\)$" path)
+    (url-unhex-string (match-string 1 path))))
+
+(defun md-roam-server-add-category-to-node (node-id tag)
+  "Add a category TAG to a specific NODE-ID."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        
+        ;; Get node information from database
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (title (nth 1 node-info))
+                     (file-path (nth 2 node-info))
+                     (current-categories (md-roam-server--get-categories-from-file file-path)))
+                
+                ;; Check if category already exists
+                (if (member tag current-categories)
+                    (md-roam-server--create-error-response
+                     (format "Category '%s' already exists on node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (category . ,tag)
+                       (existing_categories . ,(or current-categories []))))
+                  
+                  ;; Add category by updating the file content
+                  (let* ((content (with-temp-buffer
+                                   (insert-file-contents file-path)
+                                   (buffer-string)))
+                         (updated-content (md-roam-server--add-category-to-content content tag))
+                         (new-categories (append current-categories (list tag))))
+                    
+                    ;; Write updated content to file
+                    (with-temp-file file-path
+                      (insert updated-content))
+                    
+                    ;; Update org-roam database
+                    (org-roam-db-sync)
+                    
+                    ;; Return success response
+                    (md-roam-server--create-success-response
+                     (format "Category '%s' added to node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (title . ,title)
+                       (category_added . ,tag)
+                       (current_categories . ,(or new-categories [])))))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error adding category to node: %s" (error-message-string err))
+      `((node_id . ,node-id)
+        (category . ,tag))))))
+
+(defun md-roam-server-remove-category-from-node (node-id tag)
+  "Remove a category TAG from a specific NODE-ID."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        
+        ;; Get node information from database
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (title (nth 1 node-info))
+                     (file-path (nth 2 node-info))
+                     (current-categories (md-roam-server--get-categories-from-file file-path)))
+                
+                ;; Check if category exists
+                (if (not (member tag current-categories))
+                    (md-roam-server--create-error-response
+                     (format "Category '%s' does not exist on node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (category . ,tag)
+                       (existing_categories . ,(or current-categories []))))
+                  
+                  ;; Remove category by updating the file content
+                  (let* ((content (with-temp-buffer
+                                   (insert-file-contents file-path)
+                                   (buffer-string)))
+                         (updated-content (md-roam-server--remove-category-from-content content tag))
+                         (new-categories (remove tag current-categories)))
+                    
+                    ;; Write updated content to file
+                    (with-temp-file file-path
+                      (insert updated-content))
+                    
+                    ;; Update org-roam database
+                    (org-roam-db-sync)
+                    
+                    ;; Return success response
+                    (md-roam-server--create-success-response
+                     (format "Category '%s' removed from node '%s'" tag title)
+                     `((node_id . ,node-id)
+                       (title . ,title)
+                       (category_removed . ,tag)
+                       (current_categories . ,(or new-categories [])))))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error removing category from node: %s" (error-message-string err))
+      `((node_id . ,node-id)
+        (category . ,tag))))))
+
+(defun md-roam-server--get-categories-from-file (file-path)
+  "Get list of categories from file content."
+  (let ((content (with-temp-buffer
+                   (insert-file-contents file-path)
+                   (buffer-string))))
+    (cond
+     ;; Markdown file with YAML front matter
+     ((string-match "\\`---\n\\(\\(?:.\\|\n\\)*?\\)\n---" content)
+      (let ((yaml-content (match-string 1 content)))
+        (when (string-match "^category:\\s-*\\(.*\\)$" yaml-content)
+          (let ((categories-line (match-string 1 yaml-content)))
+            (mapcar (lambda (tag) 
+                      (string-trim (replace-regexp-in-string "^#" "" tag)))
+                    (split-string categories-line))))))
+     ;; Org mode file
+     ((string-match "^#\\+CATEGORY:\\s-*\\(.*\\)$" content)
+      (mapcar #'string-trim (split-string (match-string 1 content))))
+     ;; Default
+     (t nil))))
+
+(defun md-roam-server--add-category-to-content (content tag)
+  "Add category TAG to file CONTENT."
+  (cond
+   ;; Markdown file with YAML front matter
+   ((string-match "\\`---\n\\(\\(?:.\\|\n\\)*?\\)\n---\n\\(\\(?:.\\|\n\\)*\\)\\'" content)
+    (let ((yaml-content (match-string 1 content))
+          (body-content (match-string 2 content)))
+      (if (string-match "^category:\\s-*\\(.*\\)$" yaml-content)
+          ;; Append to existing category line
+          (let ((existing-categories (match-string 1 yaml-content)))
+            (replace-match (format "category: %s #%s" existing-categories tag) nil nil yaml-content)
+            (concat "---\n" yaml-content "\n---\n" body-content))
+        ;; Add new category line
+        (concat "---\n" yaml-content "\ncategory: #" tag "\n---\n" body-content))))
+   
+   ;; Org mode file
+   ((string-match "^#\\+CATEGORY:\\s-*\\(.*\\)$" content)
+    (let ((existing-categories (match-string 1 content)))
+      (replace-match (format "#+CATEGORY: %s %s" existing-categories tag) nil nil content)))
+   
+   ;; Add new category line for org mode
+   ((string-match "^#\\+" content)
+    (concat "#+CATEGORY: " tag "\n" content))
+   
+   ;; Default: add as YAML front matter
+   (t (concat "---\ncategory: #" tag "\n---\n\n" content))))
+
+(defun md-roam-server--remove-category-from-content (content tag)
+  "Remove category TAG from file CONTENT."
+  (cond
+   ;; Markdown file with YAML front matter
+   ((string-match "\\`---\n\\(\\(?:.\\|\n\\)*?\\)\n---\n\\(\\(?:.\\|\n\\)*\\)\\'" content)
+    (let ((yaml-content (match-string 1 content))
+          (body-content (match-string 2 content)))
+      (when (string-match "^category:\\s-*\\(.*\\)$" yaml-content)
+        (let* ((categories-line (match-string 1 yaml-content))
+               (categories-list (split-string categories-line))
+               (updated-categories (cl-remove-if 
+                                   (lambda (cat) 
+                                     (string= (replace-regexp-in-string "^#" "" cat) tag))
+                                   categories-list)))
+          (if updated-categories
+              (replace-match (format "category: %s" (string-join updated-categories " ")) nil nil yaml-content)
+            ;; Remove entire category line if no categories left
+            (setq yaml-content (replace-regexp-in-string "^category:.*\n" "" yaml-content))))
+        (concat "---\n" yaml-content "\n---\n" body-content))))
+   
+   ;; Org mode file
+   ((string-match "^#\\+CATEGORY:\\s-*\\(.*\\)$" content)
+    (let* ((existing-categories (match-string 1 content))
+           (categories-list (split-string existing-categories))
+           (updated-categories (remove tag categories-list)))
+      (if updated-categories
+          (replace-match (format "#+CATEGORY: %s" (string-join updated-categories " ")) nil nil content)
+        ;; Remove entire CATEGORY line if no categories left
+        (replace-match "" nil nil content))))
+   
+   ;; Default
+   (t content)))
+
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
   (setq md-roam-server-request-buffer (concat md-roam-server-request-buffer string))
@@ -1770,6 +1971,39 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Node ID and tag are required")))))))
+     ((and (string= method "POST") (string-match "^/nodes/.*/categories$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/nodes/:id/categories")))
+        (if (and params body)
+            (let* ((node-id (cdr (assoc 'id params)))
+                   (body-params (md-roam-server--extract-body-params body '(category)))
+                   (category (nth 0 body-params)))
+              (if category
+                  (let ((result (md-roam-server-add-category-to-node node-id category)))
+                    (if (string= (cdr (assoc 'status result)) "success")
+                        (md-roam-server-send-response proc 200 "application/json"
+                                                     (json-encode result))
+                      (md-roam-server-send-response proc 400 "application/json"
+                                                   (json-encode result))))
+                (md-roam-server-send-response proc 400 "application/json"
+                                             (json-encode '((error . "Bad Request")
+                                                          (message . "Category is required"))))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID and JSON body with category required")))))))
+     ((and (string= method "DELETE") (string-match "^/nodes/.*/categories/.+$" path))
+      (let ((node-id (when (string-match "^/nodes/\\([^/]+\\)/categories/.+$" path)
+                       (match-string 1 path)))
+            (category (md-roam-server--extract-category-param path)))
+        (if (and node-id category)
+            (let ((result (md-roam-server-remove-category-from-node node-id category)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 400 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID and category are required")))))))
      ((and (string= method "GET") (string-match "^/search/.*" path))
       (let ((query (substring path (length "/search/"))))
         (if (and query (> (length query) 0))
@@ -1929,6 +2163,8 @@
                                                          ("/nodes/:id/refs" . "Get node refs")
                                                          ("/nodes/:id/tags" . "Add tag to node (POST)")
                                                          ("/nodes/:id/tags/:tag" . "Remove tag from node (DELETE)")
+                                                         ("/nodes/:id/categories" . "Add category to node (POST)")
+                                                         ("/nodes/:id/categories/:category" . "Remove category from node (DELETE)")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
      (t

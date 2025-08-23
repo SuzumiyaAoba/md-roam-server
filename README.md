@@ -60,6 +60,10 @@ The server provides a comprehensive REST API with the following categories of en
 - `POST /nodes/:id/tags` - Add a tag to a node
 - `DELETE /nodes/:id/tags/:tag` - Remove a tag from a node
 
+### Node Category Management
+- `POST /nodes/:id/categories` - Add a category to a node
+- `DELETE /nodes/:id/categories/:category` - Remove a category from a node
+
 ### Search & Discovery
 - `GET /search/:query` - Search nodes by title or alias
 - `GET /tags/:tag/nodes` - Get nodes with specific tag
@@ -943,6 +947,76 @@ Removes a specific tag from a node by updating the file content.
 }
 ```
 
+### POST /nodes/:id/categories
+Adds a category to a specific node by updating the `category:` field in the file content.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Request Body:**
+```json
+{
+  "category": "new-category"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Category 'new-category' added to node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "title": "Node Title",
+  "category_added": "new-category",
+  "current_categories": ["existing-category", "new-category"]
+}
+```
+
+**Response (Category Already Exists):**
+```json
+{
+  "status": "error",
+  "message": "Category 'existing-category' already exists on node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "category": "existing-category",
+  "existing_categories": ["existing-category"]
+}
+```
+
+### DELETE /nodes/:id/categories/:category
+Removes a specific category from a node by updating the `category:` field in the file content.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+- `category` (path parameter) - The category to remove
+
+**Response (Success):**
+```json
+{
+  "status": "success", 
+  "message": "Category 'old-category' removed from node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "title": "Node Title",
+  "category_removed": "old-category",
+  "current_categories": ["remaining-category"]
+}
+```
+
+**Response (Category Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Category 'nonexistent-category' does not exist on node 'Node Title'",
+  "timestamp": "2024-01-01 12:00:00",
+  "node_id": "node-id",
+  "category": "nonexistent-category",
+  "existing_categories": ["existing-category"]
+}
+```
+
 ## Testing
 
 Test the endpoints with curl:
@@ -1029,6 +1103,14 @@ curl -X POST http://localhost:8080/nodes/YOUR_NODE_ID/tags \
 
 # Remove tag from node endpoint
 curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID/tags/old-tag
+
+# Add category to node endpoint
+curl -X POST http://localhost:8080/nodes/YOUR_NODE_ID/categories \
+  -H "Content-Type: application/json" \
+  -d '{"category": "new-category"}'
+
+# Remove category from node endpoint
+curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID/categories/old-category
 
 # Create new node endpoint
 curl -X POST http://localhost:8080/nodes \
