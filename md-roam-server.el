@@ -1456,7 +1456,8 @@
                            (bound-and-true-p org-roam-ui-mode)))
          (configuration . ((sync_theme . ,(bound-and-true-p org-roam-ui-sync-theme))
                           (follow . ,(bound-and-true-p org-roam-ui-follow))
-                          (update_on_save . ,(bound-and-true-p org-roam-ui-update-on-save))))))
+                          (update_on_save . ,(bound-and-true-p org-roam-ui-update-on-save))
+                          (open_on_start . ,(bound-and-true-p org-roam-ui-open-on-start))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error retrieving UI status: %s" (error-message-string err))))))
@@ -2185,7 +2186,7 @@
   (setq org-roam-ui-sync-theme t
         org-roam-ui-follow t
         org-roam-ui-update-on-save t
-        org-roam-ui-open-on-start nil
+        org-roam-ui-open-on-start t
         org-roam-ui-port md-roam-server-ui-port))
 
 (defun md-roam-server-start-ui ()

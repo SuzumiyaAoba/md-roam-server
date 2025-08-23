@@ -1165,10 +1165,11 @@ The server includes integrated [org-roam-ui](https://github.com/org-roam/org-roa
 
 ### Configuration
 
-org-roam-ui is enabled by default and runs on port 35901. The following configuration options are available:
+org-roam-ui is enabled by default and runs on port 35901. When the server starts, it automatically opens the graph interface in your default browser. The following configuration options are available:
 
 - **UI Server Port**: `md-roam-server-ui-port` (default: 35901)
 - **Enable/Disable**: `md-roam-server-ui-enabled` (default: t)
+- **Auto-open Browser**: Automatically opens the graph interface on startup (default: enabled)
 
 ### Accessing the Interface
 
@@ -1200,7 +1201,8 @@ curl http://localhost:8080/ui
   "configuration": {
     "sync_theme": true,
     "follow": true,
-    "update_on_save": true
+    "update_on_save": true,
+    "open_on_start": true
   }
 }
 ```
