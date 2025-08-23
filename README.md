@@ -81,7 +81,7 @@ Returns the content of a specific file by its relative filepath.
   "message": "File content retrieved successfully",
   "timestamp": "2024-01-01 12:00:00",
   "path": "20240101120000-example_note.md",
-  "full-path": "/Users/user/org-roam/20240101120000-example_note.md",
+  "full_path": "/Users/user/org-roam/20240101120000-example_note.md",
   "size": 256,
   "modified": "2024-01-01 12:00:00",
   "content": "---\nid: example-id\ntitle: Example Note\n---\n\nThis is the content of the file."
@@ -112,15 +112,15 @@ Returns a list of all unique tags used across org-roam nodes with usage counts a
     {
       "tag": "research",
       "count": 3,
-      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
+      "node_ids": ["node-id-1", "node-id-2", "node-id-3"]
     },
     {
       "tag": "project",
       "count": 2,
-      "node-ids": ["node-id-4", "node-id-5"]
+      "node_ids": ["node-id-4", "node-id-5"]
     }
   ],
-  "total-tags": 2
+  "total_tags": 2
 }
 ```
 
@@ -137,15 +137,15 @@ Returns a list of all unique aliases used across org-roam nodes with usage count
     {
       "alias": "Research Paper",
       "count": 2,
-      "node-ids": ["node-id-1", "node-id-3"]
+      "node_ids": ["node-id-1", "node-id-3"]
     },
     {
       "alias": "Project Notes",
       "count": 1,
-      "node-ids": ["node-id-4"]
+      "node_ids": ["node-id-4"]
     }
   ],
-  "total-aliases": 2
+  "total_aliases": 2
 }
 ```
 
@@ -162,15 +162,15 @@ Returns a list of all unique refs used across org-roam nodes with usage counts a
     {
       "ref": "https://example.com",
       "count": 3,
-      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
+      "node_ids": ["node-id-1", "node-id-2", "node-id-3"]
     },
     {
       "ref": "roam://node-id-123",
       "count": 2,
-      "node-ids": ["node-id-4", "node-id-5"]
+      "node_ids": ["node-id-4", "node-id-5"]
     }
   ],
-  "total-refs": 2
+  "total_refs": 2
 }
 ```
 
@@ -392,9 +392,9 @@ Synchronizes the org-roam database by scanning for new or modified files.
 {
   "status": "success",
   "message": "Database sync completed",
-  "initial-count": 2,
-  "final-count": 3,
-  "nodes-changed": 1,
+  "initial_count": 2,
+  "final_count": 3,
+  "nodes_changed": 1,
   "directory": "/Users/user/org-roam",
   "timestamp": "2024-01-01 12:00:00"
 }

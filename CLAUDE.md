@@ -39,7 +39,7 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 - Database synchronization via `org-roam-update-org-id-locations`
 
 **API Response Consolidation:**
-- Base endpoints (`/tags`, `/aliases`, `/refs`) include node-ids by default
+- Base endpoints (`/tags`, `/aliases`, `/refs`) include node_ids by default
 - No separate `/detailed` endpoints - all responses provide complete information
 - Consistent response structure across all endpoints
 

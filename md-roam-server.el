@@ -256,7 +256,7 @@
             (md-roam-server--create-success-response
              (format "File content retrieved successfully")
              `((path . ,relative-path)
-               (full-path . ,full-path)
+               (full_path . ,full-path)
                (size . ,size)
                (modified . ,(format-time-string "%Y-%m-%d %H:%M:%S" modified))
                (content . ,content))))))
@@ -322,20 +322,20 @@
                                    (node-ids (cdr data)))
                                (push `((tag . ,tag)
                                       (count . ,(length node-ids))
-                                      (node-ids . ,(nreverse (delete-dups node-ids))))
+                                      (node_ids . ,(nreverse (delete-dups node-ids))))
                                      tag-list)))
                            tag-data)
                   
                   (md-roam-server--create-success-response
                    "Tags retrieved successfully"
                    `((tags . ,(nreverse tag-list))
-                     (total-tags . ,(hash-table-count tag-data))))))
+                     (total_tags . ,(hash-table-count tag-data))))))
             
             ;; If no nodes, return empty list
             (md-roam-server--create-success-response
              "No tags found"
              `((tags . [])
-               (total-tags . 0))))))
+               (total_tags . 0))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error retrieving tags: %s" (error-message-string err))
@@ -373,20 +373,20 @@
                                    (node-ids (cdr data)))
                                (push `((alias . ,alias)
                                       (count . ,(length node-ids))
-                                      (node-ids . ,(nreverse (delete-dups node-ids))))
+                                      (node_ids . ,(nreverse (delete-dups node-ids))))
                                      alias-list)))
                            alias-data)
                   
                   (md-roam-server--create-success-response
                    "Aliases retrieved successfully"
                    `((aliases . ,(nreverse alias-list))
-                     (total-aliases . ,(hash-table-count alias-data))))))
+                     (total_aliases . ,(hash-table-count alias-data))))))
             
             ;; If no nodes, return empty list
             (md-roam-server--create-success-response
              "No aliases found"
              `((aliases . [])
-               (total-aliases . 0))))))
+               (total_aliases . 0))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error retrieving aliases: %s" (error-message-string err))
@@ -424,20 +424,20 @@
                                    (node-ids (cdr data)))
                                (push `((ref . ,ref)
                                       (count . ,(length node-ids))
-                                      (node-ids . ,(nreverse (delete-dups node-ids))))
+                                      (node_ids . ,(nreverse (delete-dups node-ids))))
                                      ref-list)))
                            ref-data)
                   
                   (md-roam-server--create-success-response
                    "Refs retrieved successfully"
                    `((refs . ,(nreverse ref-list))
-                     (total-refs . ,(hash-table-count ref-data))))))
+                     (total_refs . ,(hash-table-count ref-data))))))
             
             ;; If no nodes, return empty list
             (md-roam-server--create-success-response
              "No refs found"
              `((refs . [])
-               (total-refs . 0))))))
+               (total_refs . 0))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error retrieving refs: %s" (error-message-string err))
@@ -613,9 +613,9 @@
           (let ((final-count (length (org-roam-node-list))))
             (md-roam-server--create-success-response
              "Database sync completed"
-             `((initial-count . ,initial-count)
-               (final-count . ,final-count)
-               (nodes-changed . ,(- final-count initial-count))
+             `((initial_count . ,initial-count)
+               (final_count . ,final-count)
+               (nodes_changed . ,(- final-count initial-count))
                (directory . ,org-roam-directory))))))
     (error
      (md-roam-server--create-error-response 
