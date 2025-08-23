@@ -84,6 +84,34 @@ Returns a list of all unique tags used across org-roam nodes with usage counts.
 }
 ```
 
+### GET /aliases
+Returns a list of all unique aliases used across org-roam nodes with usage counts.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Aliases retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "aliases": [
+    {
+      "alias": "Research Paper",
+      "count": 3
+    },
+    {
+      "alias": "Project Notes",
+      "count": 2
+    },
+    {
+      "alias": "Meeting Summary",
+      "count": 1
+    }
+  ],
+  "total-aliases": 3,
+  "total-usage": 6
+}
+```
+
 ### GET /tags/:tag/nodes
 Returns a list of nodes that have the specified tag.
 
@@ -149,6 +177,47 @@ Returns a single org-roam node by its ID.
   "level": 0,
   "tags": ["tag1", "tag2"],
   "aliases": ["alias1"]
+}
+```
+
+**Response (404 - Not Found):**
+```json
+{
+  "status": "error",
+  "message": "Node with ID 'invalid-id' not found",
+  "timestamp": "2024-01-01 12:00:00"
+}
+```
+
+### GET /nodes/:id/aliases
+Returns the aliases for a single org-roam node by its ID.
+
+**Parameters:**
+- `id` (path parameter) - The unique ID of the node
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 2 aliases for node 'Research Paper 1'",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Research Paper 1",
+  "aliases": ["Paper 1", "Research Doc"],
+  "count": 2
+}
+```
+
+**Response (No aliases):**
+```json
+{
+  "status": "success",
+  "message": "No aliases found for node 'Simple Note'",
+  "timestamp": "2024-01-01 12:00:00",
+  "id": "node-id",
+  "title": "Simple Note",
+  "aliases": [],
+  "count": 0
 }
 ```
 
@@ -236,11 +305,17 @@ curl http://localhost:8080/files
 # Tags endpoint
 curl http://localhost:8080/tags
 
+# Aliases endpoint
+curl http://localhost:8080/aliases
+
 # Get nodes by tag endpoint  
 curl http://localhost:8080/tags/research/nodes
 
 # Get single node by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID
+
+# Get node aliases by ID endpoint
+curl http://localhost:8080/nodes/YOUR_NODE_ID/aliases
 
 # Sync database endpoint
 curl -X POST http://localhost:8080/sync

@@ -246,6 +246,81 @@
       (format "Error retrieving tags: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-get-aliases ()
+  "Get list of all unique aliases from org-roam nodes."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get all nodes and collect aliases
+        (let ((nodes (org-roam-node-list))
+              (all-aliases '())
+              (alias-counts (make-hash-table :test 'equal)))
+          (if nodes
+              (progn
+                ;; Collect all aliases from all nodes
+                (dolist (node nodes)
+                  (let ((node-aliases (org-roam-node-aliases node)))
+                    (when node-aliases
+                      (dolist (alias node-aliases)
+                        (when alias
+                          (setq all-aliases (cons alias all-aliases))
+                          (puthash alias (1+ (gethash alias alias-counts 0)) alias-counts))))))
+                
+                ;; Remove duplicates and create result
+                (let ((unique-aliases (delete-dups all-aliases))
+                      (alias-list '()))
+                  (dolist (alias unique-aliases)
+                    (push `((alias . ,alias)
+                           (count . ,(gethash alias alias-counts 0)))
+                          alias-list))
+                  
+                  (md-roam-server--create-success-response
+                   "Aliases retrieved successfully"
+                   `((aliases . ,(nreverse alias-list))
+                     (total-aliases . ,(length unique-aliases))
+                     (total-usage . ,(length all-aliases))))))
+            
+            ;; If no nodes, return empty list
+            (md-roam-server--create-success-response
+             "No aliases found"
+             `((aliases . [])
+               (total-aliases . 0)
+               (total-usage . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving aliases: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
+
+(defun md-roam-server-get-node-aliases (node-id)
+  "Get aliases for the org-roam node with the specified NODE-ID."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Find node by ID
+        (let ((node (org-roam-node-from-id node-id)))
+          (if node
+              (let ((aliases (org-roam-node-aliases node)))
+                (md-roam-server--create-success-response
+                 (if aliases
+                     (format "Found %d aliases for node '%s'" (length aliases) (org-roam-node-title node))
+                   (format "No aliases found for node '%s'" (org-roam-node-title node)))
+                 `((id . ,node-id)
+                   (title . ,(org-roam-node-title node))
+                   (aliases . ,(or aliases []))
+                   (count . ,(if aliases (length aliases) 0)))))
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node with ID '%s' not found" node-id)))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving aliases for node '%s': %s" node-id (error-message-string err))
+      `((id . ,node-id)
+        (directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-get-nodes-by-tag (tag)
   "Get list of org-roam nodes that have the specified TAG."
   (condition-case err
@@ -412,6 +487,10 @@
       (let ((result (md-roam-server-get-tags)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
+     ((and (string= method "GET") (string= path "/aliases"))
+      (let ((result (md-roam-server-get-aliases)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
      ((and (string= method "GET") (string-match "^/tags/.*/nodes$" path))
       (let ((params (md-roam-server--match-path-pattern path "/tags/:tag/nodes")))
         (if params
@@ -422,6 +501,19 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Invalid tag parameter")))))))
+     ((and (string= method "GET") (string-match "^/nodes/.*/aliases$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/nodes/:id/aliases")))
+        (if params
+            (let* ((node-id (cdr (assoc 'id params)))
+                   (result (md-roam-server-get-node-aliases node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Invalid node ID parameter")))))))
      ((and (string= method "GET") (string-prefix-p "/nodes/" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
         (if node-id
@@ -465,8 +557,10 @@
                                                 (paths . (("/hello" . "Health check")
                                                          ("/files" . "Get files")
                                                          ("/tags" . "Get tags list")
+                                                         ("/aliases" . "Get aliases list")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/nodes/:id" . "Get single node")
+                                                         ("/nodes/:id/aliases" . "Get node aliases")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
      (t
