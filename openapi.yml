@@ -1,0 +1,1076 @@
+openapi: 3.0.3
+info:
+  title: md-roam HTTP Server API
+  description: |
+    A REST API server for org-roam and md-roam functionality built with Emacs Lisp.
+    
+    This API provides comprehensive access to org-roam database operations, file management,
+    node creation and manipulation, search capabilities, and more.
+  version: 1.0.0
+  contact:
+    name: md-roam-server
+    url: https://github.com/your-repo/md-roam-server
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /:
+    get:
+      summary: Get API information
+      description: Returns basic information about the API server and available endpoints
+      responses:
+        '200':
+          description: API information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiInfo'
+
+  /files:
+    get:
+      summary: List all files
+      description: Get a list of all files in the org-roam directory
+      responses:
+        '200':
+          description: Files retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilesResponse'
+
+  /files/raw:
+    get:
+      summary: List raw files
+      description: Get a raw list of filenames
+      responses:
+        '200':
+          description: Raw files list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawFilesResponse'
+
+  /sync:
+    post:
+      summary: Sync database
+      description: Synchronize the org-roam database with file system changes
+      responses:
+        '200':
+          description: Database synchronized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+
+  /stats:
+    get:
+      summary: Get database statistics
+      description: Retrieve statistics about the org-roam database
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+
+  /nodes:
+    get:
+      summary: List all nodes
+      description: Get a list of all nodes in the org-roam database
+      responses:
+        '200':
+          description: Nodes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodesResponse'
+    
+    post:
+      summary: Create new node
+      description: Create a new node with specified content and metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNodeRequest'
+      responses:
+        '200':
+          description: Node created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateNodeResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}:
+    get:
+      summary: Get node by ID
+      description: Retrieve a specific node by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: Node retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/content:
+    get:
+      summary: Get node content
+      description: Retrieve the file content of a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: Node content retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeContentResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/parse:
+    get:
+      summary: Parse node content
+      description: Parse node content and return metadata and body separately
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: Node parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParseResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/backlinks:
+    get:
+      summary: Get node backlinks
+      description: Get all nodes that link to this node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: Backlinks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacklinksResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/links:
+    get:
+      summary: Get node forward links
+      description: Get all nodes that this node links to
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: Forward links retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinksResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/aliases:
+    get:
+      summary: Get node aliases
+      description: Get all aliases for a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: Aliases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AliasesResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/refs:
+    get:
+      summary: Get node references
+      description: Get all external references for a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      responses:
+        '200':
+          description: References retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefsResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/tags:
+    post:
+      summary: Add tag to node
+      description: Add a hashtag to a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTagRequest'
+      responses:
+        '200':
+          description: Tag added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '400':
+          description: Bad request or tag already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/tags/{tag}:
+    delete:
+      summary: Remove tag from node
+      description: Remove a specific hashtag from a node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+        - name: tag
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The tag to remove
+      responses:
+        '200':
+          description: Tag removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '400':
+          description: Bad request or tag does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/categories:
+    post:
+      summary: Add category to node
+      description: Add a category to the category field of a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCategoryRequest'
+      responses:
+        '200':
+          description: Category added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Bad request or category already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /nodes/{id}/categories/{category}:
+    delete:
+      summary: Remove category from node
+      description: Remove a specific category from the category field of a node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the node
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The category to remove
+      responses:
+        '200':
+          description: Category removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Bad request or category does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search/{query}:
+    get:
+      summary: Search nodes
+      description: Search for nodes by title or alias
+      parameters:
+        - name: query
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The search query
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Bad request - search query is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tags/{tag}/nodes:
+    get:
+      summary: Get nodes with specific tag
+      description: Get all nodes that have a specific tag
+      parameters:
+        - name: tag
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The tag to search for
+      responses:
+        '200':
+          description: Nodes with tag retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagNodesResponse'
+
+  /aliases/{alias}/nodes:
+    get:
+      summary: Get nodes with specific alias
+      description: Get all nodes that have a specific alias
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The alias to search for
+      responses:
+        '200':
+          description: Nodes with alias retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AliasNodesResponse'
+
+  /refs/{ref}/nodes:
+    get:
+      summary: Get nodes with specific reference
+      description: Get all nodes that reference a specific URL
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The reference URL to search for
+      responses:
+        '200':
+          description: Nodes with reference retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefNodesResponse'
+
+  /citations/{query}:
+    get:
+      summary: Search citations
+      description: Search for citations in node content
+      parameters:
+        - name: query
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The citation to search for
+      responses:
+        '200':
+          description: Citations found successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CitationsResponse'
+
+components:
+  schemas:
+    ApiInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "md-roam HTTP server is running"
+        timestamp:
+          type: string
+          format: date-time
+        server_version:
+          type: string
+        available_endpoints:
+          type: object
+          additionalProperties:
+            type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+          nullable: true
+
+    FilesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              file:
+                type: string
+              full_path:
+                type: string
+              size:
+                type: integer
+              modified:
+                type: string
+                format: date-time
+        count:
+          type: integer
+
+    RawFilesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        files:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+
+    SyncResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        files_processed:
+          type: integer
+
+    StatsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        stats:
+          type: object
+          properties:
+            total_nodes:
+              type: integer
+            total_files:
+              type: integer
+            total_links:
+              type: integer
+            total_tags:
+              type: integer
+            total_aliases:
+              type: integer
+            directory:
+              type: string
+
+    Node:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        file:
+          type: string
+        level:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        aliases:
+          type: array
+          items:
+            type: string
+
+    NodesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    NodeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node:
+          $ref: '#/components/schemas/Node'
+
+    NodeContentResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        title:
+          type: string
+        file_path:
+          type: string
+        full_path:
+          type: string
+        level:
+          type: integer
+        size:
+          type: integer
+        modified:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        content:
+          type: string
+
+    ParseResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        title:
+          type: string
+        file_path:
+          type: string
+        format:
+          type: string
+          enum: ["markdown", "org"]
+        metadata:
+          type: object
+        content:
+          type: string
+
+    CreateNodeRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        refs:
+          type: array
+          items:
+            type: string
+        content:
+          type: string
+
+    CreateNodeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        title:
+          type: string
+        file_path:
+          type: string
+        full_path:
+          type: string
+
+    BacklinksResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        backlinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    LinksResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    AliasesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+
+    RefsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        refs:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+
+    AddTagRequest:
+      type: object
+      required:
+        - tag
+      properties:
+        tag:
+          type: string
+
+    TagResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        title:
+          type: string
+        tag_added:
+          type: string
+          nullable: true
+        tag_removed:
+          type: string
+          nullable: true
+        current_tags:
+          type: array
+          items:
+            type: string
+
+    AddCategoryRequest:
+      type: object
+      required:
+        - category
+      properties:
+        category:
+          type: string
+
+    CategoryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        node_id:
+          type: string
+        title:
+          type: string
+        category_added:
+          type: string
+          nullable: true
+        category_removed:
+          type: string
+          nullable: true
+        current_categories:
+          type: array
+          items:
+            type: string
+
+    SearchResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    TagNodesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        tag:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    AliasNodesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        alias:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    RefNodesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        ref:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        count:
+          type: integer
+
+    CitationsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        query:
+          type: string
+        citations:
+          type: array
+          items:
+            type: object
+            properties:
+              node_id:
+                type: string
+              title:
+                type: string
+              file:
+                type: string
+              citation:
+                type: string
+              context:
+                type: string
+        count:
+          type: integer

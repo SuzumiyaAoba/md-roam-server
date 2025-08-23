@@ -1117,24 +1117,34 @@ curl -X POST http://localhost:8080/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Note", "category": "#testing #example", "tags": ["test"], "aliases": ["Testing"], "refs": ["https://example.com"], "content": "This is a test note."}'
 
-# OpenAPI specification
-curl http://localhost:8080/openapi.json
 ```
 
 ## OpenAPI Specification
 
-The server provides an OpenAPI 3.0 specification at `/openapi.json` endpoint. This specification documents all available endpoints and can be used to generate client libraries or import into API testing tools like Postman or Swagger UI.
+The server provides a complete OpenAPI 3.0 specification in the `openapi.yml` file located in the project root. This specification documents all available endpoints, request/response schemas, and can be used to generate client libraries or import into API testing tools like Postman or Swagger UI.
 
-**Endpoint:** `GET /openapi.json`
+**File:** `openapi.yml` (static file in project root)
 
-**Response:** OpenAPI 3.0 JSON specification including:
-- API information (title, version)
-- Available endpoints with descriptions
-- Request/response schemas
-- Parameter definitions
+**Contents:** OpenAPI 3.0 YAML specification including:
+- Complete API information (title, version, description)
+- All available endpoints with detailed descriptions
+- Request/response schemas with examples
+- Parameter definitions and validation rules
+- Error response formats
 
 The specification can be used with tools like:
-- **Swagger UI**: For interactive API documentation
+- **Swagger UI**: For interactive API documentation (`swagger-ui-serve openapi.yml`)
 - **Postman**: Import the OpenAPI spec to generate requests
 - **Code generators**: Generate client libraries in various languages
+- **API testing tools**: Validate API responses against the schema
+
+To view the specification:
+```bash
+# View the OpenAPI specification file
+cat openapi.yml
+
+# Serve with Swagger UI (if installed)
+swagger-ui-serve openapi.yml
+
+# Import into Postman or other API tools
 ```
