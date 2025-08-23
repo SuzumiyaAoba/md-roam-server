@@ -167,6 +167,56 @@ Returns a list of all unique aliases used across org-roam nodes with usage count
 }
 ```
 
+### GET /tags/detailed
+Returns a list of all unique tags used across org-roam nodes with usage counts and the node IDs that use each tag.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Tags with node IDs retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "tags": [
+    {
+      "tag": "research",
+      "count": 3,
+      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
+    },
+    {
+      "tag": "project",
+      "count": 2,
+      "node-ids": ["node-id-4", "node-id-5"]
+    }
+  ],
+  "total-tags": 2
+}
+```
+
+### GET /aliases/detailed
+Returns a list of all unique aliases used across org-roam nodes with usage counts and the node IDs that use each alias.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Aliases with node IDs retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "aliases": [
+    {
+      "alias": "Research Paper",
+      "count": 2,
+      "node-ids": ["node-id-1", "node-id-3"]
+    },
+    {
+      "alias": "Project Notes",
+      "count": 1,
+      "node-ids": ["node-id-4"]
+    }
+  ],
+  "total-aliases": 2
+}
+```
+
 ### GET /refs
 Returns a list of all unique refs used across org-roam nodes with usage counts.
 
@@ -192,6 +242,31 @@ Returns a list of all unique refs used across org-roam nodes with usage counts.
   ],
   "total-refs": 3,
   "total-usage": 10
+}
+```
+
+### GET /refs/detailed
+Returns a list of all unique refs used across org-roam nodes with usage counts and the node IDs that use each ref.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Refs with node IDs retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "refs": [
+    {
+      "ref": "https://example.com",
+      "count": 3,
+      "node-ids": ["node-id-1", "node-id-2", "node-id-3"]
+    },
+    {
+      "ref": "roam://node-id-123",
+      "count": 2,
+      "node-ids": ["node-id-4", "node-id-5"]
+    }
+  ],
+  "total-refs": 2
 }
 ```
 
@@ -439,11 +514,20 @@ curl http://localhost:8080/files/content/20250823014345-corrected_alias_format.m
 # Tags endpoint
 curl http://localhost:8080/tags
 
+# Tags detailed endpoint (with node IDs)
+curl http://localhost:8080/tags/detailed
+
 # Aliases endpoint
 curl http://localhost:8080/aliases
 
+# Aliases detailed endpoint (with node IDs)
+curl http://localhost:8080/aliases/detailed
+
 # Refs endpoint
 curl http://localhost:8080/refs
+
+# Refs detailed endpoint (with node IDs)
+curl http://localhost:8080/refs/detailed
 
 # Get nodes by tag endpoint  
 curl http://localhost:8080/tags/research/nodes
