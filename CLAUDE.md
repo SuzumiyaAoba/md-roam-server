@@ -33,15 +33,23 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 - YAML front matter generation for Markdown file creation
 
 **org-roam Integration:**
-- Uses org-roam database (`org-roam-node-list`) as the primary data source
+- Uses `org-roam-db-query` for direct database access instead of file parsing
 - Supports both Org-mode (.org) and Markdown (.md) files via md-roam
 - Node creation generates UUID-based IDs and proper YAML front matter
 - Database synchronization via `org-roam-update-org-id-locations`
+- Search and citations implemented using SQL queries for better performance
 
 **API Response Consolidation:**
 - Base endpoints (`/tags`, `/aliases`, `/refs`) include node_ids by default
 - No separate `/detailed` endpoints - all responses provide complete information
-- Consistent response structure across all endpoints
+- Consistent response structure across all endpoints using snake_case field names
+
+**File Processing Features:**
+- Citation parsing supporting both `[@citation-key]` and `[[cite:citation-key]]` formats
+- File content retrieval by node ID with metadata (`/nodes/:id/content`)
+- Advanced file parsing separating metadata from body (`/nodes/:id/parse`)
+- Unified format for both Markdown (YAML front matter) and Org mode (properties drawer)
+- File type detection returning "md", "org", or "unknown"
 
 ## Common Commands
 
@@ -57,10 +65,20 @@ nix develop -c emacs --batch -l start-server.el
 
 **Individual Endpoint Testing:**
 ```bash
+# Basic endpoints
 curl http://localhost:8080/files
 curl http://localhost:8080/tags
-curl http://localhost:8080/nodes/NODE_ID
+curl http://localhost:8080/citations
 curl -X POST http://localhost:8080/sync
+
+# Node operations
+curl http://localhost:8080/nodes/NODE_ID
+curl http://localhost:8080/nodes/NODE_ID/content
+curl http://localhost:8080/nodes/NODE_ID/parse
+
+# Search and discovery  
+curl http://localhost:8080/search/query
+curl http://localhost:8080/tags/tagname/nodes
 ```
 
 **Create Node via API:**
@@ -86,6 +104,14 @@ pkill -f "emacs.*start-server.el"
 - Markdown files use YAML front matter with specific field names: `roam_aliases`, `roam_refs`
 - File content endpoint includes path traversal protection
 - Raw file listing shows physical files vs database nodes
+- File parsing endpoint supports both Markdown (YAML) and Org mode (properties) formats
+- Database queries used for search and citations instead of file parsing
+
+**Database Integration:**
+- Direct `org-roam-db-query` usage for better performance
+- Search implemented with SQL LIKE queries (case-insensitive)
+- Citations table integration for reference tracking
+- Hash table deduplication for search results
 
 **Error Handling:**
 - Consistent error response format across all endpoints

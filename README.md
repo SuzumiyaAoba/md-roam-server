@@ -1,8 +1,15 @@
 # md-roam-server
 
-HTTP server that exposes org-roam and md-roam functionality via REST API.
+HTTP REST API server that exposes org-roam and md-roam functionality for building applications on top of your org-roam knowledge base.
 
-This server supports both Org-mode (.org) and Markdown (.md) files using [md-roam](https://github.com/nobiot/md-roam), which extends org-roam to work with Markdown files.
+## Features
+
+- **Unified File Support**: Both Org-mode (.org) and Markdown (.md) files via [md-roam](https://github.com/nobiot/md-roam)
+- **Database-Driven**: Uses org-roam SQLite database for fast queries and search
+- **Complete API Coverage**: File operations, node management, search, metadata collections
+- **Advanced Parsing**: Separates metadata from content for both YAML front matter and Org properties
+- **Citation Support**: Extracts and tracks citations in `[@citation-key]` and `[[cite:citation-key]]` formats  
+- **Snake_case Responses**: Consistent JSON field naming across all endpoints
 
 ## Setup
 
@@ -21,6 +28,38 @@ Or interactively:
 emacs -l md-roam-server.el
 # Then run: M-x md-roam-server-start
 ```
+
+## API Overview
+
+The server provides a comprehensive REST API with the following categories of endpoints:
+
+### File Operations
+- `GET /files` - List all org-roam nodes with metadata
+- `GET /files/raw` - List physical files in org-roam directory
+- `GET /files/content/:filepath` - Get file content by filepath
+
+### Node Operations
+- `GET /nodes/:id` - Get single node metadata
+- `GET /nodes/:id/content` - Get complete file content by node ID
+- `GET /nodes/:id/parse` - Parse file and separate metadata from body
+- `POST /nodes` - Create new node
+
+### Node Metadata
+- `GET /nodes/:id/aliases` - Get node aliases
+- `GET /nodes/:id/refs` - Get node references
+
+### Search & Discovery
+- `GET /search/:query` - Search nodes by title or alias
+- `GET /tags/:tag/nodes` - Get nodes with specific tag
+
+### Metadata Collections
+- `GET /tags` - List all tags with usage counts
+- `GET /aliases` - List all aliases with usage counts  
+- `GET /refs` - List all references with usage counts
+- `GET /citations` - List all citations with usage counts
+
+### Database Management
+- `POST /sync` - Synchronize org-roam database
 
 ## API Endpoints
 
