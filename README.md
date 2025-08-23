@@ -84,6 +84,53 @@ Returns a list of all unique tags used across org-roam nodes with usage counts.
 }
 ```
 
+### GET /tags/:tag/nodes
+Returns a list of nodes that have the specified tag.
+
+**Parameters:**
+- `tag` (path parameter) - The tag name to filter by
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Found 2 nodes with tag 'research'",
+  "timestamp": "2024-01-01 12:00:00",
+  "tag": "research",
+  "nodes": [
+    {
+      "id": "node-id-1",
+      "title": "Research Paper 1",
+      "file": "/path/to/file1.md",
+      "level": 0,
+      "tags": ["research", "academic"],
+      "aliases": ["Paper 1"]
+    },
+    {
+      "id": "node-id-2", 
+      "title": "Research Notes",
+      "file": "/path/to/file2.md",
+      "level": 0,
+      "tags": ["research", "notes"],
+      "aliases": null
+    }
+  ],
+  "count": 2
+}
+```
+
+**Response (No matches):**
+```json
+{
+  "status": "success",
+  "message": "No nodes found with tag 'nonexistent'",
+  "timestamp": "2024-01-01 12:00:00",
+  "tag": "nonexistent",
+  "nodes": [],
+  "count": 0
+}
+```
+
 ### GET /nodes/:id
 Returns a single org-roam node by its ID.
 
@@ -188,6 +235,9 @@ curl http://localhost:8080/files
 
 # Tags endpoint
 curl http://localhost:8080/tags
+
+# Get nodes by tag endpoint  
+curl http://localhost:8080/tags/research/nodes
 
 # Get single node by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID

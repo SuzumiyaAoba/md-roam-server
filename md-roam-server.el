@@ -91,6 +91,26 @@
       (when param-index
         (nth param-index path-parts)))))
 
+(defun md-roam-server--match-path-pattern (path pattern)
+  "Check if PATH matches PATTERN and extract parameters.
+   Returns alist of parameter names and values, or nil if no match."
+  (let* ((pattern-parts (split-string pattern "/"))
+         (path-parts (split-string path "/"))
+         (params '()))
+    (when (= (length pattern-parts) (length path-parts))
+      (let ((match t))
+        (dotimes (i (length pattern-parts))
+          (let ((pattern-part (nth i pattern-parts))
+                (path-part (nth i path-parts)))
+            (if (string-prefix-p ":" pattern-part)
+                ;; Parameter - extract name and value
+                (let ((param-name (substring pattern-part 1)))
+                  (push (cons (intern param-name) path-part) params))
+              ;; Literal - must match exactly
+              (unless (string= pattern-part path-part)
+                (setq match nil)))))
+        (when match params)))))
+
 (defun md-roam-server-init-org-roam ()
   "Initialize org-roam and md-roam with proper configuration."
   (unless (bound-and-true-p org-roam-directory)
@@ -226,6 +246,55 @@
       (format "Error retrieving tags: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-get-nodes-by-tag (tag)
+  "Get list of org-roam nodes that have the specified TAG."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get all nodes and filter by tag
+        (let ((nodes (org-roam-node-list))
+              (matching-nodes '()))
+          (if nodes
+              (progn
+                ;; Filter nodes that contain the specified tag
+                (dolist (node nodes)
+                  (let ((node-tags (org-roam-node-tags node)))
+                    (when (and node-tags (member tag node-tags))
+                      (push `((id . ,(org-roam-node-id node))
+                             (title . ,(org-roam-node-title node))
+                             (file . ,(org-roam-node-file node))
+                             (level . ,(org-roam-node-level node))
+                             (tags . ,(org-roam-node-tags node))
+                             (aliases . ,(org-roam-node-aliases node)))
+                            matching-nodes))))
+                
+                ;; Return results
+                (if matching-nodes
+                    (md-roam-server--create-success-response
+                     (format "Found %d nodes with tag '%s'" (length matching-nodes) tag)
+                     `((tag . ,tag)
+                       (nodes . ,(nreverse matching-nodes))
+                       (count . ,(length matching-nodes))))
+                  (md-roam-server--create-success-response
+                   (format "No nodes found with tag '%s'" tag)
+                   `((tag . ,tag)
+                     (nodes . [])
+                     (count . 0)))))
+            
+            ;; If no nodes exist at all
+            (md-roam-server--create-success-response
+             "No nodes found in database"
+             `((tag . ,tag)
+               (nodes . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving nodes for tag '%s': %s" tag (error-message-string err))
+      `((tag . ,tag)
+        (directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-sync-database ()
   "Sync org-roam database and return status information."
   (condition-case err
@@ -343,6 +412,16 @@
       (let ((result (md-roam-server-get-tags)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
+     ((and (string= method "GET") (string-match "^/tags/.*/nodes$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/tags/:tag/nodes")))
+        (if params
+            (let* ((tag (cdr (assoc 'tag params)))
+                   (result (md-roam-server-get-nodes-by-tag tag)))
+              (md-roam-server-send-response proc 200 "application/json"
+                                           (json-encode result)))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Invalid tag parameter")))))))
      ((and (string= method "GET") (string-prefix-p "/nodes/" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
         (if node-id
@@ -386,6 +465,7 @@
                                                 (paths . (("/hello" . "Health check")
                                                          ("/files" . "Get files")
                                                          ("/tags" . "Get tags list")
+                                                         ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/sync" . "Sync database")
                                                          ("/nodes" . "Create node")))))))
