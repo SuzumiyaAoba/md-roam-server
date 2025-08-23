@@ -80,6 +80,8 @@
           simple-httpd
           websocket
           org-roam-ui
+          yaml-mode
+          yaml
         ]);
         
       in {

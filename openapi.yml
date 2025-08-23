@@ -2,36 +2,40 @@ openapi: 3.0.3
 info:
   title: md-roam HTTP Server API
   description: |
-    A REST API server for org-roam and md-roam functionality built with Emacs Lisp.
+    A comprehensive REST API server for org-roam and md-roam functionality built with Emacs Lisp.
     
-    This API provides comprehensive access to org-roam database operations, file management,
-    node creation and manipulation, search capabilities, and more.
-  version: 1.0.0
+    This API provides complete access to org-roam database operations, file management,
+    node creation and manipulation, search capabilities, citation handling, tag management,
+    and visual graph interface integration via org-roam-ui.
+    
+    Features:
+    - Complete CRUD operations for nodes
+    - Bidirectional link discovery
+    - Advanced search and filtering
+    - Citation and reference tracking
+    - Tag and category management
+    - Database statistics and health monitoring
+    - Configuration management
+    - Visual graph interface integration
+    - Unified support for Markdown and Org-mode files
+    
+  version: 2.0.0
   contact:
     name: md-roam-server
     url: https://github.com/your-repo/md-roam-server
 
 servers:
   - url: http://localhost:8080
-    description: Development server
+    description: Default development server (configurable via ~/.config/md-roam-server/config.yml)
 
 paths:
-  /:
-    get:
-      summary: Get API information
-      description: Returns basic information about the API server and available endpoints
-      responses:
-        '200':
-          description: API information retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiInfo'
-
+  # File Operations
   /files:
     get:
-      summary: List all files
-      description: Get a list of all files in the org-roam directory
+      summary: List all org-roam files
+      description: Get a list of all org-roam nodes with metadata
+      tags:
+        - File Operations
       responses:
         '200':
           description: Files retrieved successfully
@@ -42,8 +46,10 @@ paths:
 
   /files/raw:
     get:
-      summary: List raw files
-      description: Get a raw list of filenames
+      summary: List physical files
+      description: Get a raw list of physical files in org-roam directory
+      tags:
+        - File Operations
       responses:
         '200':
           description: Raw files list retrieved successfully
@@ -52,34 +58,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/RawFilesResponse'
 
-  /sync:
-    post:
-      summary: Sync database
-      description: Synchronize the org-roam database with file system changes
-      responses:
-        '200':
-          description: Database synchronized successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncResponse'
-
-  /stats:
+  /files/content/{filepath}:
     get:
-      summary: Get database statistics
-      description: Retrieve statistics about the org-roam database
+      summary: Get file content by filepath
+      description: Retrieve file content using relative filepath
+      tags:
+        - File Operations
+      parameters:
+        - name: filepath
+          in: path
+          required: true
+          description: Relative path to the file from org-roam directory
+          schema:
+            type: string
       responses:
         '200':
-          description: Statistics retrieved successfully
+          description: File content retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StatsResponse'
+                $ref: '#/components/schemas/FileContentResponse'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
+  # Node Operations
   /nodes:
     get:
       summary: List all nodes
-      description: Get a list of all nodes in the org-roam database
+      description: Get all org-roam nodes with metadata, ordered by title
+      tags:
+        - Node Operations
       responses:
         '200':
           description: Nodes retrieved successfully
@@ -87,10 +99,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NodesResponse'
-    
     post:
       summary: Create new node
-      description: Create a new node with specified content and metadata
+      description: Create a new org-roam node with specified metadata and content
+      tags:
+        - Node Operations
       requestBody:
         required: true
         content:
@@ -98,30 +111,26 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateNodeRequest'
       responses:
-        '200':
+        '201':
           description: Node created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateNodeResponse'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/NodeResponse'
 
   /nodes/{id}:
     get:
       summary: Get node by ID
-      description: Retrieve a specific node by its ID
+      description: Retrieve a single org-roam node by its ID
+      tags:
+        - Node Operations
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       responses:
         '200':
           description: Node retrieved successfully
@@ -135,68 +144,107 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
-  /nodes/{id}/content:
-    get:
-      summary: Get node content
-      description: Retrieve the file content of a specific node
+    put:
+      summary: Update node
+      description: Update an existing org-roam node
+      tags:
+        - Node Operations
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNodeRequest'
       responses:
         '200':
-          description: Node content retrieved successfully
+          description: Node updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+    delete:
+      summary: Delete node
+      description: Delete an org-roam node and its file
+      tags:
+        - Node Operations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique node ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+
+  /nodes/{id}/content:
+    get:
+      summary: Get node file content
+      description: Get complete file content for a node by ID
+      tags:
+        - Node Operations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique node ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Content retrieved successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/NodeContentResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /nodes/{id}/parse:
     get:
-      summary: Parse node content
-      description: Parse node content and return metadata and body separately
+      summary: Parse node file
+      description: Parse node file and separate metadata from body content
+      tags:
+        - Node Operations
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       responses:
         '200':
-          description: Node parsed successfully
+          description: File parsed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ParseResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
+  # Node Relationships
   /nodes/{id}/backlinks:
     get:
       summary: Get node backlinks
       description: Get all nodes that link to this node
+      tags:
+        - Node Relationships
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       responses:
         '200':
           description: Backlinks retrieved successfully
@@ -204,24 +252,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BacklinksResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /nodes/{id}/links:
     get:
       summary: Get node forward links
-      description: Get all nodes that this node links to
+      description: Get all nodes this node links to
+      tags:
+        - Node Relationships
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       responses:
         '200':
           description: Forward links retrieved successfully
@@ -229,24 +273,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LinksResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /nodes/{id}/aliases:
     get:
       summary: Get node aliases
       description: Get all aliases for a specific node
+      tags:
+        - Node Relationships
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       responses:
         '200':
           description: Aliases retrieved successfully
@@ -254,24 +294,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AliasesResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /nodes/{id}/refs:
     get:
       summary: Get node references
-      description: Get all external references for a specific node
+      description: Get all references for a specific node
+      tags:
+        - Node Relationships
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       responses:
         '200':
           description: References retrieved successfully
@@ -279,30 +315,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefsResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
+  # Tag Management
   /nodes/{id}/tags:
     post:
       summary: Add tag to node
-      description: Add a hashtag to a specific node
+      description: Add a tag to a specific node
+      tags:
+        - Tag Management
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddTagRequest'
+              $ref: '#/components/schemas/TagRequest'
       responses:
         '200':
           description: Tag added successfully
@@ -310,36 +343,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TagResponse'
-        '400':
-          description: Bad request or tag already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /nodes/{id}/tags/{tag}:
     delete:
       summary: Remove tag from node
-      description: Remove a specific hashtag from a node
+      description: Remove a specific tag from a node
+      tags:
+        - Tag Management
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
         - name: tag
           in: path
           required: true
+          description: Tag to remove
           schema:
             type: string
-          description: The tag to remove
       responses:
         '200':
           description: Tag removed successfully
@@ -347,36 +370,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TagResponse'
-        '400':
-          description: Bad request or tag does not exist
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
+  # Category Management
   /nodes/{id}/categories:
     post:
       summary: Add category to node
-      description: Add a category to the category field of a specific node
+      description: Add a category to a specific node
+      tags:
+        - Category Management
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddCategoryRequest'
+              $ref: '#/components/schemas/CategoryRequest'
       responses:
         '200':
           description: Category added successfully
@@ -384,36 +398,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CategoryResponse'
-        '400':
-          description: Bad request or category already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /nodes/{id}/categories/{category}:
     delete:
       summary: Remove category from node
-      description: Remove a specific category from the category field of a node
+      description: Remove a specific category from a node
+      tags:
+        - Category Management
       parameters:
         - name: id
           in: path
           required: true
+          description: Unique node ID
           schema:
             type: string
-          description: The unique identifier of the node
         - name: category
           in: path
           required: true
+          description: Category to remove
           schema:
             type: string
-          description: The category to remove
       responses:
         '200':
           description: Category removed successfully
@@ -421,30 +425,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CategoryResponse'
-        '400':
-          description: Bad request or category does not exist
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Node not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
+  # Search Operations
   /search/{query}:
     get:
       summary: Search nodes
-      description: Search for nodes by title or alias
+      description: Search nodes by title or alias
+      tags:
+        - Search Operations
       parameters:
         - name: query
           in: path
           required: true
+          description: Search query (URL-encoded)
           schema:
             type: string
-          description: The search query
       responses:
         '200':
           description: Search completed successfully
@@ -452,326 +447,271 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchResponse'
-        '400':
-          description: Bad request - search query is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /tags/{tag}/nodes:
     get:
-      summary: Get nodes with specific tag
-      description: Get all nodes that have a specific tag
+      summary: Get nodes by tag
+      description: Get all nodes with a specific tag
+      tags:
+        - Search Operations
       parameters:
         - name: tag
           in: path
           required: true
+          description: Tag name
           schema:
             type: string
-          description: The tag to search for
       responses:
         '200':
-          description: Nodes with tag retrieved successfully
+          description: Nodes retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TagNodesResponse'
+                $ref: '#/components/schemas/SearchResponse'
 
   /aliases/{alias}/nodes:
     get:
-      summary: Get nodes with specific alias
-      description: Get all nodes that have a specific alias
+      summary: Get nodes by alias
+      description: Get all nodes with a specific alias
+      tags:
+        - Search Operations
       parameters:
         - name: alias
           in: path
           required: true
+          description: Alias name
           schema:
             type: string
-          description: The alias to search for
       responses:
         '200':
-          description: Nodes with alias retrieved successfully
+          description: Nodes retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AliasNodesResponse'
+                $ref: '#/components/schemas/SearchResponse'
 
   /refs/{ref}/nodes:
     get:
-      summary: Get nodes with specific reference
-      description: Get all nodes that reference a specific URL
+      summary: Get nodes by reference
+      description: Get all nodes with a specific reference
+      tags:
+        - Search Operations
       parameters:
         - name: ref
           in: path
           required: true
+          description: Reference URL (URL-encoded)
           schema:
             type: string
-          description: The reference URL to search for
       responses:
         '200':
-          description: Nodes with reference retrieved successfully
+          description: Nodes retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RefNodesResponse'
+                $ref: '#/components/schemas/SearchResponse'
 
-  /citations/{query}:
+  /citations/{citation}/nodes:
     get:
-      summary: Search citations
-      description: Search for citations in node content
+      summary: Get nodes by citation
+      description: Get all nodes with a specific citation
+      tags:
+        - Search Operations
       parameters:
-        - name: query
+        - name: citation
           in: path
           required: true
+          description: Citation key
           schema:
             type: string
-          description: The citation to search for
       responses:
         '200':
-          description: Citations found successfully
+          description: Nodes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+  # Metadata Collections
+  /tags:
+    get:
+      summary: List all tags
+      description: Get all unique tags with usage counts
+      tags:
+        - Metadata Collections
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagsResponse'
+
+  /aliases:
+    get:
+      summary: List all aliases
+      description: Get all unique aliases with usage counts
+      tags:
+        - Metadata Collections
+      responses:
+        '200':
+          description: Aliases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AliasesListResponse'
+
+  /refs:
+    get:
+      summary: List all references
+      description: Get all unique references with usage counts
+      tags:
+        - Metadata Collections
+      responses:
+        '200':
+          description: References retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefsListResponse'
+
+  /citations:
+    get:
+      summary: List all citations
+      description: Get all unique citations with usage counts
+      tags:
+        - Metadata Collections
+      responses:
+        '200':
+          description: Citations retrieved successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CitationsResponse'
 
+  /stats:
+    get:
+      summary: Get database statistics
+      description: Get comprehensive statistics about the org-roam database
+      tags:
+        - Metadata Collections
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+
+  /config:
+    get:
+      summary: Get server configuration
+      description: Get current server configuration settings
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+
+  /ui:
+    get:
+      summary: Get org-roam-ui status
+      description: Get org-roam-ui server status and configuration
+      tags:
+        - Visual Interface
+      responses:
+        '200':
+          description: UI status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UIStatusResponse'
+
+  # Database Management
+  /sync:
+    post:
+      summary: Sync database
+      description: Synchronize the org-roam database with file system changes
+      tags:
+        - Database Management
+      responses:
+        '200':
+          description: Database synchronized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+
 components:
   schemas:
-    ApiInfo:
+    # Base Response Types
+    SuccessResponse:
       type: object
       properties:
         status:
           type: string
-          example: "success"
+          example: success
         message:
           type: string
-          example: "md-roam HTTP server is running"
+          example: Operation completed successfully
         timestamp:
           type: string
           format: date-time
-        server_version:
-          type: string
-        available_endpoints:
-          type: object
-          additionalProperties:
-            type: string
+          example: "2024-01-01 12:00:00"
 
     ErrorResponse:
       type: object
       properties:
         status:
           type: string
-          example: "error"
+          example: error
         message:
           type: string
+          example: Operation failed
         timestamp:
           type: string
           format: date-time
-        node_id:
-          type: string
-          nullable: true
+          example: "2024-01-01 12:00:00"
 
-    FilesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        files:
-          type: array
-          items:
-            type: object
-            properties:
-              file:
-                type: string
-              full_path:
-                type: string
-              size:
-                type: integer
-              modified:
-                type: string
-                format: date-time
-        count:
-          type: integer
-
-    RawFilesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        files:
-          type: array
-          items:
-            type: string
-        count:
-          type: integer
-
-    SyncResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        files_processed:
-          type: integer
-
-    StatsResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        stats:
-          type: object
-          properties:
-            total_nodes:
-              type: integer
-            total_files:
-              type: integer
-            total_links:
-              type: integer
-            total_tags:
-              type: integer
-            total_aliases:
-              type: integer
-            directory:
-              type: string
-
+    # Node Schema
     Node:
       type: object
       properties:
         id:
           type: string
+          description: Unique node identifier
+          example: "20240101120000-example-note"
         title:
           type: string
+          description: Node title
+          example: "Example Note"
         file:
           type: string
+          description: File path relative to org-roam directory
+          example: "20240101120000-example-note.md"
         level:
           type: integer
+          description: Node level (usually 0)
+          example: 0
         tags:
           type: array
           items:
             type: string
+          description: List of tags
+          example: ["research", "important"]
         aliases:
           type: array
           items:
             type: string
+          nullable: true
+          description: List of aliases
+          example: ["Example", "Sample Note"]
 
-    NodesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        nodes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
-
-    NodeResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node:
-          $ref: '#/components/schemas/Node'
-
-    NodeContentResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
-        title:
-          type: string
-        file_path:
-          type: string
-        full_path:
-          type: string
-        level:
-          type: integer
-        size:
-          type: integer
-        modified:
-          type: string
-          format: date-time
-        tags:
-          type: array
-          items:
-            type: string
-        aliases:
-          type: array
-          items:
-            type: string
-        content:
-          type: string
-
-    ParseResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
-        title:
-          type: string
-        file_path:
-          type: string
-        format:
-          type: string
-          enum: ["markdown", "org"]
-        metadata:
-          type: object
-        content:
-          type: string
-
+    # Request Schemas
     CreateNodeRequest:
       type: object
       required:
@@ -779,298 +719,682 @@ components:
       properties:
         title:
           type: string
+          description: Node title
+          example: "My New Note"
         category:
           type: string
+          description: Node category
+          example: "#research #important"
         tags:
           type: array
           items:
             type: string
+          description: List of tags
+          example: ["tag1", "tag2"]
         aliases:
           type: array
           items:
             type: string
+          description: List of aliases
+          example: ["Alternative Name"]
         refs:
           type: array
           items:
             type: string
+          description: List of references
+          example: ["https://example.com"]
         content:
           type: string
+          description: Node content
+          example: "Initial content for the note."
 
-    CreateNodeResponse:
+    UpdateNodeRequest:
       type: object
       properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
         title:
           type: string
-        file_path:
+          example: "Updated Title"
+        category:
           type: string
-        full_path:
-          type: string
-
-    BacklinksResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
-        backlinks:
+          example: "#updated #category"
+        tags:
           type: array
           items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
-
-    LinksResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
-        links:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
-
-    AliasesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
+            type: string
+          example: ["new-tag"]
         aliases:
           type: array
           items:
             type: string
-        count:
-          type: integer
-
-    RefsResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
+          example: ["New Alias"]
         refs:
           type: array
           items:
             type: string
-        count:
-          type: integer
+          example: ["https://updated.example.com"]
+        content:
+          type: string
+          example: "Updated content."
 
-    AddTagRequest:
+    TagRequest:
       type: object
       required:
         - tag
       properties:
         tag:
           type: string
+          description: Tag to add
+          example: "new-tag"
 
-    TagResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
-        title:
-          type: string
-        tag_added:
-          type: string
-          nullable: true
-        tag_removed:
-          type: string
-          nullable: true
-        current_tags:
-          type: array
-          items:
-            type: string
-
-    AddCategoryRequest:
+    CategoryRequest:
       type: object
       required:
         - category
       properties:
         category:
           type: string
+          description: Category to add
+          example: "new-category"
 
-    CategoryResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        node_id:
-          type: string
-        title:
-          type: string
-        category_added:
-          type: string
-          nullable: true
-        category_removed:
-          type: string
-          nullable: true
-        current_categories:
-          type: array
-          items:
-            type: string
+    # Response Schemas
+    FilesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            files:
+              type: array
+              items:
+                $ref: '#/components/schemas/Node'
+            count:
+              type: integer
+              example: 150
+
+    NodesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            nodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Node'
+            count:
+              type: integer
+              example: 150
+
+    NodeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - $ref: '#/components/schemas/Node'
 
     SearchResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        query:
-          type: string
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            query:
+              type: string
+              example: "research"
+            nodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Node'
+            count:
+              type: integer
+              example: 25
 
-    TagNodesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        tag:
-          type: string
-        nodes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
+    TagsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  tag:
+                    type: string
+                    example: "research"
+                  count:
+                    type: integer
+                    example: 15
+                  node_ids:
+                    type: array
+                    items:
+                      type: string
+                    example: ["node1", "node2"]
+            total_tags:
+              type: integer
+              example: 45
 
-    AliasNodesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        alias:
-          type: string
-        nodes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
+    StatsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            total_nodes:
+              type: integer
+              example: 150
+            total_links:
+              type: integer
+              example: 320
+            total_tags:
+              type: integer
+              example: 45
+            total_aliases:
+              type: integer
+              example: 28
+            total_refs:
+              type: integer
+              example: 67
+            total_citations:
+              type: integer
+              example: 89
+            file_types:
+              type: object
+              properties:
+                md:
+                  type: integer
+                  example: 120
+                org:
+                  type: integer
+                  example: 30
+            avg_links_per_node:
+              type: number
+              example: 2.13
 
-    RefNodesResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        ref:
-          type: string
-        nodes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-        count:
-          type: integer
+    ConfigResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            config_file:
+              type: string
+              example: "/Users/user/.config/md-roam-server/config.yml"
+            server:
+              type: object
+              properties:
+                port:
+                  type: integer
+                  example: 8080
+                ui_port:
+                  type: integer
+                  example: 35901
+                ui_enabled:
+                  type: boolean
+                  example: true
+            org_roam:
+              type: object
+              properties:
+                directory:
+                  type: string
+                  example: "/Users/user/org-roam/"
+                db_location:
+                  type: string
+                  example: "/Users/user/org-roam/org-roam.db"
+                db_exists:
+                  type: boolean
+                  example: true
+            config_source:
+              type: object
+              description: Raw configuration from YAML file
+
+    UIStatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            ui_enabled:
+              type: boolean
+              example: true
+            ui_port:
+              type: integer
+              example: 35901
+            ui_url:
+              type: string
+              example: "http://localhost:35901"
+            ui_running:
+              type: boolean
+              example: true
+            configuration:
+              type: object
+              properties:
+                sync_theme:
+                  type: boolean
+                  example: true
+                follow:
+                  type: boolean
+                  example: true
+                update_on_save:
+                  type: boolean
+                  example: true
+                open_on_start:
+                  type: boolean
+                  example: false
+
+    SyncResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            initial_count:
+              type: integer
+              example: 149
+            final_count:
+              type: integer
+              example: 150
+            nodes_changed:
+              type: integer
+              example: 1
+            directory:
+              type: string
+              example: "/Users/user/org-roam"
+
+    # Additional response schemas for completeness
+    RawFilesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            directory:
+              type: string
+              example: "/Users/user/org-roam/"
+            files:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "20240101120000-example.md"
+                  path:
+                    type: string
+                    example: "/Users/user/org-roam/20240101120000-example.md"
+                  extension:
+                    type: string
+                    example: "md"
+                  size:
+                    type: integer
+                    example: 1024
+                  modified:
+                    type: string
+                    example: "2024-01-01 12:00:00"
+                  created:
+                    type: string
+                    example: "2024-01-01 12:00:00"
+            count:
+              type: integer
+              example: 150
+
+    FileContentResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            path:
+              type: string
+              example: "20240101120000-example.md"
+            full_path:
+              type: string
+              example: "/Users/user/org-roam/20240101120000-example.md"
+            size:
+              type: integer
+              example: 1024
+            modified:
+              type: string
+              example: "2024-01-01 12:00:00"
+            content:
+              type: string
+              example: "# Example Note\n\nContent here..."
+
+    NodeContentResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            node_id:
+              type: string
+              example: "20240101120000-example"
+            title:
+              type: string
+              example: "Example Note"
+            file_path:
+              type: string
+              example: "20240101120000-example.md"
+            full_path:
+              type: string
+              example: "/Users/user/org-roam/20240101120000-example.md"
+            level:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 1024
+            modified:
+              type: string
+              example: "2024-01-01 12:00:00"
+            tags:
+              type: array
+              items:
+                type: string
+              example: ["research", "notes"]
+            aliases:
+              type: array
+              items:
+                type: string
+              example: ["Example", "Sample"]
+            content:
+              type: string
+              example: "# Example Note\n\nFull content here..."
+
+    ParseResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            node_id:
+              type: string
+              example: "20240101120000-example"
+            title:
+              type: string
+              example: "Example Note"
+            file_path:
+              type: string
+              example: "20240101120000-example.md"
+            full_path:
+              type: string
+              example: "/Users/user/org-roam/20240101120000-example.md"
+            file_type:
+              type: string
+              example: "md"
+            level:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 1024
+            modified:
+              type: string
+              example: "2024-01-01 12:00:00"
+            tags:
+              type: array
+              items:
+                type: string
+              example: ["research", "notes"]
+            aliases:
+              type: array
+              items:
+                type: string
+              example: ["Example"]
+            metadata:
+              type: array
+              items:
+                type: object
+              example: [{"id": "20240101120000-example"}, {"title": "Example Note"}]
+            body:
+              type: string
+              example: "# Example Note\n\nBody content..."
+
+    BacklinksResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            node_id:
+              type: string
+              example: "target-node-id"
+            backlinks:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "source-node-id"
+                  title:
+                    type: string
+                    example: "Source Node"
+                  file:
+                    type: string
+                    example: "source-node.md"
+                  level:
+                    type: integer
+                    example: 0
+                  link_type:
+                    type: string
+                    example: "id"
+            count:
+              type: integer
+              example: 3
+
+    LinksResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            node_id:
+              type: string
+              example: "source-node-id"
+            links:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "target-node-id"
+                  title:
+                    type: string
+                    example: "Target Node"
+                  file:
+                    type: string
+                    example: "target-node.md"
+                  level:
+                    type: integer
+                    example: 0
+                  link_type:
+                    type: string
+                    example: "id"
+            count:
+              type: integer
+              example: 2
+
+    AliasesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "node-id"
+            title:
+              type: string
+              example: "Node Title"
+            aliases:
+              type: array
+              items:
+                type: string
+              example: ["Alias 1", "Alias 2"]
+            count:
+              type: integer
+              example: 2
+
+    AliasesListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            aliases:
+              type: array
+              items:
+                type: object
+                properties:
+                  alias:
+                    type: string
+                    example: "Research Paper"
+                  count:
+                    type: integer
+                    example: 3
+                  node_ids:
+                    type: array
+                    items:
+                      type: string
+                    example: ["node1", "node2", "node3"]
+            total_aliases:
+              type: integer
+              example: 28
+
+    RefsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "node-id"
+            title:
+              type: string
+              example: "Node Title"
+            refs:
+              type: array
+              items:
+                type: string
+              example: ["https://example.com", "https://github.com/user/repo"]
+            count:
+              type: integer
+              example: 2
+
+    RefsListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            refs:
+              type: array
+              items:
+                type: object
+                properties:
+                  ref:
+                    type: string
+                    example: "https://example.com"
+                  count:
+                    type: integer
+                    example: 5
+                  node_ids:
+                    type: array
+                    items:
+                      type: string
+                    example: ["node1", "node2"]
+            total_refs:
+              type: integer
+              example: 67
 
     CitationsResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "success"
-        message:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        query:
-          type: string
-        citations:
-          type: array
-          items:
-            type: object
-            properties:
-              node_id:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            citations:
+              type: array
+              items:
+                type: object
+                properties:
+                  citation:
+                    type: string
+                    example: "smith2023"
+                  count:
+                    type: integer
+                    example: 3
+                  node_ids:
+                    type: array
+                    items:
+                      type: string
+                    example: ["node1", "node2", "node3"]
+            total_citations:
+              type: integer
+              example: 89
+
+    TagResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            node_id:
+              type: string
+              example: "node-id"
+            title:
+              type: string
+              example: "Node Title"
+            tag_added:
+              type: string
+              example: "new-tag"
+            tag_removed:
+              type: string
+              example: "old-tag"
+            current_tags:
+              type: array
+              items:
                 type: string
-              title:
+              example: ["existing-tag", "new-tag"]
+
+    CategoryResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            node_id:
+              type: string
+              example: "node-id"
+            title:
+              type: string
+              example: "Node Title"
+            category_added:
+              type: string
+              example: "new-category"
+            category_removed:
+              type: string
+              example: "old-category"
+            current_categories:
+              type: array
+              items:
                 type: string
-              file:
-                type: string
-              citation:
-                type: string
-              context:
-                type: string
-        count:
-          type: integer
+              example: ["existing-category", "new-category"]
+
+    DeleteResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "node-id"
+            title:
+              type: string
+              example: "Deleted Node"
+            file:
+              type: string
+              example: "deleted-node.md"
+
+tags:
+  - name: File Operations
+    description: Operations for managing org-roam files
+  - name: Node Operations
+    description: CRUD operations for org-roam nodes
+  - name: Node Relationships
+    description: Operations for exploring node relationships
+  - name: Tag Management
+    description: Operations for managing node tags
+  - name: Category Management
+    description: Operations for managing node categories
+  - name: Search Operations
+    description: Operations for searching and filtering nodes
+  - name: Metadata Collections
+    description: Operations for retrieving metadata collections
+  - name: Configuration
+    description: Server configuration management
+  - name: Visual Interface
+    description: org-roam-ui integration endpoints
+  - name: Database Management
+    description: Database synchronization operations
