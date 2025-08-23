@@ -39,6 +39,7 @@ The server provides a comprehensive REST API with the following categories of en
 - `GET /files/content/:filepath` - Get file content by filepath
 
 ### Node Operations
+- `GET /nodes` - List all nodes with metadata
 - `GET /nodes/:id` - Get single node metadata
 - `GET /nodes/:id/content` - Get complete file content by node ID
 - `GET /nodes/:id/parse` - Parse file and separate metadata from body
@@ -327,6 +328,48 @@ Search for nodes by title or alias matching the query string (case-insensitive p
   "message": "No nodes found matching 'nonexistent'",
   "timestamp": "2024-01-01 12:00:00",
   "query": "nonexistent",
+  "nodes": [],
+  "count": 0
+}
+```
+
+### GET /nodes
+Returns a list of all org-roam nodes with metadata, ordered by title.
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Retrieved 3 nodes successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "nodes": [
+    {
+      "id": "node-id-1",
+      "title": "First Node",
+      "file": "relative/path/to/file1.md",
+      "level": 0,
+      "tags": ["tag1", "tag2"],
+      "aliases": ["alias1"]
+    },
+    {
+      "id": "node-id-2",
+      "title": "Second Node",
+      "file": "relative/path/to/file2.md",
+      "level": 0,
+      "tags": ["tag3"],
+      "aliases": []
+    }
+  ],
+  "count": 2
+}
+```
+
+**Response (No nodes):**
+```json
+{
+  "status": "success",
+  "message": "No nodes found",
+  "timestamp": "2024-01-01 12:00:00",
   "nodes": [],
   "count": 0
 }
@@ -631,6 +674,9 @@ curl http://localhost:8080/tags/research/nodes
 # Search nodes by title or alias endpoint
 curl http://localhost:8080/search/research
 curl "http://localhost:8080/search/Study%20Note"
+
+# Get all nodes endpoint
+curl http://localhost:8080/nodes
 
 # Get single node by ID endpoint
 curl http://localhost:8080/nodes/YOUR_NODE_ID

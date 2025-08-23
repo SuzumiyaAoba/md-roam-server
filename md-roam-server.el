@@ -484,7 +484,7 @@
                        (tags . ,(or tags []))
                        (aliases . ,(or aliases []))
                        (metadata . ,(or metadata []))
-                       (body . ,body))))))
+                       (body . ,body)))))
             
             ;; Node not found
             (md-roam-server--create-error-response
@@ -520,6 +520,50 @@
      (md-roam-server--create-error-response 
       (format "Error retrieving node: %s" (error-message-string err))
       `((node-id . ,node-id))))))
+
+(defun md-roam-server-get-all-nodes ()
+  "Get list of all org-roam nodes with metadata."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((nodes (org-roam-db-query 
+                      [:select [id title file level todo pos]
+                       :from nodes
+                       :order-by [(asc title)]])))
+          (if nodes
+              (let ((node-list '()))
+                (dolist (node-row nodes)
+                  (let* ((id (nth 0 node-row))
+                         (title (nth 1 node-row))
+                         (file (nth 2 node-row))
+                         (level (nth 3 node-row))
+                         (tags (mapcar #'car (org-roam-db-query 
+                                              [:select [tag] :from tags :where (= node-id $s1)] 
+                                              id)))
+                         (aliases (mapcar #'car (org-roam-db-query 
+                                                 [:select [alias] :from aliases :where (= node-id $s1)] 
+                                                 id))))
+                    (push `((id . ,id)
+                           (title . ,title)
+                           (file . ,(file-relative-name file org-roam-directory))
+                           (level . ,level)
+                           (tags . ,(or tags []))
+                           (aliases . ,(or aliases [])))
+                          node-list)))
+                
+                (md-roam-server--create-success-response
+                 (format "Retrieved %d nodes successfully" (length node-list))
+                 `((nodes . ,(nreverse node-list))
+                   (count . ,(length node-list)))))
+            
+            (md-roam-server--create-success-response
+             "No nodes found"
+             `((nodes . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving nodes: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
 
 (defun md-roam-server-get-tags ()
   "Get list of all unique tags from org-roam nodes with node IDs."
@@ -983,6 +1027,416 @@
      (md-roam-server--create-error-response 
       (format "Error creating node: %s" (error-message-string err))))))
 
+(defun md-roam-server-update-node (node-id title &optional tags content aliases category refs)
+  "Update an existing org-roam node with NODE-ID, TITLE, optional TAGS, CONTENT, ALIASES, CATEGORY, and REFS."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get existing node information
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (existing-file (nth 2 node-info))
+                     (filepath existing-file))
+                
+                ;; Validate file exists and is writable
+                (unless (and filepath 
+                            (file-exists-p filepath)
+                            (file-writable-p filepath))
+                  (error "Node file not found or not writable"))
+                
+                ;; Security check - ensure file is within org-roam directory
+                (let ((directory org-roam-directory))
+                  (unless (string-prefix-p (file-truename directory)
+                                          (file-truename filepath))
+                    (error "File access denied - not within org-roam directory")))
+                
+                ;; Update file content
+                (let* ((yaml-front-matter
+                        (concat "---\n"
+                               (format "id: %s\n" node-id)
+                               (format "title: %s\n" title)
+                               (when category (format "category: %s\n" category))
+                               (when (and aliases (> (length aliases) 0))
+                                 (format "roam_aliases: [%s]\n"
+                                         (mapconcat (lambda (alias) (format "\"%s\"" alias)) aliases ", ")))
+                               (when (and refs (> (length refs) 0))
+                                 (format "roam_refs: %s\n" (if (listp refs) (string-join refs " ") refs)))
+                               "---\n\n"))
+                       (full-content (concat yaml-front-matter (or content ""))))
+                  
+                  ;; Write updated content to file
+                  (with-temp-file filepath
+                    (insert full-content))
+                  
+                  ;; Update org-roam database
+                  (org-roam-update-org-id-locations)
+                  (org-roam-db-sync)
+                  
+                  ;; Return success response
+                  (md-roam-server--create-success-response
+                   (format "Node updated successfully: %s" title)
+                   `((id . ,node-id)
+                     (title . ,title)
+                     (file . ,(file-relative-name filepath org-roam-directory))
+                     (category . ,(or category ""))
+                     (tags . ,(or tags []))
+                     (aliases . ,(or aliases []))
+                     (refs . ,(or refs []))))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error updating node: %s" (error-message-string err))
+      `((node_id . ,node-id))))))
+
+(defun md-roam-server-delete-node (node-id)
+  "Delete an org-roam node by NODE-ID."
+  (condition-case err
+      (progn
+        ;; Initialize org-roam
+        (md-roam-server-init-org-roam)
+        
+        ;; Get existing node information
+        (let ((node-data (org-roam-db-query 
+                          [:select [id title file level todo pos]
+                           :from nodes
+                           :where (= id $s1)]
+                          node-id)))
+          (if node-data
+              (let* ((node-info (car node-data))
+                     (title (nth 1 node-info))
+                     (filepath (nth 2 node-info)))
+                
+                ;; Validate file exists
+                (unless (and filepath (file-exists-p filepath))
+                  (error "Node file not found"))
+                
+                ;; Security check - ensure file is within org-roam directory
+                (let ((directory org-roam-directory))
+                  (unless (string-prefix-p (file-truename directory)
+                                          (file-truename filepath))
+                    (error "File access denied - not within org-roam directory")))
+                
+                ;; Delete file
+                (delete-file filepath)
+                
+                ;; Update org-roam database
+                (org-roam-db-sync)
+                
+                ;; Return success response
+                (md-roam-server--create-success-response
+                 (format "Node deleted successfully: %s" title)
+                 `((id . ,node-id)
+                   (title . ,title)
+                   (file . ,(file-relative-name filepath org-roam-directory)))))
+            
+            ;; Node not found
+            (md-roam-server--create-error-response
+             (format "Node not found: %s" node-id)
+             `((node_id . ,node-id))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error deleting node: %s" (error-message-string err))
+      `((node_id . ,node-id))))))
+
+(defun md-roam-server-get-node-backlinks (node-id)
+  "Get all nodes that link to NODE-ID (backlinks)."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((backlinks (org-roam-db-query 
+                          [:select [source dest type]
+                           :from links
+                           :where (= dest $s1)]
+                          node-id)))
+          (if backlinks
+              (let ((backlink-nodes '()))
+                (dolist (link-row backlinks)
+                  (let* ((source-id (nth 0 link-row))
+                         (link-type (nth 2 link-row))
+                         (node-data (org-roam-db-query 
+                                     [:select [id title file level]
+                                      :from nodes
+                                      :where (= id $s1)]
+                                     source-id)))
+                    (when node-data
+                      (let* ((node-info (car node-data))
+                             (title (nth 1 node-info))
+                             (file (nth 2 node-info))
+                             (level (nth 3 node-info)))
+                        (push `((id . ,source-id)
+                               (title . ,title)
+                               (file . ,(file-relative-name file org-roam-directory))
+                               (level . ,level)
+                               (link_type . ,(or link-type "id")))
+                              backlink-nodes)))))
+                
+                (md-roam-server--create-success-response
+                 (format "Found %d backlinks for node" (length backlink-nodes))
+                 `((node_id . ,node-id)
+                   (backlinks . ,(nreverse backlink-nodes))
+                   (count . ,(length backlink-nodes)))))
+            
+            (md-roam-server--create-success-response
+             "No backlinks found"
+             `((node_id . ,node-id)
+               (backlinks . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving backlinks: %s" (error-message-string err))
+      `((node_id . ,node-id))))))
+
+(defun md-roam-server-get-node-links (node-id)
+  "Get all nodes that NODE-ID links to (forward links)."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((links (org-roam-db-query 
+                      [:select [source dest type]
+                       :from links
+                       :where (= source $s1)]
+                      node-id)))
+          (if links
+              (let ((linked-nodes '()))
+                (dolist (link-row links)
+                  (let* ((dest-id (nth 1 link-row))
+                         (link-type (nth 2 link-row))
+                         (node-data (org-roam-db-query 
+                                     [:select [id title file level]
+                                      :from nodes
+                                      :where (= id $s1)]
+                                     dest-id)))
+                    (when node-data
+                      (let* ((node-info (car node-data))
+                             (title (nth 1 node-info))
+                             (file (nth 2 node-info))
+                             (level (nth 3 node-info)))
+                        (push `((id . ,dest-id)
+                               (title . ,title)
+                               (file . ,(file-relative-name file org-roam-directory))
+                               (level . ,level)
+                               (link_type . ,(or link-type "id")))
+                              linked-nodes)))))
+                
+                (md-roam-server--create-success-response
+                 (format "Found %d forward links from node" (length linked-nodes))
+                 `((node_id . ,node-id)
+                   (links . ,(nreverse linked-nodes))
+                   (count . ,(length linked-nodes)))))
+            
+            (md-roam-server--create-success-response
+             "No forward links found"
+             `((node_id . ,node-id)
+               (links . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving forward links: %s" (error-message-string err))
+      `((node_id . ,node-id))))))
+
+(defun md-roam-server-get-nodes-by-alias (alias)
+  "Get all nodes that have the specified ALIAS."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((alias-matches (org-roam-db-query 
+                              [:select [node-id]
+                               :from aliases
+                               :where (= alias $s1)]
+                              alias)))
+          (if alias-matches
+              (let ((nodes '()))
+                (dolist (match alias-matches)
+                  (let* ((node-id (nth 0 match))
+                         (node-data (org-roam-db-query 
+                                     [:select [id title file level]
+                                      :from nodes
+                                      :where (= id $s1)]
+                                     node-id)))
+                    (when node-data
+                      (let* ((node-info (car node-data))
+                             (title (nth 1 node-info))
+                             (file (nth 2 node-info))
+                             (level (nth 3 node-info))
+                             (tags (mapcar #'car (org-roam-db-query 
+                                                  [:select [tag] :from tags :where (= node-id $s1)] 
+                                                  node-id)))
+                             (aliases (mapcar #'car (org-roam-db-query 
+                                                     [:select [alias] :from aliases :where (= node-id $s1)] 
+                                                     node-id))))
+                        (push `((id . ,node-id)
+                               (title . ,title)
+                               (file . ,(file-relative-name file org-roam-directory))
+                               (level . ,level)
+                               (tags . ,(or tags []))
+                               (aliases . ,(or aliases [])))
+                              nodes)))))
+                
+                (md-roam-server--create-success-response
+                 (format "Found %d nodes with alias '%s'" (length nodes) alias)
+                 `((alias . ,alias)
+                   (nodes . ,(nreverse nodes))
+                   (count . ,(length nodes)))))
+            
+            (md-roam-server--create-success-response
+             (format "No nodes found with alias '%s'" alias)
+             `((alias . ,alias)
+               (nodes . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error searching nodes by alias: %s" (error-message-string err))
+      `((alias . ,alias))))))
+
+(defun md-roam-server-get-nodes-by-ref (ref)
+  "Get all nodes that have the specified REF."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((ref-matches (org-roam-db-query 
+                            [:select [node-id]
+                             :from refs
+                             :where (= ref $s1)]
+                            ref)))
+          (if ref-matches
+              (let ((nodes '()))
+                (dolist (match ref-matches)
+                  (let* ((node-id (nth 0 match))
+                         (node-data (org-roam-db-query 
+                                     [:select [id title file level]
+                                      :from nodes
+                                      :where (= id $s1)]
+                                     node-id)))
+                    (when node-data
+                      (let* ((node-info (car node-data))
+                             (title (nth 1 node-info))
+                             (file (nth 2 node-info))
+                             (level (nth 3 node-info))
+                             (tags (mapcar #'car (org-roam-db-query 
+                                                  [:select [tag] :from tags :where (= node-id $s1)] 
+                                                  node-id)))
+                             (aliases (mapcar #'car (org-roam-db-query 
+                                                     [:select [alias] :from aliases :where (= node-id $s1)] 
+                                                     node-id))))
+                        (push `((id . ,node-id)
+                               (title . ,title)
+                               (file . ,(file-relative-name file org-roam-directory))
+                               (level . ,level)
+                               (tags . ,(or tags []))
+                               (aliases . ,(or aliases [])))
+                              nodes)))))
+                
+                (md-roam-server--create-success-response
+                 (format "Found %d nodes with ref '%s'" (length nodes) ref)
+                 `((ref . ,ref)
+                   (nodes . ,(nreverse nodes))
+                   (count . ,(length nodes)))))
+            
+            (md-roam-server--create-success-response
+             (format "No nodes found with ref '%s'" ref)
+             `((ref . ,ref)
+               (nodes . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error searching nodes by ref: %s" (error-message-string err))
+      `((ref . ,ref))))))
+
+(defun md-roam-server-get-nodes-by-citation (citation)
+  "Get all nodes that have the specified CITATION."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((citation-matches (org-roam-db-query 
+                                 [:select [node-id]
+                                  :from citations
+                                  :where (= cite-key $s1)]
+                                 citation)))
+          (if citation-matches
+              (let ((nodes '()))
+                (dolist (match citation-matches)
+                  (let* ((node-id (nth 0 match))
+                         (node-data (org-roam-db-query 
+                                     [:select [id title file level]
+                                      :from nodes
+                                      :where (= id $s1)]
+                                     node-id)))
+                    (when node-data
+                      (let* ((node-info (car node-data))
+                             (title (nth 1 node-info))
+                             (file (nth 2 node-info))
+                             (level (nth 3 node-info))
+                             (tags (mapcar #'car (org-roam-db-query 
+                                                  [:select [tag] :from tags :where (= node-id $s1)] 
+                                                  node-id)))
+                             (aliases (mapcar #'car (org-roam-db-query 
+                                                     [:select [alias] :from aliases :where (= node-id $s1)] 
+                                                     node-id))))
+                        (push `((id . ,node-id)
+                               (title . ,title)
+                               (file . ,(file-relative-name file org-roam-directory))
+                               (level . ,level)
+                               (tags . ,(or tags []))
+                               (aliases . ,(or aliases [])))
+                              nodes)))))
+                
+                (md-roam-server--create-success-response
+                 (format "Found %d nodes with citation '%s'" (length nodes) citation)
+                 `((citation . ,citation)
+                   (nodes . ,(nreverse nodes))
+                   (count . ,(length nodes)))))
+            
+            (md-roam-server--create-success-response
+             (format "No nodes found with citation '%s'" citation)
+             `((citation . ,citation)
+               (nodes . [])
+               (count . 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error searching nodes by citation: %s" (error-message-string err))
+      `((citation . ,citation))))))
+
+(defun md-roam-server-get-stats ()
+  "Get statistics about the org-roam database."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let* ((total-nodes (caar (org-roam-db-query [:select (funcall count *) :from nodes])))
+               (total-links (caar (org-roam-db-query [:select (funcall count *) :from links])))
+               (total-tags (caar (org-roam-db-query [:select (funcall count :distinct tag) :from tags])))
+               (total-aliases (caar (org-roam-db-query [:select (funcall count :distinct alias) :from aliases])))
+               (total-refs (caar (org-roam-db-query [:select (funcall count :distinct ref) :from refs])))
+               (total-citations (caar (org-roam-db-query [:select (funcall count :distinct cite-key) :from citations])))
+               (files-md (caar (org-roam-db-query [:select (funcall count *) :from nodes :where (like file "%.md")])))
+               (files-org (caar (org-roam-db-query [:select (funcall count *) :from nodes :where (like file "%.org")]))))
+          
+          (md-roam-server--create-success-response
+           "Statistics retrieved successfully"
+           `((total_nodes . ,total-nodes)
+             (total_links . ,total-links)
+             (total_tags . ,total-tags)
+             (total_aliases . ,total-aliases)
+             (total_refs . ,total-refs)
+             (total_citations . ,total-citations)
+             (file_types . ((md . ,files-md)
+                           (org . ,files-org)))
+             (avg_links_per_node . ,(if (> total-nodes 0) (/ (float total-links) total-nodes) 0))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving statistics: %s" (error-message-string err))
+      `((directory . ,(md-roam-server--safe-directory)))))))
+
 (defun md-roam-server-filter (proc string)
   "Process STRING from PROC."
   (setq md-roam-server-request-buffer (concat md-roam-server-request-buffer string))
@@ -1041,6 +1495,40 @@
       (let ((result (md-roam-server-get-citations)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
+     ((and (string= method "GET") (string= path "/stats"))
+      (let ((result (md-roam-server-get-stats)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
+     ((and (string= method "GET") (string-match "^/aliases/.*/nodes$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/aliases/:alias/nodes")))
+        (if params
+            (let* ((alias (cdr (assoc 'alias params)))
+                   (result (md-roam-server-get-nodes-by-alias alias)))
+              (md-roam-server-send-response proc 200 "application/json"
+                                           (json-encode result)))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Invalid alias parameter")))))))
+     ((and (string= method "GET") (string-match "^/refs/.*/nodes$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/refs/:ref/nodes")))
+        (if params
+            (let* ((ref (cdr (assoc 'ref params)))
+                   (result (md-roam-server-get-nodes-by-ref ref)))
+              (md-roam-server-send-response proc 200 "application/json"
+                                           (json-encode result)))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Invalid ref parameter")))))))
+     ((and (string= method "GET") (string-match "^/citations/.*/nodes$" path))
+      (let ((params (md-roam-server--match-path-pattern path "/citations/:citation/nodes")))
+        (if params
+            (let* ((citation (cdr (assoc 'citation params)))
+                   (result (md-roam-server-get-nodes-by-citation citation)))
+              (md-roam-server-send-response proc 200 "application/json"
+                                           (json-encode result)))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Invalid citation parameter")))))))
      ((and (string= method "GET") (string-match "^/tags/.*/nodes$" path))
       (let ((params (md-roam-server--match-path-pattern path "/tags/:tag/nodes")))
         (if params
@@ -1086,6 +1574,30 @@
           (md-roam-server-send-response proc 400 "application/json"
                                        (json-encode '((error . "Bad Request")
                                                     (message . "Search query is required")))))))
+     ((and (string= method "GET") (string-match "^/nodes/.*/backlinks$" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id/backlinks")))
+        (if node-id
+            (let ((result (md-roam-server-get-node-backlinks node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID is required")))))))
+     ((and (string= method "GET") (string-match "^/nodes/.*/links$" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id/links")))
+        (if node-id
+            (let ((result (md-roam-server-get-node-links node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID is required")))))))
      ((and (string= method "GET") (string-match "^/nodes/.*/parse$" path))
       (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id/parse")))
         (if node-id
@@ -1126,6 +1638,45 @@
       (let ((sync-result (md-roam-server-sync-database)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode sync-result))))
+     ((and (string= method "GET") (string= path "/nodes"))
+      (let ((result (md-roam-server-get-all-nodes)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
+     ((and (string= method "PUT") (string-prefix-p "/nodes/" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
+        (if (and node-id body)
+            (let* ((params (md-roam-server--extract-body-params body '(title tags content aliases category refs)))
+                   (title (nth 0 params))
+                   (tags (nth 1 params))
+                   (content (nth 2 params))
+                   (aliases (nth 3 params))
+                   (category (nth 4 params))
+                   (refs (nth 5 params)))
+              (if title
+                  (let ((result (md-roam-server-update-node node-id title tags content aliases category refs)))
+                    (if (string= (cdr (assoc 'status result)) "success")
+                        (md-roam-server-send-response proc 200 "application/json"
+                                                     (json-encode result))
+                      (md-roam-server-send-response proc 404 "application/json"
+                                                   (json-encode result))))
+                (md-roam-server-send-response proc 400 "application/json"
+                                             (json-encode '((error . "Bad Request")
+                                                          (message . "Title is required"))))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID and JSON body required")))))))
+     ((and (string= method "DELETE") (string-prefix-p "/nodes/" path))
+      (let ((node-id (md-roam-server--extract-path-param path "/nodes/:id")))
+        (if node-id
+            (let ((result (md-roam-server-delete-node node-id)))
+              (if (string= (cdr (assoc 'status result)) "success")
+                  (md-roam-server-send-response proc 200 "application/json"
+                                               (json-encode result))
+                (md-roam-server-send-response proc 404 "application/json"
+                                             (json-encode result))))
+          (md-roam-server-send-response proc 400 "application/json"
+                                       (json-encode '((error . "Bad Request")
+                                                    (message . "Node ID is required")))))))
      ((and (string= method "POST") (string= path "/nodes"))
       (if body
           (let* ((params (md-roam-server--extract-body-params body '(title tags content aliases category refs)))
@@ -1157,11 +1708,18 @@
                                                          ("/aliases" . "Get aliases list with node IDs")
                                                          ("/refs" . "Get refs list with node IDs")
                                                          ("/citations" . "Get citations list with node IDs")
+                                                         ("/stats" . "Get database statistics")
+                                                         ("/aliases/:alias/nodes" . "Get nodes by alias")
+                                                         ("/refs/:ref/nodes" . "Get nodes by ref")
+                                                         ("/citations/:citation/nodes" . "Get nodes by citation")
                                                          ("/tags/:tag/nodes" . "Get nodes by tag")
                                                          ("/search/:query" . "Search nodes by title or alias")
+                                                         ("/nodes" . "Get all nodes")
                                                          ("/nodes/:id" . "Get single node")
                                                          ("/nodes/:id/content" . "Get node file content")
                                                          ("/nodes/:id/parse" . "Parse node file (metadata and body)")
+                                                         ("/nodes/:id/backlinks" . "Get node backlinks")
+                                                         ("/nodes/:id/links" . "Get node forward links")
                                                          ("/nodes/:id/aliases" . "Get node aliases")
                                                          ("/nodes/:id/refs" . "Get node refs")
                                                          ("/sync" . "Sync database")
