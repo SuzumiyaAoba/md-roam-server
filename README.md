@@ -13,6 +13,7 @@ HTTP REST API server that exposes org-roam and md-roam functionality for buildin
 - **Citation Support**: Extracts and tracks citations in `[@citation-key]` and `[[cite:citation-key]]` formats  
 - **Statistics Dashboard**: Comprehensive database statistics and health metrics
 - **Snake_case Responses**: Consistent JSON field naming across all endpoints
+- **Visual Graph Interface**: Integrated [org-roam-ui](https://github.com/org-roam/org-roam-ui) for interactive knowledge graph visualization
 
 ## Setup
 
@@ -77,6 +78,7 @@ The server provides a comprehensive REST API with the following categories of en
 - `GET /refs` - List all references with usage counts
 - `GET /citations` - List all citations with usage counts
 - `GET /stats` - Get comprehensive database statistics
+- `GET /ui` - Get org-roam-ui server status and configuration
 
 ### Database Management
 - `POST /sync` - Synchronize org-roam database
@@ -1147,4 +1149,58 @@ cat openapi.yml
 swagger-ui-serve openapi.yml
 
 # Import into Postman or other API tools
+```
+
+## org-roam-ui Integration
+
+The server includes integrated [org-roam-ui](https://github.com/org-roam/org-roam-ui) support for interactive visualization of your knowledge graph. org-roam-ui provides a web-based interface to explore connections between your notes visually.
+
+### Features
+
+- **Interactive Graph**: Visual representation of nodes and their connections
+- **Real-time Updates**: Automatically syncs changes from Emacs to the web interface
+- **Theme Synchronization**: Matches your Emacs theme in the web interface
+- **Navigation**: Click to navigate between related notes
+- **Search Integration**: Visual search within the graph interface
+
+### Configuration
+
+org-roam-ui is enabled by default and runs on port 35901. The following configuration options are available:
+
+- **UI Server Port**: `md-roam-server-ui-port` (default: 35901)
+- **Enable/Disable**: `md-roam-server-ui-enabled` (default: t)
+
+### Accessing the Interface
+
+Once the server starts, you can access the graph interface at:
+
+```
+http://localhost:35901
+```
+
+### API Endpoint
+
+Get org-roam-ui status and configuration:
+
+```bash
+# Get UI status
+curl http://localhost:8080/ui
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "org-roam-ui status retrieved successfully",
+  "timestamp": "2024-01-01 12:00:00",
+  "ui_enabled": true,
+  "ui_port": 35901,
+  "ui_url": "http://localhost:35901",
+  "ui_running": true,
+  "configuration": {
+    "sync_theme": true,
+    "follow": true,
+    "update_on_save": true
+  }
+}
 ```

@@ -10,9 +10,16 @@
 (require 'org-roam)
 (require 'org-id)
 (require 'md-roam)
+(require 'org-roam-ui)
 
 (defvar md-roam-server-port 8080
   "Port for the md-roam HTTP server.")
+
+(defvar md-roam-server-ui-port 35901
+  "Port for the org-roam-ui server.")
+
+(defvar md-roam-server-ui-enabled t
+  "Whether to enable org-roam-ui integration.")
 
 (defvar md-roam-server-process nil
   "Process object for the running server.")
@@ -1437,6 +1444,23 @@
       (format "Error retrieving statistics: %s" (error-message-string err))
       `((directory . ,(md-roam-server--safe-directory)))))))
 
+(defun md-roam-server-get-ui-status ()
+  "Get org-roam-ui server status and information."
+  (condition-case err
+      (md-roam-server--create-success-response
+       "org-roam-ui status retrieved successfully"
+       `((ui_enabled . ,md-roam-server-ui-enabled)
+         (ui_port . ,md-roam-server-ui-port)
+         (ui_url . ,(format "http://localhost:%d" md-roam-server-ui-port))
+         (ui_running . ,(and md-roam-server-ui-enabled
+                           (bound-and-true-p org-roam-ui-mode)))
+         (configuration . ((sync_theme . ,(bound-and-true-p org-roam-ui-sync-theme))
+                          (follow . ,(bound-and-true-p org-roam-ui-follow))
+                          (update_on_save . ,(bound-and-true-p org-roam-ui-update-on-save))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving UI status: %s" (error-message-string err))))))
+
 (defun md-roam-server-add-tag-to-node (node-id tag)
   "Add a TAG to a specific NODE-ID."
   (condition-case err
@@ -1872,6 +1896,10 @@
       (let ((result (md-roam-server-get-stats)))
         (md-roam-server-send-response proc 200 "application/json"
                                      (json-encode result))))
+     ((and (string= method "GET") (string= path "/ui"))
+      (let ((result (md-roam-server-get-ui-status)))
+        (md-roam-server-send-response proc 200 "application/json"
+                                     (json-encode result))))
      ((and (string= method "GET") (string-match "^/aliases/.*/nodes$" path))
       (let ((params (md-roam-server--match-path-pattern path "/aliases/:alias/nodes")))
         (if params
@@ -2150,6 +2178,35 @@
     (process-send-string proc response)
     (delete-process proc)))
 
+;;; org-roam-ui integration
+
+(defun md-roam-server-configure-ui ()
+  "Configure org-roam-ui settings."
+  (setq org-roam-ui-sync-theme t
+        org-roam-ui-follow t
+        org-roam-ui-update-on-save t
+        org-roam-ui-open-on-start nil
+        org-roam-ui-port md-roam-server-ui-port))
+
+(defun md-roam-server-start-ui ()
+  "Start org-roam-ui server."
+  (condition-case err
+      (progn
+        (md-roam-server-configure-ui)
+        (org-roam-ui-mode 1)
+        (message "org-roam-ui started on port %d" md-roam-server-ui-port))
+    (error
+     (message "Failed to start org-roam-ui: %s" (error-message-string err)))))
+
+(defun md-roam-server-stop-ui ()
+  "Stop org-roam-ui server."
+  (condition-case err
+      (progn
+        (org-roam-ui-mode -1)
+        (message "org-roam-ui stopped"))
+    (error
+     (message "Failed to stop org-roam-ui: %s" (error-message-string err)))))
+
 (defun md-roam-server-start (&optional port)
   "Start the md-roam HTTP server on PORT (default 8080)."
   (interactive "P")
@@ -2157,6 +2214,10 @@
     (when md-roam-server-process
       (md-roam-server-stop))
     
+    ;; Initialize org-roam
+    (md-roam-server-init-org-roam)
+    
+    ;; Start the main HTTP server
     (setq md-roam-server-process
           (make-network-process
            :name "md-roam-server"
@@ -2165,11 +2226,24 @@
            :family 'ipv4
            :filter 'md-roam-server-filter))
     
-    (message "md-roam server started on port %d" server-port)))
+    ;; Start org-roam-ui if enabled
+    (when md-roam-server-ui-enabled
+      (md-roam-server-start-ui))
+    
+    (message "md-roam server started on port %d%s" 
+             server-port
+             (if md-roam-server-ui-enabled 
+                 (format " (UI on port %d)" md-roam-server-ui-port)
+               ""))))
 
 (defun md-roam-server-stop ()
   "Stop the md-roam HTTP server."
   (interactive)
+  ;; Stop org-roam-ui if running
+  (when md-roam-server-ui-enabled
+    (md-roam-server-stop-ui))
+  
+  ;; Stop main server
   (when md-roam-server-process
     (delete-process md-roam-server-process)
     (setq md-roam-server-process nil)
