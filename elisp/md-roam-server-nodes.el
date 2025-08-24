@@ -160,6 +160,51 @@
      (md-roam-server--create-error-response 
       (format "Error creating node: %s" (error-message-string err))))))
 
+(defun md-roam-server-delete-node (node-id)
+  "Delete a node by NODE-ID and its associated file."
+  (condition-case err
+      (progn
+        ;; Ensure md-roam is properly configured
+        (unless (bound-and-true-p md-roam-mode)
+          (setq md-roam-file-extension "md")
+          (setq org-roam-file-extensions '("org" "md"))
+          (setq org-roam-title-sources '((title headline) (alias alias)))
+          (setq md-roam-use-org-extract-ref-links t)
+          (md-roam-mode 1))
+        ;; Ensure database is in the correct location
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        (org-roam-db-sync)
+        
+        ;; Get node information before deletion
+        (let* ((node-query (org-roam-db-query [:select [id title file level] :from nodes :where (= id $s1)] node-id))
+               (node (car node-query)))
+          (if (not node)
+              (md-roam-server--create-error-response 
+               (format "Node with ID '%s' not found" node-id))
+            (let* ((title (nth 1 node))
+                   (file-path (nth 2 node))
+                   (relative-path (file-relative-name file-path org-roam-directory)))
+              
+              ;; Security check - ensure file is within org-roam directory
+              (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
+                (error "File path outside of org-roam directory: %s" file-path))
+              
+              ;; Delete the file
+              (when (file-exists-p file-path)
+                (delete-file file-path))
+              
+              ;; Sync database to remove deleted node
+              (org-roam-db-sync)
+              
+              (md-roam-server--create-success-response
+               (format "Node deleted successfully: %s" title)
+               `((id . ,node-id)
+                 (title . ,title)
+                 (file . ,relative-path)))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error deleting node: %s" (error-message-string err))))))
+
 ;;; Node Endpoint Handlers
 
 (defun md-roam-server-handle-nodes (method path json-data)
@@ -183,6 +228,13 @@
       (md-roam-server-create-node json-data))
      (t
       (md-roam-server--create-error-response "Node POST endpoint not found"))))
+   ((string= method "DELETE")
+    (cond
+     ((string-match "^/nodes/\\([^/]+\\)$" path)
+      (let ((node-id (match-string 1 path)))
+        (md-roam-server-delete-node node-id)))
+     (t
+      (md-roam-server--create-error-response "Node DELETE endpoint not found"))))
    (t
     (md-roam-server--create-error-response "Method not allowed for nodes endpoint"))))
 
