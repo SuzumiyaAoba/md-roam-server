@@ -20,6 +20,61 @@ HTTP REST API server that exposes org-roam and md-roam functionality for buildin
 
 ## Setup
 
+### Docker Setup (Recommended)
+
+The easiest way to run md-roam-server is using Docker. This provides a consistent environment with all dependencies pre-installed.
+
+1. **Quick Start with Docker:**
+```bash
+# Build and start the server
+make dev
+
+# Or manually:
+docker-compose up --build -d
+```
+
+2. **Access the services:**
+- **REST API**: http://localhost:8080
+- **Graph UI**: http://localhost:35901 (org-roam-ui)
+
+3. **Stop the server:**
+```bash
+make stop
+
+# Or manually:
+docker-compose down
+```
+
+### Docker with Local org-roam Directory
+
+To use your existing org-roam notes:
+
+1. **Copy and customize docker-compose configuration:**
+```bash
+cp docker-compose.local.yml docker-compose.override.yml
+# Edit docker-compose.override.yml to point to your org-roam directory
+```
+
+2. **Example docker-compose.override.yml:**
+```yaml
+version: '3.8'
+
+services:
+  md-roam-server:
+    volumes:
+      - /path/to/your/org-roam:/data/org-roam
+      - /path/to/your/.config/md-roam-server:/root/.config/md-roam-server
+```
+
+3. **Start with your configuration:**
+```bash
+docker-compose up -d
+```
+
+### Native Nix Setup
+
+For development or if you prefer running natively:
+
 1. Enter the Nix development environment:
 ```bash
 nix develop
@@ -27,7 +82,7 @@ nix develop
 
 2. Start the server:
 
-### Quick Start (Recommended)
+### Quick Start (Native)
 ```bash
 # Start server in daemon mode (most stable)
 ./start.sh
@@ -96,6 +151,43 @@ org-roam:
 - `org-roam.directory` - Path to your org-roam notes directory (default: ~/org-roam)
 - `org-roam.db-location` - Custom database location (optional, defaults to org-roam standard location)
 
+### Markdown File Support
+
+md-roam-server provides full support for Markdown (.md) files alongside Org-mode (.org) files through [md-roam](https://github.com/nobiot/md-roam). To ensure proper recognition, Markdown files should include YAML front matter:
+
+**Example Markdown file format:**
+```markdown
+---
+title: My Note Title
+id: unique-node-id
+tags: [research, important]
+aliases: ["Alternative Name"]
+roam_refs: https://example.com
+---
+
+# My Note Title
+
+Your note content goes here.
+
+## Section Headers
+- Bullet points work
+- [[Links to other notes]] work
+- #hashtags work
+
+Links to other nodes: [[another-note-id]]
+References: [@citation-key] or [[cite:citation-key]]
+```
+
+**Required front matter fields:**
+- `title` - The note title
+- `id` - Unique identifier for the node
+
+**Optional front matter fields:**
+- `tags` - Array of tags for categorization
+- `aliases` - Array of alternative names for the note
+- `roam_refs` - External references (URLs, etc.)
+- `category` - Category string (e.g., "#research #important")
+
 ### Applying Configuration Changes
 
 After modifying the configuration file, restart the server to apply changes:
@@ -110,6 +202,57 @@ Check current configuration:
 # Get current server configuration
 curl http://localhost:8080/config
 ```
+
+## Docker Environment
+
+### Available Docker Commands (via Makefile)
+
+```bash
+# Development commands
+make dev          # Start development server with hot reload
+make build        # Build Docker image
+make start        # Start container in detached mode
+make stop         # Stop and remove container
+make logs         # View container logs
+make shell        # Open shell in running container
+
+# Cleanup commands
+make clean        # Remove containers and images
+make prune        # Clean up Docker system
+```
+
+### Docker Configuration Files
+
+- **`Dockerfile`** - Multi-stage production build with Nix environment
+- **`Dockerfile.simple`** - Single-stage development build for faster iteration
+- **`docker-compose.yml`** - Default Docker Compose configuration
+- **`docker-compose.local.yml`** - Example for mounting local org-roam directories
+
+### Container Architecture
+
+The Docker container runs a complete md-roam-server environment:
+- **Base**: nixos/nix image with Nix package manager
+- **Dependencies**: Emacs, org-roam, md-roam, org-roam-ui
+- **Networking**: Exposed ports 8080 (API) and 35901 (UI)
+- **Volumes**: Configurable for org-roam directory and configuration
+- **Health Checks**: Automatic monitoring of server status
+
+### Development Workflow
+
+1. **Make changes to elisp/ files**
+2. **Rebuild and restart:**
+   ```bash
+   make dev  # This rebuilds and restarts automatically
+   ```
+3. **Check logs:**
+   ```bash
+   make logs
+   ```
+4. **Debug in container:**
+   ```bash
+   make shell
+   emacs --batch --eval "(require 'md-roam-server)"
+   ```
 
 ## API Overview
 

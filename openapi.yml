@@ -15,11 +15,13 @@ info:
     - Citation and reference tracking
     - Tag and category management
     - Database statistics and health monitoring
-    - Configuration management
-    - Visual graph interface integration
-    - Unified support for Markdown and Org-mode files
+    - YAML configuration file support
+    - Visual graph interface integration (org-roam-ui)
+    - Unified support for Markdown (.md) and Org-mode (.org) files
+    - Docker containerization with volume mounting
+    - Modular Emacs Lisp architecture
     
-  version: 2.0.0
+  version: 2.1.0
   contact:
     name: md-roam-server
     url: https://github.com/your-repo/md-roam-server

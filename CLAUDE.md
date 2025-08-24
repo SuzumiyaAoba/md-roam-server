@@ -4,8 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment
 
-This project uses Nix flakes for reproducible development environments. Always work within the Nix shell:
+This project supports both Docker and native Nix development environments:
 
+### Docker Environment (Recommended)
+```bash
+# Start development server
+make dev
+
+# View logs
+make logs
+
+# Access running container
+make shell
+```
+
+### Native Nix Environment
 ```bash
 nix develop
 ```
@@ -15,22 +28,38 @@ The development environment includes:
 - SQLite for org-roam database operations  
 - curl and jq for API testing
 - Standard development tools (git, ripgrep, fd)
+- org-roam-ui web assets for graph visualization
 
 ## Core Architecture
 
 This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md-roam functionality. The architecture consists of:
 
-**Main Components:**
-- `md-roam-server.el` - Core server implementation with all API endpoints and request handling
-- `start-server.el` - Simple startup script that loads and runs the server
-- `flake.nix` - Nix development environment with custom md-roam package build
+**Main Components (Modular Architecture):**
+- `elisp/md-roam-server.el` - Main server entry point and network process management
+- `elisp/md-roam-server-core.el` - Core configuration, utilities, and org-roam initialization
+- `elisp/md-roam-server-http.el` - HTTP request parsing and response generation
+- `elisp/md-roam-server-routes.el` - URL routing and endpoint dispatch
+- `elisp/md-roam-server-nodes.el` - Node operations (CRUD, relationships, content)
+- `elisp/md-roam-server-search.el` - Search, statistics, and metadata aggregation
+- `elisp/md-roam-server-files.el` - File operations and content management
+- `elisp/md-roam-server-ui.el` - org-roam-ui integration and graph interface
+- `start-server.el` - Simple startup script for daemon mode
+- `flake.nix` - Nix development environment with custom org-roam-ui asset management
+
+**Docker Components:**
+- `Dockerfile` - Multi-stage production build with Nix environment
+- `Dockerfile.simple` - Single-stage development build
+- `docker-compose.yml` - Container orchestration with volume mounting
+- `Makefile` - Development workflow automation
 
 **Key Design Patterns:**
-- Single-file server implementation using Emacs network processes
+- Modular architecture with focused, single-responsibility modules
+- Emacs network processes with 0.0.0.0 binding for Docker compatibility
 - Standardized JSON response format with success/error status, timestamps, and consistent field naming
 - Path parameter extraction system for RESTful routes (e.g., `/nodes/:id`, `/tags/:tag/nodes`)
 - Hash table-based data aggregation for counting and node ID collection
-- YAML front matter generation for Markdown file creation
+- YAML configuration file system with automatic default generation
+- md-roam integration with proper YAML front matter support
 
 **org-roam Integration:**
 - Uses `org-roam-db-query` for direct database access instead of file parsing
@@ -65,14 +94,36 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 
 ## Common Commands
 
+### Docker Development (Recommended)
+
 **Start Server:**
 ```bash
-nix develop -c emacs --batch -l start-server.el
+make dev              # Build and start development server
+make build           # Build Docker image only
+make start           # Start existing container
+make stop            # Stop and remove container
+make logs            # View container logs
+make shell           # Open shell in running container
 ```
 
 **Basic Testing:**
 ```bash
-./simple-test.sh
+curl http://localhost:8080/stats
+curl http://localhost:8080/nodes
+```
+
+### Native Nix Development
+
+**Start Server:**
+```bash
+nix develop -c emacs --batch -l start-server.el
+# Or using the startup script:
+./start.sh
+```
+
+**Stop Server:**
+```bash
+./stop.sh
 ```
 
 **Individual Endpoint Testing:**
@@ -127,6 +178,23 @@ pkill -f "emacs.*start-server.el"
 
 ## Important Implementation Details
 
+**Configuration System:**
+- YAML configuration file at `~/.config/md-roam-server/config.yml`
+- Automatic default configuration generation on first startup
+- Hash-table based configuration parsing with `gethash` support
+- Configuration validation and directory path expansion
+
+**md-roam Integration:**
+- Proper md-roam mode initialization with file extension setup
+- YAML front matter parsing for Markdown file recognition
+- Consistent database location setup across all endpoints
+- Required front matter: `title`, `id`, optional: `tags`, `aliases`, `roam_refs`
+
+**Network Configuration:**
+- Host binding set to "0.0.0.0" for Docker container networking
+- Dual server setup: REST API (8080) and org-roam-ui (35901)
+- Network process management with proper cleanup
+
 **Node ID Handling:**
 - Uses `org-id-new` for UUID generation (not `org-roam-node-generate-id`)
 - Node IDs are returned in arrays for aggregation endpoints
@@ -154,6 +222,14 @@ pkill -f "emacs.*start-server.el"
 - Port conflict resolution (kill existing processes on 8080)
 
 **Testing Requirements:**
-- Always test within nix environment to ensure md-roam package availability
+- Docker environment preferred for consistent testing (use `make dev`)
 - Server startup requires 2-3 second delay for initialization
 - Background server processes need explicit cleanup
+- For native testing: always test within nix environment to ensure md-roam package availability
+
+**Docker Specific Notes:**
+- Container uses root user to avoid permission complexities
+- Volume mounting for org-roam directory: `/data/org-roam`
+- Volume mounting for config: `/root/.config/md-roam-server`
+- Health checks monitor both API and UI endpoints
+- Container startup script handles configuration file creation
