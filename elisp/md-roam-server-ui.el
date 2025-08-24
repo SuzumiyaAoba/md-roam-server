@@ -31,7 +31,8 @@
         (require 'websocket)
         
         ;; Configure simple-httpd server for org-roam-ui
-        (setq httpd-port md-roam-server-ui-port)
+        (setq httpd-port md-roam-server-ui-port
+              httpd-host "0.0.0.0")
         
         ;; Try multiple locations for org-roam-ui web assets
         (let ((possible-roots (list

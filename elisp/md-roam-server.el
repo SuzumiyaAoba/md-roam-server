@@ -32,7 +32,7 @@
            :name "md-roam-server"
            :service server-port
            :server t
-           :host 'local
+           :host "0.0.0.0"
            :family 'ipv4
            :filter 'md-roam-server-filter
            :log (lambda (server client msg)

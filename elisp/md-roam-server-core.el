@@ -85,8 +85,12 @@
   "Get configuration value at PATH from CONFIG (or loaded config)."
   (let ((config (or config (md-roam-server--load-config))))
     (cl-reduce (lambda (obj key)
-                 (when (listp obj)
-                   (cdr (assoc key obj))))
+                 (cond
+                  ((hash-table-p obj)
+                   (gethash key obj))
+                  ((listp obj)
+                   (cdr (assoc key obj)))
+                  (t nil)))
                path
                :initial-value config)))
 
@@ -147,10 +151,31 @@
   "Initialize org-roam database and ensure it's ready."
   (condition-case err
       (progn
+        ;; Setup md-roam for Markdown file support
+        (setq md-roam-file-extension "md")
+        (setq org-roam-file-extensions '("org" "md"))
+        (setq org-roam-title-sources '((title headline) (alias alias)))
+        
+        ;; Configure md-roam to use YAML front matter
+        (setq md-roam-use-org-extract-ref-links t)
+        
+        ;; Initialize md-roam
+        (md-roam-mode 1)
+        
+        (message "md-roam mode enabled with file extensions: %s" org-roam-file-extensions)
+        
         (unless (file-exists-p org-roam-directory)
           (make-directory org-roam-directory t))
+          
+        ;; Ensure database is in the same directory as the notes
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        
+        (message "Syncing org-roam database for directory: %s" org-roam-directory)
+        (message "Database location: %s" org-roam-db-location)
         (org-roam-db-sync)
-        (message "org-roam initialized: %s" org-roam-directory))
+        
+        (let ((node-count (caar (org-roam-db-query "SELECT COUNT(*) FROM nodes"))))
+          (message "org-roam initialized: %s (%d nodes)" org-roam-directory node-count)))
     (error
      (message "Error initializing org-roam: %s" (error-message-string err)))))
 

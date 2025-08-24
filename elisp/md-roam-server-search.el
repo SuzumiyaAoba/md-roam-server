@@ -70,7 +70,17 @@
   "Get statistics about the org-roam database."
   (condition-case err
       (progn
-        (md-roam-server-init-org-roam)
+        ;; Ensure md-roam is properly configured and database is up to date
+        (unless (bound-and-true-p md-roam-mode)
+          (setq md-roam-file-extension "md")
+          (setq org-roam-file-extensions '("org" "md"))
+          (setq org-roam-title-sources '((title headline) (alias alias)))
+          (setq md-roam-use-org-extract-ref-links t)
+          (md-roam-mode 1))
+        ;; Ensure database is in the correct location
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        (message "DEBUG stats: org-roam-directory=%s, db-location=%s" org-roam-directory org-roam-db-location)
+        (org-roam-db-sync)
         (let* ((total-nodes (caar (org-roam-db-query [:select (funcall count *) :from nodes])))
                (total-links (caar (org-roam-db-query [:select (funcall count *) :from links])))
                (total-tags (caar (org-roam-db-query [:select (funcall count :distinct tag) :from tags])))
