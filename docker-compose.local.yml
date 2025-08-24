@@ -1,0 +1,16 @@
+# Example docker-compose configuration for using local org-roam directory
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+
+services:
+  md-roam-server:
+    volumes:
+      # Mount local org-roam directory instead of using Docker volume
+      # Modify the path before the colon to point to your local org-roam directory
+      - ~/org-roam:/data/org-roam
+      
+      # Optional: Mount local config file
+      # Create ~/.config/md-roam-server/config.yml on your host first
+      # - ~/.config/md-roam-server/config.yml:/root/.config/md-roam-server/config.yml:ro
+    environment:
+      # Optional: Override org-roam directory via environment variable
+      - ORG_ROAM_DATA_DIR=/data/org-roam

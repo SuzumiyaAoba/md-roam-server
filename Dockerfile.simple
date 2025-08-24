@@ -1,0 +1,50 @@
+# md-roam-server Dockerfile - Simplified single-stage build
+FROM nixos/nix:latest
+
+# Enable experimental features for Nix flakes
+RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+
+# Set up build environment
+WORKDIR /app
+
+# Copy application source
+COPY flake.nix flake.lock ./
+COPY elisp/ ./elisp/
+COPY start-server.el openapi.yml ./
+COPY docker/ ./docker/
+
+# Install runtime dependencies and cache Nix environment
+RUN nix-env -iA nixpkgs.bash nixpkgs.curl nixpkgs.coreutils && \
+    nix develop --command echo "Nix environment cached"
+
+# Build org-roam-ui web assets
+RUN nix build .#org-roam-ui-web -o org-roam-ui-web
+
+# Set up directories
+RUN mkdir -p /data/org-roam /root/.config/md-roam-server
+
+# Create default configuration
+RUN cp /app/docker/config.yml /root/.config/md-roam-server/config.yml
+
+# Make scripts executable
+RUN chmod +x /app/docker/start-docker.sh
+
+# Expose API and UI ports
+EXPOSE 8080 35901
+
+# Add labels for metadata
+LABEL maintainer="md-roam-server" \
+      description="REST API server for org-roam with org-roam-ui integration" \
+      version="2.0.0"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8080/stats || exit 1
+
+# Set environment variables
+ENV EMACS_SERVER_TIMEOUT=60 \
+    ORG_ROAM_DATA_DIR=/data/org-roam \
+    CONFIG_DIR=/root/.config/md-roam-server
+
+# Default command
+CMD ["/app/docker/start-docker.sh"]

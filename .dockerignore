@@ -1,0 +1,46 @@
+# Git and version control
+.git/
+.gitignore
+
+# Build artifacts
+result
+result-*
+
+# Temporary files
+*~
+\#*\#
+.\#*
+temp_file
+test-server.el
+md-roam-server-old.el
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Local development
+.env
+.env.local
+
+# Documentation (optional - remove if you want docs in container)
+CLAUDE.md
+
+# Nix build cache (will be rebuilt in container)
+.direnv/
+
+# Local org-roam data (should be mounted as volume)
+local-org-roam/
+
+# Backup files
+*.bak
+*.backup

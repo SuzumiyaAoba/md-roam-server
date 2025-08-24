@@ -1,0 +1,93 @@
+services:
+  md-roam-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: md-roam-server
+    ports:
+      - "8080:8080"   # REST API
+      - "35901:35901" # org-roam-ui
+    volumes:
+      - org-roam-data:/data/org-roam
+      - config-data:/root/.config/md-roam-server
+      # Optional: mount local org-roam directory (uncomment and modify path as needed)
+      # - ~/org-roam:/data/org-roam
+      # Optional: mount local config file (uncomment and modify path as needed)  
+      # - ~/.config/md-roam-server/config.yml:/root/.config/md-roam-server/config.yml:ro
+    environment:
+      - TZ=UTC
+      - EMACS_SERVER_EVAL_TIMEOUT=60
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - md-roam-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.md-roam-api.rule=Host(`md-roam-api.localhost`)"
+      - "traefik.http.routers.md-roam-api.entrypoints=web"
+      - "traefik.http.services.md-roam-api.loadbalancer.server.port=8080"
+      - "traefik.http.routers.md-roam-ui.rule=Host(`md-roam-ui.localhost`)"
+      - "traefik.http.routers.md-roam-ui.entrypoints=web"
+      - "traefik.http.services.md-roam-ui.loadbalancer.server.port=35901"
+
+  # Optional: Add reverse proxy for production
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8081:8080" # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - md-roam-network
+    profiles:
+      - production
+
+  # Optional: Add monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - md-roam-network
+    profiles:
+      - monitoring
+
+volumes:
+  org-roam-data:
+    driver: local
+    labels:
+      - "md-roam.data.type=org-roam"
+  config-data:
+    driver: local
+    labels:
+      - "md-roam.data.type=config"
+  prometheus-data:
+    driver: local
+
+networks:
+  md-roam-network:
+    driver: bridge
+    labels:
+      - "md-roam.network=main"
