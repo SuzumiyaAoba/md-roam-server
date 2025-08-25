@@ -205,6 +205,174 @@
      (md-roam-server--create-error-response 
       (format "Error deleting node: %s" (error-message-string err))))))
 
+(defun md-roam-server-get-node-backlinks (node-id)
+  "Get all nodes that link to the specified NODE-ID (backlinks)."
+  (condition-case err
+      (progn
+        ;; Ensure md-roam is properly configured
+        (unless (bound-and-true-p md-roam-mode)
+          (setq md-roam-file-extension "md")
+          (setq org-roam-file-extensions '("org" "md"))
+          (setq org-roam-title-sources '((title headline) (alias alias)))
+          (setq md-roam-use-org-extract-ref-links t)
+          (md-roam-mode 1))
+        ;; Ensure database is in the correct location
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        (org-roam-db-sync)
+        
+        ;; Check if node exists
+        (let* ((target-node (car (org-roam-db-query [:select [id title] :from nodes :where (= id $s1)] node-id))))
+          (if (not target-node)
+              (md-roam-server--create-error-response 
+               (format "Node with ID '%s' not found" node-id))
+            ;; Get backlinks from links table
+            (let* ((backlink-query (org-roam-db-query 
+                                   [:select [nodes.id nodes.title nodes.file nodes.level links.type]
+                                    :from links
+                                    :inner-join nodes :on (= links.source nodes.id)
+                                    :where (= links.dest $s1)]
+                                   node-id))
+                   (backlinks (mapcar (lambda (link)
+                                       (let ((id (nth 0 link))
+                                             (title (nth 1 link))
+                                             (file (nth 2 link))
+                                             (level (nth 3 link))
+                                             (link-type (nth 4 link)))
+                                         `((id . ,id)
+                                           (title . ,title)
+                                           (file . ,(file-relative-name file org-roam-directory))
+                                           (level . ,level)
+                                           (link_type . ,link-type))))
+                                     backlink-query)))
+              (md-roam-server--create-success-response
+               (format "Found %d backlinks for node" (length backlinks))
+               `((node_id . ,node-id)
+                 (backlinks . ,(if backlinks (vconcat backlinks) []))
+                 (count . ,(length backlinks))))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving backlinks: %s" (error-message-string err))))))
+
+(defun md-roam-server-get-node-links (node-id)
+  "Get all nodes that the specified NODE-ID links to (forward links)."
+  (condition-case err
+      (progn
+        ;; Ensure md-roam is properly configured
+        (unless (bound-and-true-p md-roam-mode)
+          (setq md-roam-file-extension "md")
+          (setq org-roam-file-extensions '("org" "md"))
+          (setq org-roam-title-sources '((title headline) (alias alias)))
+          (setq md-roam-use-org-extract-ref-links t)
+          (md-roam-mode 1))
+        ;; Ensure database is in the correct location
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        (org-roam-db-sync)
+        
+        ;; Check if node exists
+        (let* ((source-node (car (org-roam-db-query [:select [id title] :from nodes :where (= id $s1)] node-id))))
+          (if (not source-node)
+              (md-roam-server--create-error-response 
+               (format "Node with ID '%s' not found" node-id))
+            ;; Get forward links from links table
+            (let* ((forward-link-query (org-roam-db-query 
+                                       [:select [nodes.id nodes.title nodes.file nodes.level links.type]
+                                        :from links
+                                        :inner-join nodes :on (= links.dest nodes.id)
+                                        :where (= links.source $s1)]
+                                       node-id))
+                   (forward-links (mapcar (lambda (link)
+                                           (let ((id (nth 0 link))
+                                                 (title (nth 1 link))
+                                                 (file (nth 2 link))
+                                                 (level (nth 3 link))
+                                                 (link-type (nth 4 link)))
+                                             `((id . ,id)
+                                               (title . ,title)
+                                               (file . ,(file-relative-name file org-roam-directory))
+                                               (level . ,level)
+                                               (link_type . ,link-type))))
+                                         forward-link-query)))
+              (md-roam-server--create-success-response
+               (format "Found %d forward links from node" (length forward-links))
+               `((node_id . ,node-id)
+                 (links . ,(if forward-links (vconcat forward-links) []))
+                 (count . ,(length forward-links))))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving forward links: %s" (error-message-string err))))))
+
+(defun md-roam-server-get-node-aliases (node-id)
+  "Get aliases for the specified NODE-ID."
+  (condition-case err
+      (progn
+        ;; Ensure md-roam is properly configured
+        (unless (bound-and-true-p md-roam-mode)
+          (setq md-roam-file-extension "md")
+          (setq org-roam-file-extensions '("org" "md"))
+          (setq org-roam-title-sources '((title headline) (alias alias)))
+          (setq md-roam-use-org-extract-ref-links t)
+          (md-roam-mode 1))
+        ;; Ensure database is in the correct location
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        (org-roam-db-sync)
+        
+        ;; Check if node exists and get aliases
+        (let* ((node-query (org-roam-db-query [:select [id title] :from nodes :where (= id $s1)] node-id))
+               (node (car node-query)))
+          (if (not node)
+              (md-roam-server--create-error-response 
+               (format "Node with ID '%s' not found" node-id))
+            (let* ((title (nth 1 node))
+                   (aliases-query (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] node-id))
+                   (aliases (mapcar 'car aliases-query)))
+              (md-roam-server--create-success-response
+               (if (> (length aliases) 0)
+                   (format "Found %d aliases for node '%s'" (length aliases) title)
+                 (format "No aliases found for node '%s'" title))
+               `((id . ,node-id)
+                 (title . ,title)
+                 (aliases . ,(if aliases (vconcat aliases) []))
+                 (count . ,(length aliases))))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving aliases: %s" (error-message-string err))))))
+
+(defun md-roam-server-get-node-refs (node-id)
+  "Get refs for the specified NODE-ID."
+  (condition-case err
+      (progn
+        ;; Ensure md-roam is properly configured
+        (unless (bound-and-true-p md-roam-mode)
+          (setq md-roam-file-extension "md")
+          (setq org-roam-file-extensions '("org" "md"))
+          (setq org-roam-title-sources '((title headline) (alias alias)))
+          (setq md-roam-use-org-extract-ref-links t)
+          (md-roam-mode 1))
+        ;; Ensure database is in the correct location
+        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+        (org-roam-db-sync)
+        
+        ;; Check if node exists and get refs
+        (let* ((node-query (org-roam-db-query [:select [id title] :from nodes :where (= id $s1)] node-id))
+               (node (car node-query)))
+          (if (not node)
+              (md-roam-server--create-error-response 
+               (format "Node with ID '%s' not found" node-id))
+            (let* ((title (nth 1 node))
+                   (refs-query (org-roam-db-query [:select [ref] :from refs :where (= node-id $s1)] node-id))
+                   (refs (mapcar 'car refs-query)))
+              (md-roam-server--create-success-response
+               (if (> (length refs) 0)
+                   (format "Found %d refs for node '%s'" (length refs) title)
+                 (format "No refs found for node '%s'" title))
+               `((id . ,node-id)
+                 (title . ,title)
+                 (refs . ,(if refs (vconcat refs) []))
+                 (count . ,(length refs))))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving refs: %s" (error-message-string err))))))
+
 ;;; Node Endpoint Handlers
 
 (defun md-roam-server-handle-nodes (method path json-data)
@@ -220,6 +388,18 @@
      ((string-match "^/nodes/\\([^/]+\\)/content$" path)
       (let ((node-id (match-string 1 path)))
         (md-roam-server-get-node-content node-id)))
+     ((string-match "^/nodes/\\([^/]+\\)/backlinks$" path)
+      (let ((node-id (match-string 1 path)))
+        (md-roam-server-get-node-backlinks node-id)))
+     ((string-match "^/nodes/\\([^/]+\\)/links$" path)
+      (let ((node-id (match-string 1 path)))
+        (md-roam-server-get-node-links node-id)))
+     ((string-match "^/nodes/\\([^/]+\\)/aliases$" path)
+      (let ((node-id (match-string 1 path)))
+        (md-roam-server-get-node-aliases node-id)))
+     ((string-match "^/nodes/\\([^/]+\\)/refs$" path)
+      (let ((node-id (match-string 1 path)))
+        (md-roam-server-get-node-refs node-id)))
      (t
       (md-roam-server--create-error-response "Node endpoint not found"))))
    ((string= method "POST")
