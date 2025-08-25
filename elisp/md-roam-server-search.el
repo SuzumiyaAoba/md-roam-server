@@ -66,6 +66,210 @@
      (md-roam-server--create-error-response 
       (format "Error retrieving tags: %s" (error-message-string err))))))
 
+(defun md-roam-server-get-aliases ()
+  "Get all unique aliases with usage counts."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((alias-data (org-roam-db-query [:select [alias (funcall count alias)] :from aliases :group-by alias :order-by alias])))
+          (md-roam-server--create-success-response
+           "Aliases retrieved successfully"
+           `((aliases . ,(mapcar (lambda (alias-info)
+                                  (let ((alias (nth 0 alias-info))
+                                        (count (nth 1 alias-info)))
+                                    `((alias . ,alias)
+                                      (count . ,count)
+                                      (node_ids . ,(mapcar 'car (org-roam-db-query [:select [node-id] :from aliases :where (= alias $s1)] alias))))))
+                                alias-data))
+             (total_aliases . ,(length alias-data))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving aliases: %s" (error-message-string err))))))
+
+(defun md-roam-server-get-refs ()
+  "Get all unique refs with usage counts."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((refs-data (org-roam-db-query [:select [ref (funcall count ref)] :from refs :group-by ref :order-by ref])))
+          (md-roam-server--create-success-response
+           "Refs retrieved successfully"
+           `((refs . ,(mapcar (lambda (ref-info)
+                               (let ((ref (nth 0 ref-info))
+                                     (count (nth 1 ref-info)))
+                                 `((ref . ,ref)
+                                   (count . ,count)
+                                   (node_ids . ,(mapcar 'car (org-roam-db-query [:select [node-id] :from refs :where (= ref $s1)] ref))))))
+                             refs-data))
+             (total_refs . ,(length refs-data))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving refs: %s" (error-message-string err))))))
+
+(defun md-roam-server-get-citations ()
+  "Get all unique citations with usage counts."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let ((citations-data (org-roam-db-query [:select [cite-key (funcall count cite-key)] :from citations :group-by cite-key :order-by cite-key])))
+          (md-roam-server--create-success-response
+           "Citations retrieved successfully"
+           `((citations . ,(mapcar (lambda (citation-info)
+                                    (let ((citation (nth 0 citation-info))
+                                          (count (nth 1 citation-info)))
+                                      `((citation . ,citation)
+                                        (count . ,count)
+                                        (node_ids . ,(mapcar 'car (org-roam-db-query [:select [node-id] :from citations :where (= cite-key $s1)] citation))))))
+                                  citations-data))
+             (total_citations . ,(length citations-data))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving citations: %s" (error-message-string err))))))
+
+(defun md-roam-server-get-nodes-by-tag (tag)
+  "Get nodes that have the specified TAG."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let* ((decoded-tag (url-unhex-string tag))
+               (nodes (org-roam-db-query 
+                      [:select [nodes:id nodes:title nodes:file nodes:level]
+                       :from tags
+                       :inner-join nodes :on (= tags:node-id nodes:id)
+                       :where (= tags:tag $s1)
+                       :order-by nodes:title]
+                      decoded-tag)))
+          (md-roam-server--create-success-response
+           (if (> (length nodes) 0)
+               (format "Found %d nodes with tag '%s'" (length nodes) decoded-tag)
+             (format "No nodes found with tag '%s'" decoded-tag))
+           `((tag . ,decoded-tag)
+             (nodes . ,(mapcar (lambda (node)
+                                (let ((id (nth 0 node))
+                                      (title (nth 1 node))
+                                      (file (nth 2 node))
+                                      (level (nth 3 node)))
+                                  `((id . ,id)
+                                    (title . ,title)
+                                    (file . ,(file-relative-name file org-roam-directory))
+                                    (level . ,level)
+                                    (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
+                                    (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
+                              nodes))
+             (count . ,(length nodes))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving nodes by tag: %s" (error-message-string err))
+      `((tag . ,tag))))))
+
+(defun md-roam-server-get-nodes-by-alias (alias)
+  "Get nodes that have the specified ALIAS."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let* ((decoded-alias (url-unhex-string alias))
+               (nodes (org-roam-db-query 
+                      [:select [nodes:id nodes:title nodes:file nodes:level]
+                       :from aliases
+                       :inner-join nodes :on (= aliases:node-id nodes:id)
+                       :where (= aliases:alias $s1)
+                       :order-by nodes:title]
+                      decoded-alias)))
+          (md-roam-server--create-success-response
+           (if (> (length nodes) 0)
+               (format "Found %d nodes with alias '%s'" (length nodes) decoded-alias)
+             (format "No nodes found with alias '%s'" decoded-alias))
+           `((alias . ,decoded-alias)
+             (nodes . ,(mapcar (lambda (node)
+                                (let ((id (nth 0 node))
+                                      (title (nth 1 node))
+                                      (file (nth 2 node))
+                                      (level (nth 3 node)))
+                                  `((id . ,id)
+                                    (title . ,title)
+                                    (file . ,(file-relative-name file org-roam-directory))
+                                    (level . ,level)
+                                    (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
+                                    (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
+                              nodes))
+             (count . ,(length nodes))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving nodes by alias: %s" (error-message-string err))
+      `((alias . ,alias))))))
+
+(defun md-roam-server-get-nodes-by-ref (ref)
+  "Get nodes that have the specified REF."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let* ((decoded-ref (url-unhex-string ref))
+               (nodes (org-roam-db-query 
+                      [:select [nodes:id nodes:title nodes:file nodes:level]
+                       :from refs
+                       :inner-join nodes :on (= refs:node-id nodes:id)
+                       :where (= refs:ref $s1)
+                       :order-by nodes:title]
+                      decoded-ref)))
+          (md-roam-server--create-success-response
+           (if (> (length nodes) 0)
+               (format "Found %d nodes with ref '%s'" (length nodes) decoded-ref)
+             (format "No nodes found with ref '%s'" decoded-ref))
+           `((ref . ,decoded-ref)
+             (nodes . ,(mapcar (lambda (node)
+                                (let ((id (nth 0 node))
+                                      (title (nth 1 node))
+                                      (file (nth 2 node))
+                                      (level (nth 3 node)))
+                                  `((id . ,id)
+                                    (title . ,title)
+                                    (file . ,(file-relative-name file org-roam-directory))
+                                    (level . ,level)
+                                    (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
+                                    (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
+                              nodes))
+             (count . ,(length nodes))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving nodes by ref: %s" (error-message-string err))
+      `((ref . ,ref))))))
+
+(defun md-roam-server-get-nodes-by-citation (citation)
+  "Get nodes that have the specified CITATION."
+  (condition-case err
+      (progn
+        (md-roam-server-init-org-roam)
+        (let* ((decoded-citation (url-unhex-string citation))
+               (nodes (org-roam-db-query 
+                      [:select [nodes:id nodes:title nodes:file nodes:level]
+                       :from citations
+                       :inner-join nodes :on (= citations:node-id nodes:id)
+                       :where (= citations:cite-key $s1)
+                       :order-by nodes:title]
+                      decoded-citation)))
+          (md-roam-server--create-success-response
+           (if (> (length nodes) 0)
+               (format "Found %d nodes with citation '%s'" (length nodes) decoded-citation)
+             (format "No nodes found with citation '%s'" decoded-citation))
+           `((citation . ,decoded-citation)
+             (nodes . ,(mapcar (lambda (node)
+                                (let ((id (nth 0 node))
+                                      (title (nth 1 node))
+                                      (file (nth 2 node))
+                                      (level (nth 3 node)))
+                                  `((id . ,id)
+                                    (title . ,title)
+                                    (file . ,(file-relative-name file org-roam-directory))
+                                    (level . ,level)
+                                    (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
+                                    (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
+                              nodes))
+             (count . ,(length nodes))))))
+    (error
+     (md-roam-server--create-error-response 
+      (format "Error retrieving nodes by citation: %s" (error-message-string err))
+      `((citation . ,citation))))))
+
 (defun md-roam-server-get-stats ()
   "Get statistics about the org-roam database."
   (condition-case err
@@ -139,6 +343,24 @@
         (md-roam-server-search-nodes query)))
      ((string= path "/tags")
       (md-roam-server-get-tags))
+     ((string= path "/aliases")
+      (md-roam-server-get-aliases))
+     ((string= path "/refs")
+      (md-roam-server-get-refs))
+     ((string= path "/citations")
+      (md-roam-server-get-citations))
+     ((string-match "^/tags/\\([^/]+\\)/nodes$" path)
+      (let ((tag (match-string 1 path)))
+        (md-roam-server-get-nodes-by-tag tag)))
+     ((string-match "^/aliases/\\([^/]+\\)/nodes$" path)
+      (let ((alias (match-string 1 path)))
+        (md-roam-server-get-nodes-by-alias alias)))
+     ((string-match "^/refs/\\([^/]+\\)/nodes$" path)
+      (let ((ref (match-string 1 path)))
+        (md-roam-server-get-nodes-by-ref ref)))
+     ((string-match "^/citations/\\([^/]+\\)/nodes$" path)
+      (let ((citation (match-string 1 path)))
+        (md-roam-server-get-nodes-by-citation citation)))
      ((string= path "/stats")
       (md-roam-server-get-stats))
      ((string= path "/config")
