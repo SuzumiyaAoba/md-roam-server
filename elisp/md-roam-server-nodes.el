@@ -359,8 +359,11 @@
               (md-roam-server--create-error-response 
                (format "Node with ID '%s' not found" node-id))
             (let* ((title (nth 1 node))
-                   (refs-query (org-roam-db-query [:select [ref] :from refs :where (= node-id $s1)] node-id))
-                   (refs (mapcar 'car refs-query)))
+                   (refs-query (org-roam-db-query [:select [ref type] :from refs :where (= node-id $s1)] node-id))
+                   (refs (mapcar (lambda (ref-row)
+                                   `((ref . ,(nth 0 ref-row))
+                                     (type . ,(nth 1 ref-row))))
+                                 refs-query)))
               (md-roam-server--create-success-response
                (if (> (length refs) 0)
                    (format "Found %d refs for node '%s'" (length refs) title)

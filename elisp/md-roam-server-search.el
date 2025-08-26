@@ -91,15 +91,17 @@
   (condition-case err
       (progn
         (md-roam-server-init-org-roam)
-        (let ((refs-data (org-roam-db-query [:select [ref (funcall count ref)] :from refs :group-by ref :order-by ref])))
+        (let ((refs-data (org-roam-db-query [:select [ref type (funcall count ref)] :from refs :group-by [ref type] :order-by ref])))
           (md-roam-server--create-success-response
            "Refs retrieved successfully"
            `((refs . ,(mapcar (lambda (ref-info)
                                (let ((ref (nth 0 ref-info))
-                                     (count (nth 1 ref-info)))
+                                     (type (nth 1 ref-info))
+                                     (count (nth 2 ref-info)))
                                  `((ref . ,ref)
+                                   (type . ,type)
                                    (count . ,count)
-                                   (node_ids . ,(mapcar 'car (org-roam-db-query [:select [node-id] :from refs :where (= ref $s1)] ref))))))
+                                   (node_ids . ,(mapcar 'car (org-roam-db-query [:select [node-id] :from refs :where (and (= ref $s1) (= type $s2))] ref type))))))
                              refs-data))
              (total_refs . ,(length refs-data))))))
     (error
@@ -205,7 +207,7 @@
         (md-roam-server-init-org-roam)
         (let* ((decoded-ref (url-unhex-string ref))
                (nodes (org-roam-db-query 
-                      [:select [nodes:id nodes:title nodes:file nodes:level]
+                      [:select [nodes:id nodes:title nodes:file nodes:level refs:type]
                        :from refs
                        :inner-join nodes :on (= refs:node-id nodes:id)
                        :where (= refs:ref $s1)
@@ -220,11 +222,13 @@
                                 (let ((id (nth 0 node))
                                       (title (nth 1 node))
                                       (file (nth 2 node))
-                                      (level (nth 3 node)))
+                                      (level (nth 3 node))
+                                      (ref-type (nth 4 node)))
                                   `((id . ,id)
                                     (title . ,title)
                                     (file . ,(file-relative-name file org-roam-directory))
                                     (level . ,level)
+                                    (ref_type . ,ref-type)
                                     (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
                                     (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
                               nodes))
