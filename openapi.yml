@@ -21,7 +21,7 @@ info:
     - Docker containerization with volume mounting
     - Modular Emacs Lisp architecture
     
-  version: 2.1.0
+  version: 2.2.0
   contact:
     name: md-roam-server
     url: https://github.com/your-repo/md-roam-server
@@ -712,6 +712,11 @@ components:
           nullable: true
           description: List of aliases
           example: ["Example", "Sample Note"]
+        ref_type:
+          type: string
+          nullable: true
+          description: Reference type (only present for nodes retrieved via refs endpoints)
+          example: "website"
 
     # Request Schemas
     CreateNodeRequest:
@@ -1262,8 +1267,19 @@ components:
             refs:
               type: array
               items:
-                type: string
-              example: ["https://example.com", "https://github.com/user/repo"]
+                type: object
+                properties:
+                  ref:
+                    type: string
+                    example: "https://example.com"
+                  type:
+                    type: string
+                    example: "website"
+              example: 
+                - ref: "https://example.com"
+                  type: "website"
+                - ref: "https://github.com/user/repo"
+                  type: "repository"
             count:
               type: integer
               example: 2
@@ -1281,6 +1297,9 @@ components:
                   ref:
                     type: string
                     example: "https://example.com"
+                  type:
+                    type: string
+                    example: "website"
                   count:
                     type: integer
                     example: 5
