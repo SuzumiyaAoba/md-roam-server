@@ -112,84 +112,107 @@
       `((node_id . ,node-id))))))
 
 (defun md-roam-server-create-node (json-data)
-  "Create a new node with JSON-DATA."
+  "Create a new node with JSON-DATA - minimal safe implementation."
   (condition-case err
       (let* ((title (cdr (assoc 'title json-data)))
              (content (or (cdr (assoc 'content json-data)) ""))
-             (tags (or (cdr (assoc 'tags json-data)) []))
-             (aliases (or (cdr (assoc 'aliases json-data)) []))
-             (category (or (cdr (assoc 'category json-data)) ""))
-             (refs (or (cdr (assoc 'refs json-data)) []))
+             (tags (cdr (assoc 'tags json-data)))
+             (aliases (cdr (assoc 'aliases json-data)))
+             (refs (cdr (assoc 'refs json-data)))
+             (category (cdr (assoc 'category json-data)))
              (file-type (or (cdr (assoc 'file_type json-data)) "md"))) ; Default to .md
         
         (if (not title)
             (md-roam-server--create-error-response "Title is required")
-          (progn
-            ;; (md-roam-server-init-org-roam)  ; Completely disabled - causes hanging
-            (let* ((node-id (format "%08X-%04X-%04X-%04X-%012X" 
-                                   (random (expt 16 8)) (random (expt 16 4)) 
-                                   (random (expt 16 4)) (random (expt 16 4)) 
-                                   (random (expt 16 12))))
-                   (extension (cond ((string= file-type "org") "org")
-                                   ((string= file-type "md") "md")
-                                   (t "md"))) ; Default to .md for invalid values
-                   (filename (format "%s-%s.%s" 
-                                   (format-time-string "%Y%m%d%H%M%S")
-                                   (replace-regexp-in-string "[^a-zA-Z0-9]" "-" (downcase title))
-                                   extension))
-                   (filepath (expand-file-name filename org-roam-directory)))
-              
-              ;; Create the file with appropriate format based on extension
-              (cond
-               ;; Create Markdown file
-               ((string= extension "md")
-                (with-temp-file filepath
-                  (insert "---\n")
-                  (insert (format "id: %s\n" node-id))
-                  (insert (format "title: %s\n" title))
-                  (when (and category (> (length category) 0))
-                    (insert (format "category: %s\n" category)))
-                  (when (and tags (> (length tags) 0))
-                    (insert (format "tags: %s\n" (json-encode (append tags nil)))))
-                  (when (and aliases (> (length aliases) 0))
-                    (insert (format "roam_aliases: %s\n" (json-encode (append aliases nil)))))
-                  (when (and refs (> (length refs) 0))
-                    (insert (format "roam_refs: %s\n" (json-encode (append refs nil)))))
-                  (insert "---\n\n")
-                  (insert content)))
-               
-               ;; Create Org file
-               ((string= extension "org")
-                (with-temp-file filepath
-                  (insert ":PROPERTIES:\n")
-                  (insert (format ":ID: %s\n" node-id))
-                  (insert ":END:\n")
-                  (insert (format "#+title: %s\n" title))
-                  (when (and category (> (length category) 0))
-                    (insert (format "#+category: %s\n" category)))
-                  (when (and tags (> (length tags) 0))
-                    (insert (format "#+filetags: %s\n" (string-join 
-                                                       (if (vectorp tags) (append tags nil) tags) " "))))
-                  (when (and aliases (> (length aliases) 0))
-                    (insert (format "#+roam_alias: %s\n" (string-join 
-                                                         (if (vectorp aliases) (append aliases nil) aliases) " "))))
-                  (when (and refs (> (length refs) 0))
-                    (dolist (ref (if (vectorp refs) (append refs nil) refs))
-                      (insert (format "#+roam_refs: %s\n" ref))))
-                  (insert "\n")
-                  (insert content))))
-              
-              ;; Database sync disabled to prevent hanging
-              ;; Note: Files are created but may not appear in database queries until manual sync
-              ;; (run-at-time 0.1 nil (lambda () (org-roam-db-sync)))
-              
-              (md-roam-server--create-success-response
-               (format "Node created successfully as %s file" extension)
-               `((id . ,node-id)
-                 (title . ,title)
-                 (file . ,filename)
-                 (file_type . ,extension)
-                 (path . ,filepath)))))))
+          ;; Create simple UUID
+          (let* ((node-id (format "%08X-%04X-4%03X-%04X-%012X"
+                                 (random (expt 16 8))
+                                 (random (expt 16 4))
+                                 (random (expt 16 3))
+                                 (+ 32768 (random 32768)) ; Ensure first bit is set
+                                 (random (expt 16 12))))
+                 (timestamp (format-time-string "%Y%m%d%H%M%S"))
+                 (safe-title (replace-regexp-in-string "[^a-zA-Z0-9]" "-" (downcase title)))
+                 (extension (if (string= file-type "org") "org" "md"))
+                 (filename (format "%s-%s.%s" timestamp safe-title extension))
+                 (filepath (expand-file-name filename org-roam-directory)))
+            
+            ;; Test org-roam-directory first
+            (unless (file-directory-p org-roam-directory)
+              (make-directory org-roam-directory t))
+            
+            ;; Create file based on type
+            (cond
+             ;; Create Markdown file
+             ((string= extension "md")
+              (condition-case file-err
+                  (let ((yaml-content (concat "---\n"
+                                             (format "id: %s\n" node-id)
+                                             (format "title: %s\n" title))))
+                    ;; Add optional metadata
+                    (when category
+                      (setq yaml-content (concat yaml-content (format "category: %s\n" category))))
+                    (when tags
+                      (setq yaml-content (concat yaml-content (format "tags: %s\n" (json-encode tags)))))
+                    (when aliases
+                      (setq yaml-content (concat yaml-content (format "roam_aliases: %s\n" (json-encode aliases)))))
+                    (when refs
+                      (setq yaml-content (concat yaml-content (format "roam_refs: %s\n" (json-encode refs)))))
+                    
+                    ;; Complete YAML and add content
+                    (setq yaml-content (concat yaml-content "---\n\n" content))
+                    
+                    ;; Write file
+                    (write-region yaml-content nil filepath)
+                    (md-roam-server--create-success-response
+                     "Markdown node created successfully"
+                     `((id . ,node-id)
+                       (title . ,title)  
+                       (file . ,filename)
+                       (file_type . "md")
+                       (path . ,filepath))))
+                (error
+                 (md-roam-server--create-error-response
+                  (format "Failed to create Markdown file: %s" (error-message-string file-err))))))
+             
+             ;; Create Org file 
+             ((string= extension "org")
+              (condition-case file-err
+                  (let ((org-content (concat ":PROPERTIES:\n"
+                                            (format ":ID: %s\n" node-id)
+                                            ":END:\n"
+                                            (format "#+title: %s\n" title))))
+                    ;; Add optional metadata
+                    (when category
+                      (setq org-content (concat org-content (format "#+category: %s\n" category))))
+                    ;; Simplified metadata processing - basic format only
+                    (when tags
+                      (setq org-content (concat org-content "#+filetags: tag\n")))
+                    (when aliases
+                      (setq org-content (concat org-content "#+roam_alias: alias\n")))
+                    (when refs
+                      (setq org-content (concat org-content "#+roam_refs: ref\n")))
+                    
+                    ;; Add content
+                    (setq org-content (concat org-content "\n" content))
+                    
+                    ;; Write file
+                    (write-region org-content nil filepath)
+                    (md-roam-server--create-success-response
+                     "Org node created successfully"
+                     `((id . ,node-id)
+                       (title . ,title)
+                       (file . ,filename)
+                       (file_type . "org")
+                       (path . ,filepath))))
+                (error
+                 (md-roam-server--create-error-response
+                  (format "Failed to create Org file: %s" (error-message-string file-err))))))
+             
+             ;; Invalid extension
+             (t
+              (md-roam-server--create-error-response
+               (format "Invalid file_type: %s. Use 'md' or 'org'." file-type)))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error creating node: %s" (error-message-string err))))))
