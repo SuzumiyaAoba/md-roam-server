@@ -81,7 +81,9 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 - File type detection returning "md", "org", or "unknown"
 
 **Complete CRUD Operations:**
-- Node creation with YAML front matter generation (`POST /nodes`)
+- Node creation with file format selection (`POST /nodes`) - supports both .md and .org
+- Full metadata support for Markdown files (tags, aliases, refs, category)
+- Basic metadata support for Org files (category, simplified tags/aliases/refs)
 - Node updates with file rewriting (`PUT /nodes/:id`)
 - Safe node deletion with security validation (`DELETE /nodes/:id`)
 - Complete metadata and content management
@@ -154,9 +156,20 @@ curl http://localhost:8080/stats
 
 **Create Node via API:**
 ```bash
+# Create Markdown file (default, full metadata support)
 curl -X POST http://localhost:8080/nodes \
   -H "Content-Type: application/json" \
-  -d '{"title": "Test Note", "category": "#test", "tags": ["example"], "content": "Note content"}'
+  -d '{"title": "Test Note", "content": "Note content", "tags": ["example"], "aliases": ["Test"], "refs": ["https://example.com"], "category": "test", "file_type": "md"}'
+
+# Create Org file (basic metadata support)
+curl -X POST http://localhost:8080/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Org Note", "content": "Org content", "tags": ["org"], "category": "test", "file_type": "org"}'
+
+# Simple node creation (defaults to Markdown)
+curl -X POST http://localhost:8080/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Simple Note", "content": "Basic content"}'
 ```
 
 **Update Node via API:**
@@ -196,13 +209,16 @@ pkill -f "emacs.*start-server.el"
 - Network process management with proper cleanup
 
 **Node ID Handling:**
-- Uses `org-id-new` for UUID generation (not `org-roam-node-generate-id`)
+- Uses safe UUID v4 generation with fallback implementation
+- Custom UUID format: `XXXXXXXX-XXXX-4XXX-XXXX-XXXXXXXXXXXX` with proper version bits
 - Node IDs are returned in arrays for aggregation endpoints
 - Path parameter extraction handles URL-encoded values
 
 **File Operations:**
-- Markdown files use YAML front matter with specific field names: `roam_aliases`, `roam_refs`
+- **Markdown files (.md)**: Full YAML front matter support with `id`, `title`, `tags`, `roam_aliases`, `roam_refs`, `category`
+- **Org files (.org)**: Properties drawer (`:ID:`) + org keywords (`#+title`, `#+category`, `#+filetags`, `#+roam_alias`, `#+roam_refs`)
 - File content endpoint includes path traversal protection
+- Safe file creation using `write-region` instead of `with-temp-file`
 - Raw file listing shows physical files vs database nodes
 - File parsing endpoint supports both Markdown (YAML) and Org mode (properties) formats
 - Database queries used for search and citations instead of file parsing
@@ -217,8 +233,11 @@ pkill -f "emacs.*start-server.el"
 - Complete database schema utilization (nodes, links, tags, aliases, refs, citations)
 
 **Error Handling:**
+- Comprehensive `condition-case` error handling for all file operations
 - Consistent error response format across all endpoints
 - Graceful handling of missing nodes, files, and database issues
+- Safe directory creation and validation before file operations
+- Proper HTTP status codes: 200 (success), 201 (created), 400 (client error), 500 (server error)
 - Port conflict resolution (kill existing processes on 8080)
 
 **Testing Requirements:**

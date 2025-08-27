@@ -4,7 +4,9 @@ HTTP REST API server that exposes org-roam and md-roam functionality for buildin
 
 ## Features
 
-- **Complete CRUD Operations**: Create, read, update, and delete nodes with full metadata support
+- **Complete CRUD Operations**: Create, read, update, and delete nodes with file format selection (.md/.org)
+- **Full Metadata Support**: Complete metadata for Markdown files (tags, aliases, refs, category)
+- **Basic Metadata Support**: Essential metadata for Org files (category, simplified tags/aliases/refs)
 - **Bidirectional Links**: org-roam's signature backlink and forward link discovery
 - **Unified File Support**: Both Org-mode (.org) and Markdown (.md) files via [md-roam](https://github.com/nobiot/md-roam)
 - **Database-Driven**: Uses org-roam SQLite database for fast queries and search
@@ -1387,10 +1389,20 @@ curl -X POST http://localhost:8080/nodes/YOUR_NODE_ID/categories \
 # Remove category from node endpoint
 curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID/categories/old-category
 
-# Create new node endpoint
+# Create new node endpoint - Markdown (full metadata support)
 curl -X POST http://localhost:8080/nodes \
   -H "Content-Type: application/json" \
-  -d '{"title": "Test Note", "category": "#testing #example", "tags": ["test"], "aliases": ["Testing"], "refs": ["https://example.com"], "content": "This is a test note."}'
+  -d '{"title": "Test Note", "content": "This is a test note.", "tags": ["test"], "aliases": ["Testing"], "refs": ["https://example.com"], "category": "testing", "file_type": "md"}'
+
+# Create new node endpoint - Org file (basic metadata support) 
+curl -X POST http://localhost:8080/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Org Note", "content": "This is an org note.", "tags": ["org"], "category": "testing", "file_type": "org"}'
+
+# Create simple node (defaults to Markdown)
+curl -X POST http://localhost:8080/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Simple Note", "content": "Basic content"}'
 
 ```
 
@@ -1479,3 +1491,29 @@ curl http://localhost:8080/ui
   }
 }
 ```
+
+## Recent Updates
+
+### File Format Selection Support
+
+The server now supports creating both Markdown (.md) and Org (.org) files with the new `file_type` parameter:
+
+**Key Features:**
+- **Markdown Files**: Full metadata support including tags, aliases, refs, and category using YAML front matter
+- **Org Files**: Basic metadata support with Properties drawer and org-mode keywords  
+- **Default Behavior**: Creates Markdown files when `file_type` is not specified
+- **Safe Implementation**: Uses `write-region` with comprehensive error handling for reliable file creation
+
+**Implementation Improvements:**
+- Fixed HTTP request parsing for POST requests with JSON payloads
+- Added proper UUID v4 generation with version bits
+- Comprehensive error handling with condition-case blocks
+- Immediate HTTP responses (no more timeouts)
+- Safe directory creation and validation
+
+**API Changes:**
+- Added `file_type` parameter: `"md"` (default) or `"org"`
+- Enhanced error responses with detailed error information
+- Improved JSON encoding for metadata arrays (tags, aliases, refs)
+
+This update resolves all previous issues with node creation and provides a robust foundation for both file formats.
