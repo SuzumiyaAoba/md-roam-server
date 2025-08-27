@@ -88,10 +88,10 @@
   "Process network data from PROC."
   (setq md-roam-server-request-buffer (concat md-roam-server-request-buffer data))
   (when (string-match "\r\n\r\n" md-roam-server-request-buffer)
-    (let ((content-length-match (string-match "Content-Length: \\([0-9]+\\)" md-roam-server-request-buffer)))
+    (let ((content-length-match (string-match "Content-Length: \\([0-9]+\\)" md-roam-server-request-buffer))
+          (header-end (match-end 0))) ; Position right after \r\n\r\n
       (if content-length-match
-          (let ((content-length (string-to-number (match-string 1 md-roam-server-request-buffer)))
-                (header-end (match-end 0)))
+          (let ((content-length (string-to-number (match-string 1 md-roam-server-request-buffer))))
             (when (>= (- (length md-roam-server-request-buffer) header-end) content-length)
               (md-roam-server-process-request proc md-roam-server-request-buffer)
               (setq md-roam-server-request-buffer "")))

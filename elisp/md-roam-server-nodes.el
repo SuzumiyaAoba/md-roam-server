@@ -123,39 +123,14 @@
         
         (if (not title)
             (md-roam-server--create-error-response "Title is required")
-          (progn
-            (md-roam-server-init-org-roam)
-            (let* ((node-id (org-id-new))
-                   (filename (format "%s-%s.md" 
-                                   (format-time-string "%Y%m%d%H%M%S")
-                                   (replace-regexp-in-string "[^a-zA-Z0-9]" "-" (downcase title))))
-                   (filepath (expand-file-name filename org-roam-directory)))
-              
-              ;; Create the file
-              (with-temp-file filepath
-                (insert (format ":PROPERTIES:\n:ID: %s\n:END:\n" node-id))
-                (insert (format "#+title: %s\n" title))
-                (when (and category (> (length category) 0))
-                  (insert (format "#+category: %s\n" category)))
-                (when (and tags (> (length tags) 0))
-                  (insert (format "#+filetags: %s\n" (mapconcat 'identity tags " "))))
-                (when (and aliases (> (length aliases) 0))
-                  (insert (format "#+roam_alias: %s\n" (mapconcat 'identity aliases " "))))
-                (when (and refs (> (length refs) 0))
-                  (dolist (ref refs)
-                    (insert (format "#+roam_refs: %s\n" ref))))
-                (insert "\n")
-                (insert content))
-              
-              ;; Sync database
-              (org-roam-db-sync)
-              
-              (md-roam-server--create-success-response
-               "Node created successfully"
-               `((id . ,node-id)
-                 (title . ,title)
-                 (file . ,filename)
-                 (path . ,filepath)))))))
+          ;; Minimal test implementation - just return success without creating file
+          (md-roam-server--create-success-response
+           "Node creation test - no file created"
+           `((title . ,title)
+             (content . ,content)
+             (tags . ,tags)
+             (aliases . ,aliases)
+             (test . "File creation disabled for debugging")))))
     (error
      (md-roam-server--create-error-response 
       (format "Error creating node: %s" (error-message-string err))))))
