@@ -1,6 +1,6 @@
 # md-roam-server Docker Makefile
 
-.PHONY: help build run stop logs shell test clean dev prod
+.PHONY: help build run stop logs shell test clean dev prod e2e e2e-watch e2e-coverage e2e-setup e2e-clean
 
 # Default target
 help:
@@ -24,8 +24,11 @@ help:
 	@echo "  make shell     - Open shell in container"
 	@echo ""
 	@echo "🧪 Testing Commands:"
-	@echo "  make test      - Test API endpoints"
+	@echo "  make test      - Test API endpoints (basic)"
 	@echo "  make test-ui   - Test UI accessibility"
+	@echo "  make e2e       - Run E2E test suite"
+	@echo "  make e2e-watch - Run E2E tests in watch mode"
+	@echo "  make e2e-coverage - Run E2E tests with coverage"
 	@echo ""
 	@echo "🧹 Cleanup Commands:"
 	@echo "  make clean     - Clean up containers and images"
@@ -140,6 +143,43 @@ monitor:
 	docker compose --profile monitoring up -d
 	@echo "✅ Monitoring started!"
 	@echo "   📊 Prometheus: http://localhost:9090"
+
+# E2E Testing commands
+e2e:
+	@echo "🧪 Running E2E test suite..."
+	@echo "🚀 Starting server for testing..."
+	@make dev
+	@sleep 3
+	@echo "📋 Running TypeScript E2E tests..."
+	@cd tests && npm test
+	@echo "✅ E2E tests completed"
+
+e2e-watch:
+	@echo "🧪 Running E2E tests in watch mode..."
+	@echo "🚀 Starting server for testing..."
+	@make dev
+	@sleep 3
+	@echo "👀 Running tests in watch mode (Ctrl+C to stop)..."
+	@cd tests && npm run test:watch
+
+e2e-coverage:
+	@echo "🧪 Running E2E tests with coverage report..."
+	@echo "🚀 Starting server for testing..."
+	@make dev
+	@sleep 3
+	@echo "📊 Running tests with coverage..."
+	@cd tests && npm run test:coverage
+	@echo "📄 Coverage report available in tests/coverage/"
+
+e2e-setup:
+	@echo "🔧 Setting up E2E test dependencies..."
+	@cd tests && npm install
+	@echo "✅ E2E test setup completed"
+
+e2e-clean:
+	@echo "🧹 Cleaning E2E test environment..."
+	@cd tests && rm -rf node_modules coverage .vitest
+	@echo "✅ E2E test cleanup completed"
 
 # Quick development cycle
 dev-cycle: stop build dev logs
