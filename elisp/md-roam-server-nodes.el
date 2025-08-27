@@ -119,18 +119,77 @@
              (tags (or (cdr (assoc 'tags json-data)) []))
              (aliases (or (cdr (assoc 'aliases json-data)) []))
              (category (or (cdr (assoc 'category json-data)) ""))
-             (refs (or (cdr (assoc 'refs json-data)) [])))
+             (refs (or (cdr (assoc 'refs json-data)) []))
+             (file-type (or (cdr (assoc 'file_type json-data)) "md"))) ; Default to .md
         
         (if (not title)
             (md-roam-server--create-error-response "Title is required")
-          ;; Minimal test implementation - just return success without creating file
-          (md-roam-server--create-success-response
-           "Node creation test - no file created"
-           `((title . ,title)
-             (content . ,content)
-             (tags . ,tags)
-             (aliases . ,aliases)
-             (test . "File creation disabled for debugging")))))
+          (progn
+            ;; (md-roam-server-init-org-roam)  ; Completely disabled - causes hanging
+            (let* ((node-id (format "%08X-%04X-%04X-%04X-%012X" 
+                                   (random (expt 16 8)) (random (expt 16 4)) 
+                                   (random (expt 16 4)) (random (expt 16 4)) 
+                                   (random (expt 16 12))))
+                   (extension (cond ((string= file-type "org") "org")
+                                   ((string= file-type "md") "md")
+                                   (t "md"))) ; Default to .md for invalid values
+                   (filename (format "%s-%s.%s" 
+                                   (format-time-string "%Y%m%d%H%M%S")
+                                   (replace-regexp-in-string "[^a-zA-Z0-9]" "-" (downcase title))
+                                   extension))
+                   (filepath (expand-file-name filename org-roam-directory)))
+              
+              ;; Create the file with appropriate format based on extension
+              (cond
+               ;; Create Markdown file
+               ((string= extension "md")
+                (with-temp-file filepath
+                  (insert "---\n")
+                  (insert (format "id: %s\n" node-id))
+                  (insert (format "title: %s\n" title))
+                  (when (and category (> (length category) 0))
+                    (insert (format "category: %s\n" category)))
+                  (when (and tags (> (length tags) 0))
+                    (insert (format "tags: %s\n" (json-encode (append tags nil)))))
+                  (when (and aliases (> (length aliases) 0))
+                    (insert (format "roam_aliases: %s\n" (json-encode (append aliases nil)))))
+                  (when (and refs (> (length refs) 0))
+                    (insert (format "roam_refs: %s\n" (json-encode (append refs nil)))))
+                  (insert "---\n\n")
+                  (insert content)))
+               
+               ;; Create Org file
+               ((string= extension "org")
+                (with-temp-file filepath
+                  (insert ":PROPERTIES:\n")
+                  (insert (format ":ID: %s\n" node-id))
+                  (insert ":END:\n")
+                  (insert (format "#+title: %s\n" title))
+                  (when (and category (> (length category) 0))
+                    (insert (format "#+category: %s\n" category)))
+                  (when (and tags (> (length tags) 0))
+                    (insert (format "#+filetags: %s\n" (string-join 
+                                                       (if (vectorp tags) (append tags nil) tags) " "))))
+                  (when (and aliases (> (length aliases) 0))
+                    (insert (format "#+roam_alias: %s\n" (string-join 
+                                                         (if (vectorp aliases) (append aliases nil) aliases) " "))))
+                  (when (and refs (> (length refs) 0))
+                    (dolist (ref (if (vectorp refs) (append refs nil) refs))
+                      (insert (format "#+roam_refs: %s\n" ref))))
+                  (insert "\n")
+                  (insert content))))
+              
+              ;; Database sync disabled to prevent hanging
+              ;; Note: Files are created but may not appear in database queries until manual sync
+              ;; (run-at-time 0.1 nil (lambda () (org-roam-db-sync)))
+              
+              (md-roam-server--create-success-response
+               (format "Node created successfully as %s file" extension)
+               `((id . ,node-id)
+                 (title . ,title)
+                 (file . ,filename)
+                 (file_type . ,extension)
+                 (path . ,filepath)))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error creating node: %s" (error-message-string err))))))

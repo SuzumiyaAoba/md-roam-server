@@ -30,6 +30,9 @@
 (defvar md-roam-server-request-buffer ""
   "Buffer to accumulate request data.")
 
+(defvar md-roam-server-initialized nil
+  "Whether org-roam has been initialized for the server.")
+
 ;;; Configuration Management
 
 (defvar md-roam-server-config-file 
@@ -147,10 +150,27 @@
         (append response data)
       response)))
 
+(defun md-roam-server--generate-node-id ()
+  "Generate a safe UUID for node ID without relying on org-id-new."
+  (condition-case nil
+      (org-id-new)
+    (error
+     ;; Fallback to simple UUID generation if org-id-new fails
+     (let ((chars "ABCDEF0123456789"))
+       (format "%s%s%s%s-%s%s-%s%s-%s%s-%s%s%s%s%s%s"
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16))
+               (aref chars (random 16)) (aref chars (random 16)))))))
+
 (defun md-roam-server-init-org-roam ()
   "Initialize org-roam database and ensure it's ready."
   (condition-case err
-      (progn
+      (when (not md-roam-server-initialized)
         ;; Setup md-roam for Markdown file support
         (setq md-roam-file-extension "md")
         (setq org-roam-file-extensions '("org" "md"))
@@ -159,8 +179,9 @@
         ;; Configure md-roam to use YAML front matter
         (setq md-roam-use-org-extract-ref-links t)
         
-        ;; Initialize md-roam
-        (md-roam-mode 1)
+        ;; Initialize md-roam only if not already enabled
+        (unless (bound-and-true-p md-roam-mode)
+          (md-roam-mode 1))
         
         (message "md-roam mode enabled with file extensions: %s" org-roam-file-extensions)
         
@@ -170,12 +191,15 @@
         ;; Ensure database is in the same directory as the notes
         (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
         
-        (message "Syncing org-roam database for directory: %s" org-roam-directory)
-        (message "Database location: %s" org-roam-db-location)
-        (org-roam-db-sync)
+        ;; Skip database sync if already initialized at server startup
+        ;; (message "Syncing org-roam database for directory: %s" org-roam-directory)
+        ;; (message "Database location: %s" org-roam-db-location)
+        ;; (org-roam-db-sync)
         
         (let ((node-count (caar (org-roam-db-query "SELECT COUNT(*) FROM nodes"))))
-          (message "org-roam initialized: %s (%d nodes)" org-roam-directory node-count)))
+          (message "org-roam reinitialized: %s (%d nodes)" org-roam-directory node-count))
+          
+        (setq md-roam-server-initialized t))
     (error
      (message "Error initializing org-roam: %s" (error-message-string err)))))
 
