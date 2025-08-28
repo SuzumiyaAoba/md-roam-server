@@ -184,15 +184,19 @@
               (condition-case file-err
                   (let ((org-content ":PROPERTIES:\n"))
                     ;; Build content step by step without format or complex processing
-                    (setq org-content (concat org-content ":ID: "))
-                    (setq org-content (concat org-content node-id))
-                    (setq org-content (concat org-content "\n:END:\n#+title: "))
-                    ;; Skip title for now to test if it's the issue
-                    (setq org-content (concat org-content "Test Title"))
+                    ;; Use basic string concatenation only, avoid any complex string operations with Japanese
+                    (setq org-content (concat org-content ":ID: " node-id "\n:END:\n#+title: "))
+                    
+                    ;; For Japanese text, use simple concatenation without any encoding functions
+                    (if title 
+                        (setq org-content (concat org-content title))
+                      (setq org-content (concat org-content "Untitled")))
+                    
                     (setq org-content (concat org-content "\n"))
-                    ;; Skip content for now to isolate the issue
-                    ;; (when (and content (stringp content))
-                    ;;   (setq org-content (concat org-content "\n" content)))
+                    
+                    ;; Add content if present, using simple concatenation
+                    (when content
+                      (setq org-content (concat org-content "\n" content)))
                     
                     ;; Write file
                     (write-region org-content nil filepath)

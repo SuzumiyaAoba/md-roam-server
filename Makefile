@@ -34,11 +34,6 @@ help:
 	@echo "  make clean     - Clean up containers and images"
 	@echo "  make reset     - Reset all data (⚠️  destructive)"
 
-# Variables
-IMAGE_NAME=md-roam-server
-CONTAINER_NAME=md-roam-server
-COMPOSE_FILE=docker compose.yml
-
 # Build commands
 build:
 	@echo "🔨 Building md-roam-server Docker image..."
