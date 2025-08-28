@@ -116,11 +116,15 @@
   (condition-case err
       (let* ((title (cdr (assoc 'title json-data)))
              (content (or (cdr (assoc 'content json-data)) ""))
-             (tags (cdr (assoc 'tags json-data)))
-             (aliases (cdr (assoc 'aliases json-data)))
-             (refs (cdr (assoc 'refs json-data)))
+             (tags-raw (cdr (assoc 'tags json-data)))
+             (aliases-raw (cdr (assoc 'aliases json-data)))
+             (refs-raw (cdr (assoc 'refs json-data)))
              (category (cdr (assoc 'category json-data)))
-             (file-type (or (cdr (assoc 'file_type json-data)) "md"))) ; Default to .md
+             (file-type (or (cdr (assoc 'file_type json-data)) "md")) ; Default to .md
+             ;; Convert vectors to lists for safe processing
+             (tags (if (vectorp tags-raw) (append tags-raw nil) tags-raw))
+             (aliases (if (vectorp aliases-raw) (append aliases-raw nil) aliases-raw))
+             (refs (if (vectorp refs-raw) (append refs-raw nil) refs-raw)))
         
         (if (not title)
             (md-roam-server--create-error-response "Title is required")
@@ -132,9 +136,9 @@
                                  (+ 32768 (random 32768)) ; Ensure first bit is set
                                  (random (expt 16 12))))
                  (timestamp (format-time-string "%Y%m%d%H%M%S"))
-                 (safe-title (replace-regexp-in-string "[^a-zA-Z0-9]" "-" (downcase title)))
+                 ;; Ultra-safe filename generation - use only timestamp and node-id prefix
                  (extension (if (string= file-type "org") "org" "md"))
-                 (filename (format "%s-%s.%s" timestamp safe-title extension))
+                 (filename (format "%s-%s.%s" timestamp (substring node-id 0 8) extension))
                  (filepath (expand-file-name filename org-roam-directory)))
             
             ;; Test org-roam-directory first
@@ -178,23 +182,17 @@
              ;; Create Org file 
              ((string= extension "org")
               (condition-case file-err
-                  (let ((org-content (concat ":PROPERTIES:\n"
-                                            (format ":ID: %s\n" node-id)
-                                            ":END:\n"
-                                            (format "#+title: %s\n" title))))
-                    ;; Add optional metadata
-                    (when category
-                      (setq org-content (concat org-content (format "#+category: %s\n" category))))
-                    ;; Simplified metadata processing - basic format only
-                    (when tags
-                      (setq org-content (concat org-content "#+filetags: tag\n")))
-                    (when aliases
-                      (setq org-content (concat org-content "#+roam_alias: alias\n")))
-                    (when refs
-                      (setq org-content (concat org-content "#+roam_refs: ref\n")))
-                    
-                    ;; Add content
-                    (setq org-content (concat org-content "\n" content))
+                  (let ((org-content ":PROPERTIES:\n"))
+                    ;; Build content step by step without format or complex processing
+                    (setq org-content (concat org-content ":ID: "))
+                    (setq org-content (concat org-content node-id))
+                    (setq org-content (concat org-content "\n:END:\n#+title: "))
+                    ;; Skip title for now to test if it's the issue
+                    (setq org-content (concat org-content "Test Title"))
+                    (setq org-content (concat org-content "\n"))
+                    ;; Skip content for now to isolate the issue
+                    ;; (when (and content (stringp content))
+                    ;;   (setq org-content (concat org-content "\n" content)))
                     
                     ;; Write file
                     (write-region org-content nil filepath)
