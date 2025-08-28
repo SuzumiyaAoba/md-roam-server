@@ -32,7 +32,11 @@ tests/
     ├── search.test.ts          # Search functionality
     ├── files.test.ts           # File operations
     ├── server.test.ts          # Server health and stats
-    └── metadata.test.ts        # Tags and metadata
+    ├── metadata.test.ts        # Tags and metadata
+    ├── japanese-unicode.test.ts # Japanese/Unicode content support
+    ├── error-handling.test.ts   # Error scenarios and edge cases
+    ├── performance.test.ts      # Performance benchmarks and load tests
+    └── workflows.test.ts        # End-to-end user workflows
 ```
 
 ## Quick Start
@@ -76,11 +80,32 @@ npm run test:watch
 
 # Run with coverage
 npm run test:coverage
+
+### Specialized Test Commands
+
+```bash
+# Core functionality tests (faster execution)
+npm run test:core
+
+# Extended feature tests (comprehensive coverage)
+npm run test:extended  
+
+# Specific test categories
+npm run test:japanese     # Japanese and Unicode support
+npm run test:errors      # Error handling and edge cases  
+npm run test:performance # Performance benchmarks
+npm run test:workflows   # End-to-end workflows
+
+# Development utilities
+npm run test:quick       # Fast execution with early bail
+npm run test:all         # All tests with verbose output
 ```
 
 ## Test Suites
 
-### Node Operations (`nodes.test.ts`)
+### Core Test Suites
+
+#### Node Operations (`nodes.test.ts`)
 - **Create nodes** with both Markdown and Org formats
 - **Retrieve nodes** by ID with proper error handling
 - **Update nodes** with partial data modifications
@@ -88,7 +113,7 @@ npm run test:coverage
 - **List all nodes** with pagination support
 - **Error handling** for invalid inputs and missing resources
 
-### Search Functionality (`search.test.ts`)
+#### Search Functionality (`search.test.ts`)
 - **Content search** across titles and body text
 - **Multi-language support** including Japanese content
 - **Case-insensitive matching**
@@ -96,26 +121,64 @@ npm run test:coverage
 - **Performance benchmarks** with response time validation
 - **Result structure validation** with proper metadata
 
-### File Operations (`files.test.ts`)
+#### File Operations (`files.test.ts`)
 - **File listing** from database and filesystem
 - **File metadata** including size, modification time, and paths
 - **Multi-format support** for both .md and .org files
 - **Performance testing** for file operations
 - **Path validation** and security checks
 
-### Server Health (`server.test.ts`)
+#### Server Health (`server.test.ts`)
 - **Health check** endpoint validation
 - **Database statistics** with comprehensive metrics
 - **Database synchronization** operations
 - **Server stability** under concurrent load
 - **Performance monitoring** with response time thresholds
 
-### Metadata Management (`metadata.test.ts`)
+#### Metadata Management (`metadata.test.ts`)
 - **Tag listing** with count and node associations
 - **Japanese tag support** with Unicode handling
 - **Tag-based node retrieval** (if implemented)
 - **Aliases and references** endpoint testing
 - **Metadata consistency** across node operations
+
+### Extended Test Suites
+
+#### Japanese and Unicode Support (`japanese-unicode.test.ts`)
+- **Japanese content creation** for both .md and .org files
+- **Unicode character handling** including emojis and special characters
+- **Multi-language metadata** support
+- **Chinese and other Unicode scripts** testing
+- **Encoding verification** for file creation and retrieval
+- **Performance testing** with Unicode content
+- **Cross-language search** functionality
+
+#### Error Handling and Edge Cases (`error-handling.test.ts`)
+- **Invalid request handling** (missing/empty fields, wrong types)
+- **Malformed JSON** and content type errors
+- **Resource limits** testing (large content, many tags/aliases)
+- **Special characters** and security injection attempts
+- **Concurrent operations** and race condition handling
+- **Network edge cases** and protocol compliance
+- **Resource not found** scenarios (404 handling)
+
+#### Performance Testing (`performance.test.ts`)
+- **Individual operation benchmarks** with timing thresholds
+- **Bulk operations** performance (creation, retrieval, updates)
+- **Concurrent operations** stress testing
+- **Large data handling** (big content, many metadata items)
+- **Sustained load testing** over time periods
+- **Memory-intensive operations** validation
+- **Performance regression** detection
+
+#### End-to-End Workflows (`workflows.test.ts`)
+- **Complete CRUD lifecycles** for both file types
+- **Multi-node relationship** creation and management
+- **Content discovery** workflows (progressive specificity)
+- **Research workflows** (literature review, analysis)
+- **Personal knowledge management** patterns
+- **Bilingual note-taking** workflows
+- **Complex project structures** with cross-references
 
 ## Configuration
 

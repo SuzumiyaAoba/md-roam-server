@@ -4,11 +4,19 @@
   "description": "E2E tests for md-roam-server API",
   "type": "module",
   "scripts": {
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "test:japanese": "vitest run e2e/japanese-unicode.test.ts",
+    "test:errors": "vitest run e2e/error-handling.test.ts",
+    "test:performance": "vitest run e2e/performance.test.ts",
+    "test:workflows": "vitest run e2e/workflows.test.ts",
+    "test:core": "vitest run e2e/nodes.test.ts e2e/search.test.ts e2e/files.test.ts e2e/server.test.ts e2e/metadata.test.ts",
+    "test:extended": "vitest run e2e/japanese-unicode.test.ts e2e/error-handling.test.ts e2e/performance.test.ts e2e/workflows.test.ts",
+    "test:all": "vitest run --reporter=verbose",
+    "test:quick": "vitest run --reporter=basic --bail=1",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {

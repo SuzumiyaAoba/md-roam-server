@@ -19,7 +19,13 @@ export default defineConfig({
         '**/fixtures/**',
       ],
     },
-    include: ['e2e/**/*.{test,spec}.{js,ts}'],
+    include: [
+      'e2e/**/*.{test,spec}.{js,ts}',
+      'e2e/japanese-unicode.test.ts',
+      'e2e/error-handling.test.ts', 
+      'e2e/performance.test.ts',
+      'e2e/workflows.test.ts'
+    ],
     exclude: ['node_modules/', 'dist/', 'coverage/'],
     reporters: ['verbose'],
   },
