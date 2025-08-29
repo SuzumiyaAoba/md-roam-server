@@ -66,7 +66,8 @@
         (let ((status (cond 
                        ((string= (cdr (assoc 'status result)) "success")
                         (if (string= method "POST") 201 200))
-                       ((string= (cdr (assoc 'status result)) "error") 400)
+                       ((string= (cdr (assoc 'status result)) "error")
+                        (if (string= (cdr (assoc 'error_type result)) "not_found") 404 400))
                        (t 404))))
           (md-roam-server-send-response proc status "application/json" (json-encode result))))
     (error

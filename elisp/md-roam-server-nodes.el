@@ -61,12 +61,18 @@
                  `((id . ,id)
                    (title . ,title)
                    (file . ,(file-relative-name file org-roam-directory))
+                   (file_type . ,(let ((ext (file-name-extension file)))
+                                   (cond ((string= ext "md") "md")
+                                         ((string= ext "org") "org")
+                                         (t "unknown"))))
+                   (path . ,file)
                    (level . ,level)
                    (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
                    (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
             (md-roam-server--create-error-response 
              "Node not found"
-             `((node_id . ,node-id))))))
+             `((node_id . ,node-id)
+               (error_type . "not_found"))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error retrieving node: %s" (error-message-string err))
@@ -126,7 +132,7 @@
              (aliases (if (vectorp aliases-raw) (append aliases-raw nil) aliases-raw))
              (refs (if (vectorp refs-raw) (append refs-raw nil) refs-raw)))
         
-        (if (not title)
+        (if (or (not title) (string= title ""))
             (md-roam-server--create-error-response "Title is required")
           ;; Create simple UUID
           (let* ((node-id (format "%08X-%04X-4%03X-%04X-%012X"
@@ -150,24 +156,36 @@
              ;; Create Markdown file
              ((string= extension "md")
               (condition-case file-err
-                  (let ((yaml-content (concat "---\n"
-                                             (format "id: %s\n" node-id)
-                                             (format "title: %s\n" title))))
-                    ;; Add optional metadata
+                  (let ((yaml-content "---\n"))
+                    ;; Build YAML front matter using simple concatenation to avoid issues with Japanese text
+                    (setq yaml-content (concat yaml-content "id: " node-id "\n"))
+                    (setq yaml-content (concat yaml-content "title: " title "\n"))
+                    ;; Add optional metadata using simple concatenation
                     (when category
-                      (setq yaml-content (concat yaml-content (format "category: %s\n" category))))
-                    (when tags
-                      (setq yaml-content (concat yaml-content (format "tags: %s\n" (json-encode tags)))))
-                    (when aliases
-                      (setq yaml-content (concat yaml-content (format "roam_aliases: %s\n" (json-encode aliases)))))
-                    (when refs
-                      (setq yaml-content (concat yaml-content (format "roam_refs: %s\n" (json-encode refs)))))
+                      (setq yaml-content (concat yaml-content "category: " category "\n")))
+                    ;; Add tags safely without complex processing
+                    (when (and tags (listp tags) (> (length tags) 0))
+                      (let ((tag-line "tags: ["))
+                        (dolist (tag tags)
+                          (when (stringp tag)
+                            (setq tag-line (concat tag-line "\"" tag "\", "))))
+                        ;; Remove trailing comma and space, add closing bracket
+                        (when (string-suffix-p ", " tag-line)
+                          (setq tag-line (substring tag-line 0 -2)))
+                        (setq yaml-content (concat yaml-content tag-line "]\n"))))
+                    ;; TODO: Re-enable aliases and refs processing if needed
+                    ;; (when aliases
+                    ;;   (setq yaml-content (concat yaml-content "roam_aliases: [" (mapconcat (lambda (alias) (concat "\"" alias "\"")) aliases ", ") "]\n")))
+                    ;; (when refs
+                    ;;   (setq yaml-content (concat yaml-content "roam_refs: [" (mapconcat (lambda (ref) (concat "\"" ref "\"")) refs ", ") "]\n")))
                     
                     ;; Complete YAML and add content
                     (setq yaml-content (concat yaml-content "---\n\n" content))
                     
                     ;; Write file
                     (write-region yaml-content nil filepath)
+                    ;; Sync database to make node immediately available
+                    (org-roam-db-sync)
                     (md-roam-server--create-success-response
                      "Markdown node created successfully"
                      `((id . ,node-id)
@@ -194,12 +212,22 @@
                     
                     (setq org-content (concat org-content "\n"))
                     
+                    ;; Add tags if present using filetags
+                    (when (and tags (listp tags) (> (length tags) 0))
+                      (let ((tag-line "#+filetags: "))
+                        (dolist (tag tags)
+                          (when (stringp tag)
+                            (setq tag-line (concat tag-line tag " "))))
+                        (setq org-content (concat org-content tag-line "\n"))))
+                    
                     ;; Add content if present, using simple concatenation
                     (when content
                       (setq org-content (concat org-content "\n" content)))
                     
                     ;; Write file
                     (write-region org-content nil filepath)
+                    ;; Sync database to make node immediately available
+                    (org-roam-db-sync)
                     (md-roam-server--create-success-response
                      "Org node created successfully"
                      `((id . ,node-id)
@@ -594,7 +622,9 @@
                (node (car node-query)))
           (if (not node)
               (md-roam-server--create-error-response 
-               (format "Node with ID '%s' not found" node-id))
+               (format "Node with ID '%s' not found" node-id)
+               `((node_id . ,node-id)
+                 (error_type . "not_found")))
             (let* ((current-title (nth 1 node))
                    (file-path (nth 2 node))
                    (relative-path (file-relative-name file-path org-roam-directory))
@@ -673,6 +703,10 @@
                `((id . ,node-id)
                  (title . ,new-title)
                  (file . ,relative-path)
+                 (file_type . ,(cond ((string= file-extension "md") "md")
+                                     ((string= file-extension "org") "org")
+                                     (t "unknown")))
+                 (path . ,file-path)
                  (category . ,new-category)
                  (tags . ,(if new-tags (if (vectorp new-tags) new-tags (vconcat new-tags)) []))
                  (aliases . ,(if new-aliases (if (vectorp new-aliases) new-aliases (vconcat new-aliases)) []))

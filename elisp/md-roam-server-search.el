@@ -19,25 +19,30 @@
                       [:select [nodes:id nodes:title nodes:file nodes:level]
                        :from nodes
                        :left-join aliases :on (= nodes:id aliases:node-id)
-                       :where (or (like nodes:title $r1) (like aliases:alias $r1))
+                       :left-join tags :on (= nodes:id tags:node-id)
+                       :where (or (like nodes:title $r1) (like aliases:alias $r1) (like tags:tag $r1))
                        :group-by nodes:id
                        :order-by nodes:title]
                       (concat "%" decoded-query "%"))))
           (md-roam-server--create-success-response
            "Search completed successfully"
            `((query . ,decoded-query)
-             (nodes . ,(mapcar (lambda (node)
-                                 (let ((id (nth 0 node))
-                                       (title (nth 1 node))
-                                       (file (nth 2 node))
-                                       (level (nth 3 node)))
-                                   `((id . ,id)
-                                     (title . ,title)
-                                     (file . ,(file-relative-name file org-roam-directory))
-                                     (level . ,level)
-                                     (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
-                                     (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
-                               nodes))
+             (results . ,(if nodes
+                             (mapcar (lambda (node)
+                                       (let ((id (nth 0 node))
+                                             (title (nth 1 node))
+                                             (file (nth 2 node))
+                                             (level (nth 3 node)))
+                                         `((id . ,id)
+                                           (title . ,title)
+                                           (file . ,(file-relative-name file org-roam-directory))
+                                           (level . ,level)
+                                           (tags . ,(let ((tag-results (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
+                                                      (if tag-results (mapcar 'car tag-results) [])))
+                                           (aliases . ,(let ((alias-results (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id)))
+                                                         (if alias-results (mapcar 'car alias-results) []))))))
+                                     nodes)
+                           []))
              (count . ,(length nodes))))))
     (error
      (md-roam-server--create-error-response 

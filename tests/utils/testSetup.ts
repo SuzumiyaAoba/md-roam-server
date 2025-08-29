@@ -24,59 +24,23 @@ export class TestServerManager {
   }
 
   async startServer(): Promise<void> {
-    if (this.isServerRunning) {
-      console.log('ℹ️  Server already running, skipping startup');
+    // In global setup mode, just check if server is healthy
+    const isHealthy = await this.checkServerHealth();
+    if (isHealthy) {
+      console.log('✅ Server already running and healthy');
+      this.isServerRunning = true;
       return;
     }
 
-    try {
-      console.log('🚀 Starting md-roam server for tests...');
-      
-      // Check if server is already running
-      const isAlreadyRunning = await this.checkServerHealth();
-      if (isAlreadyRunning) {
-        console.log('✅ Server already running and healthy');
-        this.isServerRunning = true;
-        return;
-      }
-
-      // Navigate to project root and start server
-      const projectRoot = join(process.cwd(), '..');
-      process.chdir(projectRoot);
-
-      // Start server using existing script
-      execSync('./start.sh', { stdio: 'pipe' });
-      
-      // Wait for server to start
-      await this.waitForServer();
-      this.isServerRunning = true;
-      
-      console.log('✅ Server started successfully');
-    } catch (error) {
-      console.error('❌ Failed to start server:', error);
-      throw error;
-    }
+    // If server is not healthy, throw an error since global setup should have started it
+    throw new Error('Server is not running. Global setup may have failed.');
   }
 
   async stopServer(): Promise<void> {
-    if (!this.isServerRunning) {
-      return;
-    }
-
-    try {
-      console.log('🛑 Stopping md-roam server...');
-      
-      const projectRoot = join(process.cwd(), '..');
-      process.chdir(projectRoot);
-      
-      execSync('./stop.sh', { stdio: 'pipe' });
-      this.isServerRunning = false;
-      
-      console.log('✅ Server stopped successfully');
-    } catch (error) {
-      console.error('❌ Failed to stop server:', error);
-      // Continue anyway as server might have been manually stopped
-    }
+    // In global setup mode, individual tests don't stop the server
+    // Server will be stopped in global teardown
+    console.log('ℹ️  Server management handled by global setup/teardown');
+    this.isServerRunning = false;
   }
 
   private async checkServerHealth(): Promise<boolean> {

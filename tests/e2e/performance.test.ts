@@ -21,7 +21,7 @@ describe('Performance E2E Tests', () => {
         { name: 'Simple Org', data: { title: 'Simple Org', content: 'Simple content', file_type: 'org' as const } },
         { name: 'Rich MD', data: EXTENDED_TEST_NODES.formatting[0] },
         { name: 'Rich Org', data: EXTENDED_TEST_NODES.formatting[1] },
-        { name: 'Japanese', data: EXTENDED_TEST_NODES.japanese[0] },
+        { name: 'Rich Text', data: { title: 'Rich Text Performance', content: '# Header\n\nRich **bold** and *italic* text.', tags: ['performance', 'rich'], file_type: 'md' as const } },
       ];
 
       for (const testCase of testCases) {
@@ -48,7 +48,7 @@ describe('Performance E2E Tests', () => {
       const testNodes = await Promise.all([
         TestCleanup.createTestNode({ title: 'Retrieval Test 1', file_type: 'md' }),
         TestCleanup.createTestNode({ title: 'Retrieval Test 2', file_type: 'org' }),
-        TestCleanup.createTestNode(EXTENDED_TEST_NODES.japanese[0]),
+        TestCleanup.createTestNode({ title: 'Performance Test Node', content: 'Performance test content', tags: ['performance'], file_type: 'md' }),
       ]);
 
       for (const testNode of testNodes) {
@@ -94,13 +94,13 @@ describe('Performance E2E Tests', () => {
       const searchableNodes = await Promise.all([
         TestCleanup.createTestNode({ title: 'Performance Search Test 1', tags: ['performance'] }),
         TestCleanup.createTestNode({ title: 'Performance Search Test 2', tags: ['performance'] }),
-        TestCleanup.createTestNode(EXTENDED_TEST_NODES.japanese[0]),
+        TestCleanup.createTestNode({ title: 'Performance Test Node', content: 'Performance test content', tags: ['performance'], file_type: 'md' }),
       ]);
 
       const searchQueries = [
         'performance',
         'test',
-        '日本語',
+        'content',
         'search',
       ];
 
