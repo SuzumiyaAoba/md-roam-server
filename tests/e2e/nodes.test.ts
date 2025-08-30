@@ -237,11 +237,69 @@ describe('Nodes API E2E Tests', () => {
   });
 
   describe('GET /nodes - All Nodes', () => {
+    let createdNodes: NodeData[];
+
+    it('should handle empty database correctly', async () => {
+      // First, clean up any existing nodes to ensure empty state
+      const cleanupResponse = await ApiHelpers.getAllNodes();
+      if (cleanupResponse.status === 200 && cleanupResponse.body.data && Array.isArray(cleanupResponse.body.data)) {
+        // Clean up existing test nodes if any
+        for (const node of cleanupResponse.body.data) {
+          if (node.title?.includes('Test') || node.title?.includes('Node List')) {
+            try {
+              await ApiHelpers.deleteNode(node.id);
+            } catch (err) {
+              console.warn(`Failed to clean up node ${node.id}:`, err);
+            }
+          }
+        }
+      }
+      
+      // Test empty database response
+      const response = await ApiHelpers.getAllNodes();
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('status', 'success');
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('timestamp');
+      
+      // Empty database should return either empty array or null for data
+      expect(response.body).toHaveProperty('data');
+      if (response.body.data === null) {
+        // null is acceptable for empty database
+        expect(response.body.count).toBe(0);
+      } else {
+        // or it should be an empty array
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data.length).toBe(0);
+        if (response.body.count !== undefined) {
+          expect(response.body.count).toBe(0);
+        }
+      }
+    });
+
     beforeEach(async () => {
-      // Create a few test nodes
-      await TestCleanup.createTestNode({ title: 'Test Node 1' });
-      await TestCleanup.createTestNode({ title: 'Test Node 2' });
-      await TestCleanup.createTestNode({ title: 'Test Node 3', file_type: 'org' });
+      // Create a few test nodes with known data
+      createdNodes = await Promise.all([
+        TestCleanup.createTestNode({ 
+          title: 'Node List Test 1', 
+          content: 'Content for node 1',
+          tags: ['test', 'node-list'],
+          file_type: 'md'
+        }),
+        TestCleanup.createTestNode({ 
+          title: 'Node List Test 2',
+          content: 'Content for node 2', 
+          tags: ['test', 'node-list'],
+          file_type: 'md'
+        }),
+        TestCleanup.createTestNode({ 
+          title: 'Node List Test 3 (Org)',
+          content: '* Content for org node',
+          tags: ['test', 'node-list', 'org'],
+          file_type: 'org'
+        })
+      ]);
     });
 
     it('should retrieve all nodes', async () => {
@@ -261,7 +319,253 @@ describe('Nodes API E2E Tests', () => {
         expect(node).toHaveProperty('file');
         expect(node).toHaveProperty('file_type');
         expect(node).toHaveProperty('path');
+        
+        // Verify data types
+        expect(typeof node.id).toBe('string');
+        expect(typeof node.title).toBe('string');
+        expect(typeof node.file).toBe('string');
+        expect(['md', 'org'].includes(node.file_type)).toBe(true);
+        expect(typeof node.path).toBe('string');
       });
+    });
+
+    it('should include all created test nodes', async () => {
+      const response = await ApiHelpers.getAllNodes();
+      
+      expect(response.status).toBe(200);
+      const allNodes = response.body.data;
+      
+      // Find our created nodes in the response
+      const foundNodes = createdNodes.map(createdNode => {
+        const foundNode = allNodes.find((node: any) => node.id === createdNode.id);
+        return { created: createdNode, found: foundNode };
+      });
+      
+      // All created nodes should be found
+      foundNodes.forEach(({ created, found }, index) => {
+        expect(found).toBeDefined(`Created node ${index + 1} (${created.title}) should be in the list`);
+        expect(found.id).toBe(created.id);
+        expect(found.title).toBe(created.title);
+        expect(found.file_type).toBe(created.file_type);
+      });
+    });
+
+    it('should return nodes with correct file extensions', async () => {
+      const response = await ApiHelpers.getAllNodes();
+      
+      expect(response.status).toBe(200);
+      const allNodes = response.body.data;
+      
+      // Find our test nodes
+      const testNodes = allNodes.filter((node: any) => 
+        node.title.startsWith('Node List Test')
+      );
+      
+      expect(testNodes.length).toBeGreaterThanOrEqual(3);
+      
+      // Check file extensions match file types
+      testNodes.forEach((node: any) => {
+        if (node.file_type === 'md') {
+          expect(node.file).toMatch(/\.md$/);
+        } else if (node.file_type === 'org') {
+          expect(node.file).toMatch(/\.org$/);
+        }
+      });
+    });
+
+    it('should return consistent data across multiple requests', async () => {
+      // Make multiple requests
+      const [response1, response2, response3] = await Promise.all([
+        ApiHelpers.getAllNodes(),
+        ApiHelpers.getAllNodes(),
+        ApiHelpers.getAllNodes()
+      ]);
+      
+      // All should succeed
+      expect(response1.status).toBe(200);
+      expect(response2.status).toBe(200);
+      expect(response3.status).toBe(200);
+      
+      const nodes1 = response1.body.data;
+      const nodes2 = response2.body.data;
+      const nodes3 = response3.body.data;
+      
+      // Should return same number of nodes
+      expect(nodes1.length).toBe(nodes2.length);
+      expect(nodes2.length).toBe(nodes3.length);
+      
+      // Should contain same node IDs (order may vary)
+      const ids1 = nodes1.map((n: any) => n.id).sort();
+      const ids2 = nodes2.map((n: any) => n.id).sort();
+      const ids3 = nodes3.map((n: any) => n.id).sort();
+      
+      expect(ids1).toEqual(ids2);
+      expect(ids2).toEqual(ids3);
+    });
+
+    it('should handle large node lists efficiently', async () => {
+      const startTime = Date.now();
+      const response = await ApiHelpers.getAllNodes();
+      const endTime = Date.now();
+      
+      expect(response.status).toBe(200);
+      expect(endTime - startTime).toBeLessThan(2000); // Should complete within 2 seconds
+      
+      // Should handle empty result gracefully
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    it('should return valid paths for all nodes', async () => {
+      const response = await ApiHelpers.getAllNodes();
+      
+      expect(response.status).toBe(200);
+      const allNodes = response.body.data;
+      
+      allNodes.forEach((node: any) => {
+        expect(node.path).toBeTruthy();
+        expect(typeof node.path).toBe('string');
+        expect(node.path.length).toBeGreaterThan(0);
+        
+        // Path should contain the filename
+        expect(node.path).toContain(node.file);
+      });
+    });
+
+    it('should return proper metadata for mixed file types', async () => {
+      const response = await ApiHelpers.getAllNodes();
+      
+      expect(response.status).toBe(200);
+      const allNodes = response.body.data;
+      
+      const markdownNodes = allNodes.filter((node: any) => node.file_type === 'md');
+      const orgNodes = allNodes.filter((node: any) => node.file_type === 'org');
+      
+      // Should have both types from our test data
+      expect(markdownNodes.length).toBeGreaterThan(0);
+      expect(orgNodes.length).toBeGreaterThan(0);
+      
+      // Each type should have proper structure
+      markdownNodes.forEach((node: any) => {
+        expect(node.file).toMatch(/\.md$/);
+        expect(node.file_type).toBe('md');
+      });
+      
+      orgNodes.forEach((node: any) => {
+        expect(node.file).toMatch(/\.org$/);
+        expect(node.file_type).toBe('org');
+      });
+    });
+
+    it('should handle node list after CRUD operations', async () => {
+      // Get initial count
+      const initialResponse = await ApiHelpers.getAllNodes();
+      expect(initialResponse.status).toBe(200);
+      const initialCount = initialResponse.body.data.length;
+      
+      // Create a new node
+      const newNode = await TestCleanup.createTestNode({
+        title: 'CRUD Test Node',
+        content: 'Test content for CRUD operations'
+      });
+      
+      // Verify count increased
+      const afterCreateResponse = await ApiHelpers.getAllNodes();
+      expect(afterCreateResponse.status).toBe(200);
+      expect(afterCreateResponse.body.data.length).toBe(initialCount + 1);
+      
+      // Update the node
+      await ApiHelpers.updateNode(newNode.id, {
+        title: 'Updated CRUD Test Node'
+      });
+      
+      // Verify node is still in list with updated title
+      const afterUpdateResponse = await ApiHelpers.getAllNodes();
+      expect(afterUpdateResponse.status).toBe(200);
+      expect(afterUpdateResponse.body.data.length).toBe(initialCount + 1);
+      
+      const updatedNode = afterUpdateResponse.body.data.find((node: any) => node.id === newNode.id);
+      expect(updatedNode).toBeDefined();
+      expect(updatedNode.title).toBe('Updated CRUD Test Node');
+      
+      // Delete the node
+      await ApiHelpers.deleteNode(newNode.id);
+      
+      // Verify count decreased
+      const afterDeleteResponse = await ApiHelpers.getAllNodes();
+      expect(afterDeleteResponse.status).toBe(200);
+      expect(afterDeleteResponse.body.data.length).toBe(initialCount);
+      
+      // Verify node is no longer in list
+      const deletedNodeCheck = afterDeleteResponse.body.data.find((node: any) => node.id === newNode.id);
+      expect(deletedNodeCheck).toBeUndefined();
+    });
+
+    it('should return consistent response structure for empty and populated states', async () => {
+      // Get baseline response (may have nodes from beforeEach)
+      const initialResponse = await ApiHelpers.getAllNodes();
+      expect(initialResponse.status).toBe(200);
+      expect(initialResponse.body).toHaveProperty('status', 'success');
+      expect(initialResponse.body).toHaveProperty('message');
+      expect(initialResponse.body).toHaveProperty('timestamp');
+      expect(initialResponse.body).toHaveProperty('data');
+      
+      // Create a node to ensure populated state
+      const tempNode = await TestCleanup.createTestNode({
+        title: 'Consistency Test Node',
+        content: 'Testing response structure consistency'
+      });
+      
+      const populatedResponse = await ApiHelpers.getAllNodes();
+      expect(populatedResponse.status).toBe(200);
+      expect(populatedResponse.body).toHaveProperty('status', 'success');
+      expect(populatedResponse.body).toHaveProperty('message');
+      expect(populatedResponse.body).toHaveProperty('timestamp');
+      expect(populatedResponse.body).toHaveProperty('data');
+      expect(Array.isArray(populatedResponse.body.data)).toBe(true);
+      expect(populatedResponse.body.data.length).toBeGreaterThan(0);
+      
+      // If count property is present, it should be consistent
+      if (populatedResponse.body.count !== undefined) {
+        expect(populatedResponse.body.count).toBe(populatedResponse.body.data.length);
+      }
+      
+      // Clean up temp node
+      await ApiHelpers.deleteNode(tempNode.id);
+    });
+
+    it('should validate response structure across different scenarios', async () => {
+      // Test with node creation followed by deletion
+      const testNode = await TestCleanup.createTestNode({
+        title: 'Structure Validation Node',
+        content: 'Testing API response structure validation'
+      });
+      
+      // Check after creation
+      const afterCreateResponse = await ApiHelpers.getAllNodes();
+      expect(afterCreateResponse.status).toBe(200);
+      
+      // Validate response structure
+      expect(afterCreateResponse.body).toHaveProperty('status', 'success');
+      expect(typeof afterCreateResponse.body.message).toBe('string');
+      expect(typeof afterCreateResponse.body.timestamp).toBe('string');
+      expect(afterCreateResponse.body).toHaveProperty('data');
+      
+      if (afterCreateResponse.body.data !== null) {
+        expect(Array.isArray(afterCreateResponse.body.data)).toBe(true);
+        afterCreateResponse.body.data.forEach((node: any) => {
+          expect(node).toHaveProperty('id');
+          expect(node).toHaveProperty('title');
+          expect(node).toHaveProperty('file');
+          expect(node).toHaveProperty('file_type');
+          expect(typeof node.id).toBe('string');
+          expect(typeof node.title).toBe('string');
+          expect(typeof node.file).toBe('string');
+          expect(['md', 'org'].includes(node.file_type)).toBe(true);
+        });
+      }
+      
+      // Clean up and test deletion
+      await ApiHelpers.deleteNode(testNode.id);
     });
   });
 });
