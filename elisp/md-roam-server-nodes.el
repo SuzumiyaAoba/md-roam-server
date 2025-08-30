@@ -23,7 +23,47 @@
         ;; Ensure database is in the correct location
         (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
         (message "DEBUG nodes: org-roam-directory=%s, db-location=%s" org-roam-directory org-roam-db-location)
-        (org-roam-db-sync)
+        
+        ;; Debug: Check if directory exists and has files
+        (let ((dir-exists (file-directory-p org-roam-directory))
+              (files-in-dir (when (file-directory-p org-roam-directory)
+                              (directory-files org-roam-directory nil "\\.\\(md\\|org\\)$"))))
+          (message "DEBUG: Directory exists: %s, Files found: %s" dir-exists (length files-in-dir))
+          (when files-in-dir
+            (message "DEBUG: Files in directory: %s" files-in-dir)))
+        
+        ;; Force database sync with additional checks
+        (message "DEBUG: Starting org-roam-db-sync...")
+        (condition-case sync-err
+            (progn
+              ;; Ensure org-roam is fully initialized
+              (unless (org-roam-db-p)
+                (message "DEBUG: Database not initialized, creating...")
+                (org-roam-db--init))
+              
+              ;; Force a full rebuild if database seems empty but files exist
+              (let ((db-nodes-before (condition-case nil
+                                         (length (org-roam-db-query [:select [id] :from nodes]))
+                                       (error 0)))
+                    (files-exist (and (file-directory-p org-roam-directory)
+                                      (directory-files org-roam-directory nil "\\.\\(md\\|org\\)$"))))
+                (message "DEBUG: Nodes in DB before sync: %s, Files exist: %s" db-nodes-before (if files-exist (length files-exist) 0))
+                
+                ;; If we have files but no database entries, force a rebuild
+                (if (and files-exist (> (length files-exist) 0) (= db-nodes-before 0))
+                    (progn
+                      (message "DEBUG: Files exist but DB empty, forcing rebuild...")
+                      (org-roam-db-sync 'force))
+                  (org-roam-db-sync))))
+          (error (message "ERROR: Database sync failed: %s" (error-message-string sync-err))))
+        (message "DEBUG: org-roam-db-sync completed")
+        
+        ;; Debug: Check database state after sync
+        (let ((db-file-exists (file-exists-p org-roam-db-location))
+              (db-nodes-count (condition-case nil
+                                  (length (org-roam-db-query [:select [id] :from nodes]))
+                                (error 0))))
+          (message "DEBUG: Database file exists: %s, Nodes in DB: %s" db-file-exists db-nodes-count))
         (let ((nodes (org-roam-db-query [:select [id title file level] :from nodes :order-by title])))
           (md-roam-server--create-success-response
            "Nodes retrieved successfully"

@@ -278,6 +278,124 @@ describe('Nodes API E2E Tests', () => {
       }
     });
 
+    it('should detect existing files that are not in database yet', async () => {
+      // This test simulates the bug where files exist but aren't returned by the API
+      // First get current state
+      const initialResponse = await ApiHelpers.getAllNodes();
+      expect(initialResponse.status).toBe(200);
+      const initialCount = initialResponse.body.data ? initialResponse.body.data.length : 0;
+      
+      // Create a test file to ensure we have something to detect
+      const testNode = await TestCleanup.createTestNode({
+        title: 'File Detection Test',
+        content: 'This tests file detection functionality',
+        tags: ['file-detection', 'test']
+      });
+      
+      // Verify the file was created and can be retrieved
+      const afterCreateResponse = await ApiHelpers.getAllNodes();
+      expect(afterCreateResponse.status).toBe(200);
+      expect(afterCreateResponse.body.data).not.toBeNull();
+      expect(Array.isArray(afterCreateResponse.body.data)).toBe(true);
+      
+      const foundNode = afterCreateResponse.body.data.find((node: any) => node.id === testNode.id);
+      if (!foundNode) {
+        console.error('BUG DETECTED: File exists but not returned by API');
+        console.error('Created node:', testNode);
+        console.error('API response:', afterCreateResponse.body);
+        
+        // This indicates the bug - file exists but API doesn't return it
+        expect(foundNode).toBeDefined('File exists but was not returned by Node list API');
+      }
+      
+      // Clean up
+      await ApiHelpers.deleteNode(testNode.id);
+    });
+
+    it('should handle org-roam database synchronization properly', async () => {
+      // Test to ensure database sync issues don't cause missing nodes
+      const testNode = await TestCleanup.createTestNode({
+        title: 'Database Sync Test',
+        content: 'Testing database synchronization',
+        file_type: 'md'
+      });
+      
+      // Force a sync by calling the API multiple times
+      const responses = await Promise.all([
+        ApiHelpers.getAllNodes(),
+        ApiHelpers.getAllNodes(),
+        ApiHelpers.getAllNodes()
+      ]);
+      
+      // All responses should be consistent
+      responses.forEach((response, index) => {
+        expect(response.status).toBe(200);
+        expect(Array.isArray(response.body.data)).toBe(true);
+        
+        const foundNode = response.body.data.find((node: any) => node.id === testNode.id);
+        if (!foundNode) {
+          console.error(`BUG DETECTED: Database sync issue - node missing in response ${index + 1}`);
+        }
+        expect(foundNode).toBeDefined(`Node should be found in response ${index + 1}`);
+      });
+      
+      // Clean up
+      await ApiHelpers.deleteNode(testNode.id);
+    });
+
+    it('should handle both md and org files consistently', async () => {
+      // Test both file types to ensure the bug isn't format-specific
+      const mdNode = await TestCleanup.createTestNode({
+        title: 'MD File Test',
+        content: '# Markdown Test\n\nTesting markdown file detection',
+        file_type: 'md',
+        tags: ['markdown', 'test']
+      });
+      
+      const orgNode = await TestCleanup.createTestNode({
+        title: 'Org File Test', 
+        content: '* Org Test\n\nTesting org file detection',
+        file_type: 'org',
+        tags: ['org', 'test']
+      });
+      
+      // Check that both files are detected
+      const response = await ApiHelpers.getAllNodes();
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      
+      const foundMdNode = response.body.data.find((node: any) => node.id === mdNode.id);
+      const foundOrgNode = response.body.data.find((node: any) => node.id === orgNode.id);
+      
+      if (!foundMdNode) {
+        console.error('BUG DETECTED: Markdown file not detected by API');
+        console.error('Expected MD node:', mdNode);
+      }
+      
+      if (!foundOrgNode) {
+        console.error('BUG DETECTED: Org file not detected by API');
+        console.error('Expected Org node:', orgNode);
+      }
+      
+      expect(foundMdNode).toBeDefined('Markdown file should be detected');
+      expect(foundOrgNode).toBeDefined('Org file should be detected');
+      
+      // Verify correct file types
+      if (foundMdNode) {
+        expect(foundMdNode.file_type).toBe('md');
+        expect(foundMdNode.file).toMatch(/\.md$/);
+      }
+      
+      if (foundOrgNode) {
+        expect(foundOrgNode.file_type).toBe('org');
+        expect(foundOrgNode.file).toMatch(/\.org$/);
+      }
+      
+      // Clean up
+      await ApiHelpers.deleteNode(mdNode.id);
+      await ApiHelpers.deleteNode(orgNode.id);
+    });
+
     beforeEach(async () => {
       // Create a few test nodes with known data
       createdNodes = await Promise.all([
