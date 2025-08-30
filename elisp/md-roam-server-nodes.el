@@ -712,62 +712,83 @@
                     (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
                       (error "File path outside of org-roam directory: %s" file-path))
               
-                    ;; Update file based on extension
-                    (cond 
-                     ;; Update Markdown file
-                     ((string= file-extension "md")
-                      (with-temp-file file-path
-                        (insert "---\n")
-                        (insert (format "id: %s\n" node-id))
-                        (insert (format "title: %s\n" new-title))
-                        (when new-category
-                          (insert (format "category: %s\n" new-category)))
-                        (when (and new-aliases (> (length new-aliases) 0))
-                          (insert (format "roam_aliases: %s\n" 
-                                         (json-encode (if (vectorp new-aliases) 
-                                                         (append new-aliases nil)
-                                                       new-aliases)))))
-                        (when (and new-refs (> (length new-refs) 0))
-                          (insert (format "roam_refs: %s\n" 
-                                         (if (vectorp new-refs)
-                                             (string-join (append new-refs nil) " ")
-                                           (string-join new-refs " ")))))
-                        (insert "---\n\n")
-                        (when (and new-tags (> (length new-tags) 0))
-                          (insert (mapconcat (lambda (tag) (format "#%s" tag)) 
-                                            (if (vectorp new-tags) (append new-tags nil) new-tags) " "))
-                          (insert "\n\n"))
-                        (when new-content
-                          (insert new-content))))
+                    ;; Update file based on extension with ID duplication prevention
+                    (condition-case file-err
+                        (cond 
+                         ;; Update Markdown file
+                         ((string= file-extension "md")
+                          (message "DEBUG: Updating markdown file %s with ID %s" file-path node-id)
+                          (with-temp-file file-path
+                            (insert "---\n")
+                            (insert (format "id: %s\n" node-id))
+                            (insert (format "title: %s\n" new-title))
+                            (when new-category
+                              (insert (format "category: %s\n" new-category)))
+                            (when (and new-aliases (> (length new-aliases) 0))
+                              (insert (format "roam_aliases: %s\n" 
+                                             (json-encode (if (vectorp new-aliases) 
+                                                             (append new-aliases nil)
+                                                           new-aliases)))))
+                            (when (and new-refs (> (length new-refs) 0))
+                              (insert (format "roam_refs: %s\n" 
+                                             (if (vectorp new-refs)
+                                                 (string-join (append new-refs nil) " ")
+                                               (string-join new-refs " ")))))
+                            (insert "---\n\n")
+                            (when (and new-tags (> (length new-tags) 0))
+                              (insert (mapconcat (lambda (tag) (format "#%s" tag)) 
+                                                (if (vectorp new-tags) (append new-tags nil) new-tags) " "))
+                              (insert "\n\n"))
+                            (when new-content
+                              (insert new-content)))
+                          (message "DEBUG: Markdown file updated successfully"))
                
-                     ;; Update Org file
-                     ((string= file-extension "org")
-                      (with-temp-file file-path
-                        (insert ":PROPERTIES:\n")
-                        (insert (format ":ID: %s\n" node-id))
-                        (insert ":END:\n")
-                        (insert (format "#+title: %s\n" new-title))
-                        (when new-category
-                          (insert (format "#+category: %s\n" new-category)))
-                        (when (and new-tags (> (length new-tags) 0))
-                          (insert (format "#+filetags: %s\n" (string-join 
-                                                             (if (vectorp new-tags) (append new-tags nil) new-tags) " "))))
-                        (when (and new-aliases (> (length new-aliases) 0))
-                          (insert (format "#+roam_alias: %s\n" (string-join 
-                                                               (if (vectorp new-aliases) (append new-aliases nil) new-aliases) " "))))
-                        (when (and new-refs (> (length new-refs) 0))
-                          (dolist (ref (if (vectorp new-refs) (append new-refs nil) new-refs))
-                            (insert (format "#+roam_refs: %s\n" ref))))
-                        (insert "\n")
-                        (when new-content
-                          (insert new-content))))
+                         ;; Update Org file
+                         ((string= file-extension "org")
+                          (message "DEBUG: Updating org file %s with ID %s" file-path node-id)
+                          (with-temp-file file-path
+                            (insert ":PROPERTIES:\n")
+                            (insert (format ":ID: %s\n" node-id))
+                            (insert ":END:\n")
+                            (insert (format "#+title: %s\n" new-title))
+                            (when new-category
+                              (insert (format "#+category: %s\n" new-category)))
+                            (when (and new-tags (> (length new-tags) 0))
+                              (insert (format "#+filetags: %s\n" (string-join 
+                                                                 (if (vectorp new-tags) (append new-tags nil) new-tags) " "))))
+                            (when (and new-aliases (> (length new-aliases) 0))
+                              (insert (format "#+roam_alias: %s\n" (string-join 
+                                                                   (if (vectorp new-aliases) (append new-aliases nil) new-aliases) " "))))
+                            (when (and new-refs (> (length new-refs) 0))
+                              (dolist (ref (if (vectorp new-refs) (append new-refs nil) new-refs))
+                                (insert (format "#+roam_refs: %s\n" ref))))
+                            (insert "\n")
+                            (when new-content
+                              (insert new-content)))
+                          (message "DEBUG: Org file updated successfully"))
                
-                     ;; Unsupported file type
-                     (t
-                      (error "Unsupported file type: %s" file-extension)))
+                         ;; Unsupported file type
+                         (t
+                          (error "Unsupported file type: %s" file-extension)))
+                      (error
+                       (message "ERROR: Failed to update file: %s" (error-message-string file-err))
+                       (error "Failed to update file: %s" (error-message-string file-err))))
               
-                    ;; Sync database
-                    (org-roam-db-sync)
+                    ;; Sync database with ID duplication checks
+                    (message "DEBUG: Syncing database after update...")
+                    (condition-case sync-err
+                        (progn
+                          (org-roam-db-sync)
+                          ;; Verify no ID duplication occurred
+                          (let ((id-count (length (org-roam-db-query [:select [id] :from nodes :where (= id $s1)] node-id))))
+                            (when (> id-count 1)
+                              (message "WARNING: ID duplication detected for %s, count: %d" node-id id-count)
+                              ;; Force a full database rebuild to clean up duplicates
+                              (org-roam-db-sync 'force))))
+                      (error 
+                       (message "ERROR: Database sync failed: %s" (error-message-string sync-err))
+                       (error "Database sync failed: %s" (error-message-string sync-err))))
+                    (message "DEBUG: Database sync completed")
               
                     (md-roam-server--create-success-response
                      (format "Node updated successfully: %s" new-title)
