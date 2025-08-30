@@ -58,7 +58,7 @@ describe('Nodes API E2E Tests', () => {
       TestCleanup.trackNode(createdNode.id);
     });
 
-    it('should handle Japanese content correctly', async () => {
+    it('should handle international content correctly', async () => {
       const nodeData = TEST_NODES.markdown[2];
       const response = await ApiHelpers.createNode(nodeData);
       

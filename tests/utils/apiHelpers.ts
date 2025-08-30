@@ -182,17 +182,50 @@ export class TestCleanup {
   }
 
   static async cleanupNodes(): Promise<void> {
+    if (TestCleanup.createdNodeIds.length === 0) return;
+    
     console.log(`🧹 Cleaning up ${TestCleanup.createdNodeIds.length} test nodes...`);
     
-    const cleanupPromises = TestCleanup.createdNodeIds.map(async (nodeId) => {
-      try {
-        await ApiHelpers.deleteNode(nodeId);
-      } catch (error) {
-        console.warn(`Failed to cleanup node ${nodeId}:`, error);
+    const cleanupWithRetry = async (nodeId: string, retries = 2): Promise<void> => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const response = await ApiHelpers.deleteNode(nodeId);
+          if (response.status === 200 || response.status === 404) {
+            return; // Success or already deleted
+          }
+        } catch (error: any) {
+          // Check if this is a connection error
+          if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+            if (attempt < retries) {
+              console.warn(`Cleanup retry ${attempt + 1}/${retries + 1} for node ${nodeId}`);
+              await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+              continue;
+            } else {
+              console.warn(`Failed to cleanup node ${nodeId} after ${retries + 1} attempts: Connection issue`);
+              return; // Give up gracefully
+            }
+          }
+          
+          if (attempt === retries) {
+            console.warn(`Failed to cleanup node ${nodeId}:`, error.message || error);
+          }
+        }
       }
-    });
+    };
 
-    await Promise.allSettled(cleanupPromises);
+    // Process cleanup in smaller batches to reduce server load
+    const batchSize = 5;
+    for (let i = 0; i < TestCleanup.createdNodeIds.length; i += batchSize) {
+      const batch = TestCleanup.createdNodeIds.slice(i, i + batchSize);
+      const batchPromises = batch.map(nodeId => cleanupWithRetry(nodeId));
+      await Promise.allSettled(batchPromises);
+      
+      // Small delay between batches
+      if (i + batchSize < TestCleanup.createdNodeIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+
     TestCleanup.createdNodeIds = [];
   }
 
