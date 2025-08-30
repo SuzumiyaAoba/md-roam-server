@@ -74,6 +74,12 @@ export class ApiHelpers {
       .expect('Content-Type', /json/);
   }
 
+  static async getNodeContent(nodeId: string): Promise<supertest.Response> {
+    return api
+      .get(`/nodes/${nodeId}/content`)
+      .expect('Content-Type', /json/);
+  }
+
   // File operations
   static async getFiles(): Promise<supertest.Response> {
     return api
