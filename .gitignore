@@ -1,6 +1,8 @@
 .claude/*
 !.claude/settings.json
 
+node_modules/
+
 # Nix build results
 result
 result-*

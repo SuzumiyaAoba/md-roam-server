@@ -132,6 +132,19 @@
       (expand-file-name org-roam-directory)
     (error (expand-file-name "~/org-roam"))))
 
+(defun md-roam-server--sanitize-html (input)
+  "Remove potentially dangerous HTML/script tags from INPUT string.
+This provides basic XSS protection by removing script tags and other dangerous elements."
+  (when (stringp input)
+    (let ((sanitized input))
+      ;; Remove script tags and their content
+      (setq sanitized (replace-regexp-in-string "<script[^>]*>.*?</script>" "" sanitized t t))
+      ;; Remove potentially dangerous attributes like onerror, onclick, etc
+      (setq sanitized (replace-regexp-in-string " on[a-zA-Z]*=[\"'][^\"']*[\"']" "" sanitized t))
+      ;; Remove other dangerous tags
+      (setq sanitized (replace-regexp-in-string "<\\(iframe\\|object\\|embed\\|form\\)[^>]*>" "" sanitized t))
+      sanitized)))
+
 (defun md-roam-server--create-success-response (message &optional data)
   "Create a standard success response with MESSAGE and optional DATA."
   (let ((response `((status . "success")

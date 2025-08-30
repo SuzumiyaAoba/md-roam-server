@@ -41,7 +41,9 @@ RUN mkdir -p /app /data/org-roam && \
 COPY --from=builder --chown=1000:1000 /build/ /app/
 
 # Set up Nix permissions for appuser
-RUN chown -R 1000:1000 /nix/var/nix/ && \
+RUN chown -R 1000:1000 /nix/var/ && \
+    mkdir -p /nix/var/log/nix/drvs && \
+    chown -R 1000:1000 /nix/var/log/nix/ && \
     chown -R 1000:1000 /nix/store/ || echo "Store permissions set"
 
 # Switch to application user
@@ -80,4 +82,4 @@ ENV EMACS_SERVER_TIMEOUT=60 \
     CONFIG_DIR=/home/appuser/.config/md-roam-server
 
 # Default command  
-CMD ["/root/.nix-profile/bin/bash", "/app/docker/start-docker.sh"]
+CMD ["/app/docker/start-docker.sh"]

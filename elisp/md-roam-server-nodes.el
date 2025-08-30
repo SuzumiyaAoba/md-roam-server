@@ -27,7 +27,7 @@
         (let ((nodes (org-roam-db-query [:select [id title file level] :from nodes :order-by title])))
           (md-roam-server--create-success-response
            "Nodes retrieved successfully"
-           `((nodes . ,(mapcar (lambda (node)
+           `((data . ,(mapcar (lambda (node)
                                  (let ((id (nth 0 node))
                                        (title (nth 1 node))
                                        (file (nth 2 node))
@@ -37,6 +37,10 @@
                                      (file . ,(file-relative-name file org-roam-directory))
                                      (level . ,level)
                                      (tags . ,(mapcar 'car (org-roam-db-query [:select [tag] :from tags :where (= node-id $s1)] id)))
+                                     (file_type . ,(cond ((string= (file-name-extension file) "md") "md")
+                                                         ((string= (file-name-extension file) "org") "org")
+                                                         (t "unknown")))
+                                     (path . ,file)
                                      (aliases . ,(mapcar 'car (org-roam-db-query [:select [alias] :from aliases :where (= node-id $s1)] id))))))
                                nodes))
              (count . ,(length nodes))))))
@@ -120,21 +124,34 @@
 (defun md-roam-server-create-node (json-data)
   "Create a new node with JSON-DATA - minimal safe implementation."
   (condition-case err
-      (let* ((title (cdr (assoc 'title json-data)))
-             (content (or (cdr (assoc 'content json-data)) ""))
+      (let* ((title-raw (cdr (assoc 'title json-data)))
+             (content-raw (or (cdr (assoc 'content json-data)) ""))
              (tags-raw (cdr (assoc 'tags json-data)))
              (aliases-raw (cdr (assoc 'aliases json-data)))
              (refs-raw (cdr (assoc 'refs json-data)))
-             (category (cdr (assoc 'category json-data)))
+             (category-raw (cdr (assoc 'category json-data)))
              (file-type (or (cdr (assoc 'file_type json-data)) "md")) ; Default to .md
-             ;; Convert vectors to lists for safe processing
-             (tags (if (vectorp tags-raw) (append tags-raw nil) tags-raw))
-             (aliases (if (vectorp aliases-raw) (append aliases-raw nil) aliases-raw))
-             (refs (if (vectorp refs-raw) (append refs-raw nil) refs-raw)))
+             ;; Sanitize inputs to prevent XSS
+             (title (md-roam-server--sanitize-html title-raw))
+             (content (md-roam-server--sanitize-html content-raw))
+             (category (md-roam-server--sanitize-html category-raw))
+             ;; Convert vectors to lists for safe processing and sanitize
+             (tags (when tags-raw
+                     (let ((tags-list (if (vectorp tags-raw) (append tags-raw nil) tags-raw)))
+                       (mapcar 'md-roam-server--sanitize-html tags-list))))
+             (aliases (when aliases-raw
+                        (let ((aliases-list (if (vectorp aliases-raw) (append aliases-raw nil) aliases-raw)))
+                          (mapcar 'md-roam-server--sanitize-html aliases-list))))
+             (refs (when refs-raw
+                     (let ((refs-list (if (vectorp refs-raw) (append refs-raw nil) refs-raw)))
+                       (mapcar 'md-roam-server--sanitize-html refs-list)))))
         
         (if (or (not title) (string= title ""))
-            (md-roam-server--create-error-response "Title is required")
-          ;; Create simple UUID
+            (md-roam-server--create-error-response "title is required")
+          (if (and file-type (not (member file-type '("md" "org"))))
+              (md-roam-server--create-error-response 
+               (format "Invalid file_type: %s. Must be 'md' or 'org'" file-type))
+            ;; Create simple UUID
           (let* ((node-id (format "%08X-%04X-4%03X-%04X-%012X"
                                  (random (expt 16 8))
                                  (random (expt 16 4))
@@ -242,7 +259,7 @@
              ;; Invalid extension
              (t
               (md-roam-server--create-error-response
-               (format "Invalid file_type: %s. Use 'md' or 'org'." file-type)))))))
+               (format "Invalid file_type: %s. Use 'md' or 'org'." file-type))))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error creating node: %s" (error-message-string err))))))
@@ -267,7 +284,8 @@
                (node (car node-query)))
           (if (not node)
               (md-roam-server--create-error-response 
-               (format "Node with ID '%s' not found" node-id))
+               (format "Node with ID '%s' not found" node-id)
+               '((error_type . "not_found")))
             (let* ((title (nth 1 node))
                    (file-path (nth 2 node))
                    (relative-path (file-relative-name file-path org-roam-directory)))
@@ -635,72 +653,83 @@
                    (new-tags (cdr (assoc 'tags json-data)))
                    (new-aliases (cdr (assoc 'aliases json-data)))
                    (new-refs (cdr (assoc 'refs json-data)))
-                   (new-content (cdr (assoc 'content json-data))))
+                   (new-content (cdr (assoc 'content json-data)))
+                   (new-file-type (cdr (assoc 'file_type json-data))))
               
-              ;; Security check - ensure file is within org-roam directory
-              (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
-                (error "File path outside of org-roam directory: %s" file-path))
-              
-              ;; Update file based on extension
+              ;; Validate input first
               (cond 
-               ;; Update Markdown file
-               ((string= file-extension "md")
-                (with-temp-file file-path
-                  (insert "---\n")
-                  (insert (format "id: %s\n" node-id))
-                  (insert (format "title: %s\n" new-title))
-                  (when new-category
-                    (insert (format "category: %s\n" new-category)))
-                  (when (and new-aliases (> (length new-aliases) 0))
-                    (insert (format "roam_aliases: %s\n" 
-                                   (json-encode (if (vectorp new-aliases) 
-                                                   (append new-aliases nil)
-                                                 new-aliases)))))
-                  (when (and new-refs (> (length new-refs) 0))
-                    (insert (format "roam_refs: %s\n" 
-                                   (if (vectorp new-refs)
-                                       (string-join (append new-refs nil) " ")
-                                     (string-join new-refs " ")))))
-                  (insert "---\n\n")
-                  (when (and new-tags (> (length new-tags) 0))
-                    (insert (mapconcat (lambda (tag) (format "#%s" tag)) 
-                                      (if (vectorp new-tags) (append new-tags nil) new-tags) " "))
-                    (insert "\n\n"))
-                  (when new-content
-                    (insert new-content))))
-               
-               ;; Update Org file
-               ((string= file-extension "org")
-                (with-temp-file file-path
-                  (insert ":PROPERTIES:\n")
-                  (insert (format ":ID: %s\n" node-id))
-                  (insert ":END:\n")
-                  (insert (format "#+title: %s\n" new-title))
-                  (when new-category
-                    (insert (format "#+category: %s\n" new-category)))
-                  (when (and new-tags (> (length new-tags) 0))
-                    (insert (format "#+filetags: %s\n" (string-join 
-                                                       (if (vectorp new-tags) (append new-tags nil) new-tags) " "))))
-                  (when (and new-aliases (> (length new-aliases) 0))
-                    (insert (format "#+roam_alias: %s\n" (string-join 
-                                                         (if (vectorp new-aliases) (append new-aliases nil) new-aliases) " "))))
-                  (when (and new-refs (> (length new-refs) 0))
-                    (dolist (ref (if (vectorp new-refs) (append new-refs nil) new-refs))
-                      (insert (format "#+roam_refs: %s\n" ref))))
-                  (insert "\n")
-                  (when new-content
-                    (insert new-content))))
-               
-               ;; Unsupported file type
+               ((and new-title (string= new-title ""))
+                (md-roam-server--create-error-response "title is required"))
+               ((and new-file-type (not (member new-file-type '("md" "org"))))
+                (md-roam-server--create-error-response 
+                 (format "Invalid file_type: %s. Must be 'md' or 'org'" new-file-type)))
                (t
-                (error "Unsupported file type: %s" file-extension)))
+                ;; Validation passed - proceed with update
               
-              ;; Sync database
-              (org-roam-db-sync)
+                    ;; Security check - ensure file is within org-roam directory
+                    (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
+                      (error "File path outside of org-roam directory: %s" file-path))
               
-              (md-roam-server--create-success-response
-               (format "Node updated successfully: %s" new-title)
-               `((id . ,node-id)
+                    ;; Update file based on extension
+                    (cond 
+                     ;; Update Markdown file
+                     ((string= file-extension "md")
+                      (with-temp-file file-path
+                        (insert "---\n")
+                        (insert (format "id: %s\n" node-id))
+                        (insert (format "title: %s\n" new-title))
+                        (when new-category
+                          (insert (format "category: %s\n" new-category)))
+                        (when (and new-aliases (> (length new-aliases) 0))
+                          (insert (format "roam_aliases: %s\n" 
+                                         (json-encode (if (vectorp new-aliases) 
+                                                         (append new-aliases nil)
+                                                       new-aliases)))))
+                        (when (and new-refs (> (length new-refs) 0))
+                          (insert (format "roam_refs: %s\n" 
+                                         (if (vectorp new-refs)
+                                             (string-join (append new-refs nil) " ")
+                                           (string-join new-refs " ")))))
+                        (insert "---\n\n")
+                        (when (and new-tags (> (length new-tags) 0))
+                          (insert (mapconcat (lambda (tag) (format "#%s" tag)) 
+                                            (if (vectorp new-tags) (append new-tags nil) new-tags) " "))
+                          (insert "\n\n"))
+                        (when new-content
+                          (insert new-content))))
+               
+                     ;; Update Org file
+                     ((string= file-extension "org")
+                      (with-temp-file file-path
+                        (insert ":PROPERTIES:\n")
+                        (insert (format ":ID: %s\n" node-id))
+                        (insert ":END:\n")
+                        (insert (format "#+title: %s\n" new-title))
+                        (when new-category
+                          (insert (format "#+category: %s\n" new-category)))
+                        (when (and new-tags (> (length new-tags) 0))
+                          (insert (format "#+filetags: %s\n" (string-join 
+                                                             (if (vectorp new-tags) (append new-tags nil) new-tags) " "))))
+                        (when (and new-aliases (> (length new-aliases) 0))
+                          (insert (format "#+roam_alias: %s\n" (string-join 
+                                                               (if (vectorp new-aliases) (append new-aliases nil) new-aliases) " "))))
+                        (when (and new-refs (> (length new-refs) 0))
+                          (dolist (ref (if (vectorp new-refs) (append new-refs nil) new-refs))
+                            (insert (format "#+roam_refs: %s\n" ref))))
+                        (insert "\n")
+                        (when new-content
+                          (insert new-content))))
+               
+                     ;; Unsupported file type
+                     (t
+                      (error "Unsupported file type: %s" file-extension)))
+              
+                    ;; Sync database
+                    (org-roam-db-sync)
+              
+                    (md-roam-server--create-success-response
+                     (format "Node updated successfully: %s" new-title)
+                     `((id . ,node-id)
                  (title . ,new-title)
                  (file . ,relative-path)
                  (file_type . ,(cond ((string= file-extension "md") "md")
@@ -710,7 +739,7 @@
                  (category . ,new-category)
                  (tags . ,(if new-tags (if (vectorp new-tags) new-tags (vconcat new-tags)) []))
                  (aliases . ,(if new-aliases (if (vectorp new-aliases) new-aliases (vconcat new-aliases)) []))
-                 (refs . ,(if new-refs (if (vectorp new-refs) new-refs (vconcat new-refs)) []))))))))
+                 (refs . ,(if new-refs (if (vectorp new-refs) new-refs (vconcat new-refs)) []))))))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error updating node: %s" (error-message-string err))))))
