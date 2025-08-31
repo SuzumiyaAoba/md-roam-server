@@ -2,7 +2,7 @@ services:
   md-roam-server:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.simple  # Use simpler Dockerfile for faster builds
     container_name: md-roam-server
     ports:
       - "${REST_API_PORT:-8080}:8080"   # REST API
@@ -24,7 +24,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 120s  # Increased start period for Nix builds
     networks:
       - md-roam-network
     labels:
@@ -33,7 +33,6 @@ services:
       - "traefik.http.routers.md-roam-api.entrypoints=web"
       - "traefik.http.services.md-roam-api.loadbalancer.server.port=8080"
       - "traefik.http.routers.md-roam-ui.rule=Host(`md-roam-ui.localhost`)"
-      - "traefik.http.routers.md-roam-ui.entrypoints=web"
       - "traefik.http.services.md-roam-ui.loadbalancer.server.port=35901"
 
   # Optional: Add reverse proxy for production

@@ -163,10 +163,7 @@ monitor:
 # E2E Testing commands
 e2e:
 	@echo "🧪 Running E2E test suite..."
-	@echo "🚀 Starting server for testing..."
-	@make dev
-	@sleep 3
-	@echo "📋 Running TypeScript E2E tests..."
+	@echo "📋 Running TypeScript E2E tests (server managed by test suite)..."
 	@cd tests && npm test
 	@echo "✅ E2E tests completed"
 
