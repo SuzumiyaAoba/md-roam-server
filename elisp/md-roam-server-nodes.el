@@ -201,9 +201,9 @@
                                  (+ 32768 (random 32768)) ; Ensure first bit is set
                                  (random (expt 16 12))))
                  (timestamp (format-time-string "%Y%m%d%H%M%S"))
-                 ;; Ultra-safe filename generation - use only timestamp and node-id prefix
+                 ;; Ultra-safe filename generation - use timestamp and full node-id
                  (extension (if (string= file-type "org") "org" "md"))
-                 (filename (format "%s-%s.%s" timestamp (substring node-id 0 8) extension))
+                 (filename (format "%s-%s.%s" timestamp node-id extension))
                  (filepath (expand-file-name filename org-roam-directory)))
             
             ;; Test org-roam-directory first
