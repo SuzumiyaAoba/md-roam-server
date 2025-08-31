@@ -36,8 +36,10 @@
 ;;; Configuration Management
 
 (defvar md-roam-server-config-file 
-  (expand-file-name "~/.config/md-roam-server/config.yml")
-  "Path to the md-roam-server configuration file.")
+  (or (getenv "MD_ROAM_CONFIG_FILE")
+      (expand-file-name "~/.config/md-roam-server/config.yml"))
+  "Path to the md-roam-server configuration file.
+Can be overridden by setting the MD_ROAM_CONFIG_FILE environment variable.")
 
 (defvar md-roam-server-config-defaults
   '((server

@@ -226,7 +226,12 @@ make reset              # Reset all data (destructive)
 ## Important Implementation Details
 
 **Configuration System:**
-- YAML configuration file at `~/.config/md-roam-server/config.yml`
+- YAML configuration file at `~/.config/md-roam-server/config.yml` (default)
+- Custom configuration file path can be specified via:
+  - Environment variable: `MD_ROAM_CONFIG_FILE=/path/to/config.yml`
+  - Command line: `./start.sh --config /path/to/config.yml`
+  - Docker: `./docker/start.sh --config /path/to/config.yml`
+  - Makefile: `make dev-config CONFIG=/path/to/config.yml`
 - Automatic default configuration generation on first startup
 - Hash-table based configuration parsing with `gethash` support
 - Configuration validation and directory path expansion

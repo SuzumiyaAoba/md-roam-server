@@ -34,25 +34,37 @@ help:
 	@echo "  make clean     - Clean up containers and images"
 	@echo "  make reset     - Reset all data (⚠️  destructive)"
 
-# Build commands
-build:
-	@echo "🔨 Building md-roam-server Docker image..."
-	docker compose build
+# Development commands
+dev: ## Start development server with hot reload
+	@echo "🚀 Starting md-roam-server in development mode..."
+	@docker-compose up --build
 
-rebuild:
-	@echo "🔨 Force rebuilding md-roam-server Docker image..."
-	docker compose build --no-cache
+dev-config: ## Start development server with custom config file
+	@echo "🚀 Starting md-roam-server with custom config..."
+	@if [ -z "$(CONFIG)" ]; then \
+		echo "❌ Error: CONFIG variable is required. Usage: make dev-config CONFIG=/path/to/config.yml"; \
+		exit 1; \
+	fi
+	@MD_ROAM_CONFIG_FILE=$(CONFIG) docker-compose up --build
+
+build: ## Build Docker image
+	@echo "🔨 Building md-roam-server Docker image..."
+	@docker-compose build
+
+start: ## Start container in detached mode
+	@echo "▶️  Starting md-roam-server container..."
+	@docker-compose up -d
+
+start-config: ## Start container with custom config file
+	@echo "▶️  Starting md-roam-server with custom config..."
+	@if [ -z "$(CONFIG)" ]; then \
+		echo "❌ Error: CONFIG variable is required. Usage: make start-config CONFIG=/path/to/config.yml"; \
+		exit 1; \
+	fi
+	@MD_ROAM_CONFIG_FILE=$(CONFIG) docker-compose up -d
 
 # Runtime commands
 run: dev
-
-dev:
-	@echo "🚀 Starting md-roam-server in development mode..."
-	docker compose up -d md-roam-server
-	@echo "✅ Services started!"
-	@echo "   📡 API: http://localhost:8080"
-	@echo "   🌐 UI:  http://localhost:35901"
-	@make status
 
 prod:
 	@echo "🚀 Starting md-roam-server in production mode with Traefik..."

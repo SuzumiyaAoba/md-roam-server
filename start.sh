@@ -3,6 +3,43 @@
 
 set -e
 
+# Default configuration file path
+CONFIG_FILE=""
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --config PATH    Specify custom configuration file path"
+            echo "  --help, -h       Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  $0                                    # Use default config"
+            echo "  $0 --config /path/to/config.yml      # Use custom config"
+            echo "  MD_ROAM_CONFIG_FILE=/path/to/config.yml $0  # Use env var"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Set environment variable if config file is specified
+if [[ -n "$CONFIG_FILE" ]]; then
+    export MD_ROAM_CONFIG_FILE="$CONFIG_FILE"
+    echo "Using configuration file: $CONFIG_FILE"
+fi
+
 # Check if emacs daemon is already running
 if pgrep -f "emacs.*daemon" > /dev/null; then
     echo "Emacs daemon is already running. Stopping existing daemon..."

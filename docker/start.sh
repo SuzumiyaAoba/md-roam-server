@@ -25,6 +25,7 @@ md-roam-server カスタムポート起動スクリプト
     -t, --traefik-port PORT   Traefikポート (デフォルト: $DEFAULT_TRAEFIK_PORT)
     -d, --dashboard-port PORT Traefikダッシュボードポート (デフォルト: $DEFAULT_TRAEFIK_DASHBOARD_PORT)
     -p, --prometheus-port PORT Prometheusポート (デフォルト: $DEFAULT_PROMETHEUS_PORT)
+    --config PATH             設定ファイルのパスを指定
     --production              本番環境プロファイルを有効化
     --monitoring              監視プロファイルを有効化
     --env-file FILE           .envファイルのパスを指定
@@ -33,6 +34,9 @@ md-roam-server カスタムポート起動スクリプト
 例:
     # 基本的なカスタムポート起動
     $0 -r 9000 -u 36000
+
+    # カスタム設定ファイルで起動
+    $0 --config /path/to/config.yml
 
     # 本番環境用
     $0 -r 80 -u 443 --production
@@ -53,6 +57,7 @@ TRAEFIK_DASHBOARD_PORT=$DEFAULT_TRAEFIK_DASHBOARD_PORT
 PROMETHEUS_PORT=$DEFAULT_PROMETHEUS_PORT
 PROFILES=""
 ENV_FILE=""
+CONFIG_FILE=""
 
 # コマンドライン引数の解析
 while [[ $# -gt 0 ]]; do
@@ -75,6 +80,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -p|--prometheus-port)
             PROMETHEUS_PORT="$2"
+            shift 2
+            ;;
+        --config)
+            CONFIG_FILE="$2"
             shift 2
             ;;
         --production)
@@ -108,6 +117,9 @@ echo "org-roam-ui ポート: $ORG_ROAM_UI_PORT"
 echo "Traefik ポート: $TRAEFIK_PORT"
 echo "Traefik ダッシュボード ポート: $TRAEFIK_DASHBOARD_PORT"
 echo "Prometheus ポート: $PROMETHEUS_PORT"
+if [[ -n "$CONFIG_FILE" ]]; then
+    echo "設定ファイル: $CONFIG_FILE"
+fi
 if [[ -n "$PROFILES" ]]; then
     echo "プロファイル: $PROFILES"
 fi
@@ -122,6 +134,11 @@ export ORG_ROAM_UI_PORT
 export TRAEFIK_PORT
 export TRAEFIK_DASHBOARD_PORT
 export PROMETHEUS_PORT
+
+# 設定ファイルの環境変数を設定
+if [[ -n "$CONFIG_FILE" ]]; then
+    export MD_ROAM_CONFIG_FILE="$CONFIG_FILE"
+fi
 
 # docker-composeコマンドの構築
 COMPOSE_CMD="docker-compose"

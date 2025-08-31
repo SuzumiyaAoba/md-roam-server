@@ -17,6 +17,7 @@ services:
     environment:
       - TZ=UTC
       - EMACS_SERVER_EVAL_TIMEOUT=60
+      - MD_ROAM_CONFIG_FILE=${MD_ROAM_CONFIG_FILE:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/stats"]

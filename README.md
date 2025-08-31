@@ -120,11 +120,31 @@ nix develop -c emacs -l md-roam-server.el
 
 ## Configuration
 
-The server supports configuration via a YAML file at `~/.config/md-roam-server/config.yml`. This file is automatically created with default values on first startup.
+The server supports configuration via a YAML file. The configuration file path can be specified at startup, otherwise it defaults to `~/.config/md-roam-server/config.yml`.
 
 ### Configuration File Location
+
+**Default location:**
 ```
 ~/.config/md-roam-server/config.yml
+```
+
+**Custom location via environment variable:**
+```bash
+export MD_ROAM_CONFIG_FILE=/path/to/custom/config.yml
+```
+
+**Custom location via command line:**
+```bash
+# Native environment
+./start.sh --config /path/to/custom/config.yml
+
+# Docker environment
+./docker/start.sh --config /path/to/custom/config.yml
+
+# Makefile
+make dev-config CONFIG=/path/to/custom/config.yml
+make start-config CONFIG=/path/to/custom/config.yml
 ```
 
 ### Default Configuration
