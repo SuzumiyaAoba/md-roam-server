@@ -21,16 +21,31 @@ info:
     - Docker containerization with volume mounting
     - Modular Emacs Lisp architecture
     
-  version: 2.2.0
+  version: 2.0.0
   contact:
     name: md-roam-server
-    url: https://github.com/your-repo/md-roam-server
+    url: https://github.com/SuzumiyaAoba/md-roam-server
 
 servers:
   - url: http://localhost:8080
     description: Default development server (configurable via ~/.config/md-roam-server/config.yml)
 
 paths:
+  # Health check and root endpoint
+  /:
+    get:
+      summary: Health check and server info
+      description: Get server status and available endpoints
+      tags:
+        - Health Check
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
   # File Operations
   /files:
     get:
@@ -377,7 +392,7 @@ paths:
   /nodes/{id}/categories:
     post:
       summary: Add category to node
-      description: Add a category to a specific node
+      description: Add a category to a specific node (not implemented - use PUT /nodes/:id instead)
       tags:
         - Category Management
       parameters:
@@ -404,7 +419,7 @@ paths:
   /nodes/{id}/categories/{category}:
     delete:
       summary: Remove category from node
-      description: Remove a specific category from a node
+      description: Remove a specific category from a node (not implemented - use PUT /nodes/:id instead)
       tags:
         - Category Management
       parameters:
@@ -678,6 +693,33 @@ components:
           type: string
           format: date-time
           example: "2024-01-01 12:00:00"
+
+    # Health Check Response
+    HealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            version:
+              type: string
+              example: "2.0.0"
+            server_port:
+              type: integer
+              example: 8080
+            ui_port:
+              type: integer
+              example: 35901
+            ui_enabled:
+              type: boolean
+              example: true
+            org_roam_directory:
+              type: string
+              example: "/Users/user/org-roam/"
+            endpoints:
+              type: array
+              items:
+                type: string
+              example: ["/files", "/nodes", "/search", "/tags", "/stats", "/config", "/ui", "/sync"]
 
     # Node Schema
     Node:
@@ -1382,6 +1424,9 @@ components:
               items:
                 type: string
               example: ["existing-category", "new-category"]
+            message:
+              type: string
+              example: "Category management not implemented - use PUT /nodes/:id instead"
 
     DeleteResponse:
       allOf:
@@ -1399,6 +1444,8 @@ components:
               example: "deleted-node.md"
 
 tags:
+  - name: Health Check
+    description: Server health check and status endpoints
   - name: File Operations
     description: Operations for managing org-roam files
   - name: Node Operations
