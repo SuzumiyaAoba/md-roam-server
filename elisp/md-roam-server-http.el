@@ -11,17 +11,25 @@
 
 (defun md-roam-server-send-response (proc status content-type body)
   "Send HTTP response with STATUS, CONTENT-TYPE, and BODY to PROC."
-  (let ((response (format "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\n\r\n%s"
-                         status
-                         (cond ((= status 200) "OK")
-                               ((= status 201) "Created")
-                               ((= status 400) "Bad Request")
-                               ((= status 404) "Not Found")
-                               ((= status 500) "Internal Server Error")
-                               (t "Unknown"))
-                         content-type
-                         (string-bytes body)
-                         body)))
+  (let* ((encoded-body (if (and md-roam-server-utf-8-encoding (stringp body))
+                           (md-roam-server--ensure-utf-8-encoding body)
+                         body))
+         (content-length (string-bytes encoded-body))
+         (charset-header (if md-roam-server-utf-8-encoding
+                            "; charset=utf-8"
+                          ""))
+         (full-content-type (concat content-type charset-header))
+         (response (format "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\n\r\n%s"
+                          status
+                          (cond ((= status 200) "OK")
+                                ((= status 201) "Created")
+                                ((= status 400) "Bad Request")
+                                ((= status 404) "Not Found")
+                                ((= status 500) "Internal Server Error")
+                                (t "Unknown"))
+                          full-content-type
+                          content-length
+                          encoded-body)))
     (process-send-string proc response)))
 
 (defun md-roam-server-parse-request (request)
@@ -47,7 +55,10 @@
   "Parse JSON BODY, return parsed data or nil on error."
   (condition-case nil
       (when (and body (> (length body) 0))
-        (json-read-from-string body))
+        (let ((decoded-body (if md-roam-server-utf-8-encoding
+                               (md-roam-server--decode-utf-8-content body)
+                             body)))
+          (json-read-from-string decoded-body)))
     (error nil)))
 
 (defun md-roam-server-extract-path-param (path pattern)

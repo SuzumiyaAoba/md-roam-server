@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ApiHelpers, TestCleanup } from '@/utils/apiHelpers';
 
 describe('Org-mode Syntax POST Test', () => {
-  it.skip('should register org-mode document with various syntax elements via POST', async () => {
+  it('should register org-mode document with various syntax elements via POST', async () => {
     console.log('=== TESTING ORG-MODE SYNTAX VIA POST ===');
     
     // 極小のorg-mode構文テスト
@@ -98,7 +98,7 @@ describe('Org-mode Syntax POST Test', () => {
     console.log('=== ORG-MODE SYNTAX POST TEST COMPLETED ===');
   }, 120000); // 120秒のタイムアウト
 
-  it.skip('should handle Japanese characters and special symbols', async () => {
+  it('should handle Japanese characters and special symbols', async () => {
     console.log('=== TESTING JAPANESE AND SPECIAL CHARACTERS ===');
     
     const japaneseContent = `* 日本語テスト

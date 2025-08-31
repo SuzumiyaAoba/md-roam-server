@@ -15,6 +15,16 @@
 
 ;;; Variables
 
+;;; Japanese and UTF-8 Support Configuration
+
+(defvar md-roam-server-japanese-enabled t
+  "Whether to enable enhanced Japanese language support.")
+
+(defvar md-roam-server-utf-8-encoding t
+  "Whether to use UTF-8 encoding for all operations.")
+
+;;; Server Configuration
+
 (defvar md-roam-server-port 8080
   "Port for the md-roam HTTP server.")
 
@@ -48,7 +58,10 @@ Can be overridden by setting the MD_ROAM_CONFIG_FILE environment variable.")
      (ui-enabled . t))
     (org-roam
      (directory . "~/org-roam")
-     (db-location . nil)))
+     (db-location . nil))
+    (japanese
+     (enabled . t)
+     (utf-8-encoding . t)))
   "Default configuration for md-roam-server.")
 
 (defun md-roam-server--ensure-config-directory ()
@@ -69,7 +82,10 @@ Can be overridden by setting the MD_ROAM_CONFIG_FILE environment variable.")
     (insert "  ui-enabled: true              # Enable org-roam-ui integration\n\n")
     (insert "org-roam:\n")
     (insert "  directory: ~/org-roam         # Path to org-roam notes directory\n")
-    (insert "  # db-location: nil            # Custom database location (optional)\n")))
+    (insert "  # db-location: nil            # Custom database location (optional)\n\n")
+    (insert "japanese:\n")
+    (insert "  enabled: true                 # Enable enhanced Japanese language support\n")
+    (insert "  utf-8-encoding: true          # Use UTF-8 encoding for all operations\n")))
 
 (defun md-roam-server--load-config ()
   "Load configuration from file, creating default if it doesn't exist."
@@ -117,12 +133,83 @@ Can be overridden by setting the MD_ROAM_CONFIG_FILE environment variable.")
       (when db-location
         (setq org-roam-db-location (expand-file-name db-location))))
     
-    (message "Configuration loaded: API port=%d, UI port=%d, org-roam directory=%s" 
+    ;; Japanese and UTF-8 configuration
+    (when-let ((japanese-enabled (md-roam-server--get-config-value '(japanese enabled) config)))
+      (setq md-roam-server-japanese-enabled japanese-enabled))
+    (when-let ((utf-8-encoding (md-roam-server--get-config-value '(japanese utf-8-encoding) config)))
+      (setq md-roam-server-utf-8-encoding utf-8-encoding))
+    
+    (message "Configuration loaded: API port=%d, UI port=%d, org-roam directory=%s, Japanese=%s, UTF-8=%s" 
              md-roam-server-port 
              md-roam-server-ui-port 
-             org-roam-directory)))
+             org-roam-directory
+             (if md-roam-server-japanese-enabled "enabled" "disabled")
+             (if md-roam-server-utf-8-encoding "enabled" "disabled"))))
 
 ;;; Utility Functions
+
+;;; Japanese and UTF-8 Support Functions
+
+(defun md-roam-server--setup-japanese-support ()
+  "Setup enhanced Japanese language support for the server."
+  (when md-roam-server-japanese-enabled
+    ;; Set default coding system to UTF-8
+    (set-default-coding-systems 'utf-8)
+    (setq default-buffer-file-coding-system 'utf-8)
+    (setq default-file-name-coding-system 'utf-8)
+    (setq default-keyboard-coding-system 'utf-8)
+    (setq default-terminal-coding-system 'utf-8)
+    
+    ;; Set locale environment
+    (setenv "LANG" "ja_JP.UTF-8")
+    (setenv "LC_ALL" "ja_JP.UTF-8")
+    (setenv "LC_CTYPE" "ja_JP.UTF-8")
+    
+    ;; Configure org-mode for Japanese
+    (setq org-export-coding-system 'utf-8)
+    (setq org-html-coding-system 'utf-8)
+    
+    ;; Configure file encoding
+    (setq file-name-coding-system 'utf-8)
+    (setq buffer-file-coding-system 'utf-8)
+    
+    ;; Additional Japanese language optimizations
+    (setq org-export-with-smart-quotes t)
+    (setq org-export-with-sub-superscripts t)
+    (setq org-export-with-entities t)
+    
+    ;; Optimize for Japanese text processing
+    (setq org-export-preserve-breaks t)
+    (setq org-export-with-toc t)
+    
+    ;; Set Japanese locale for better text processing
+    (setq system-time-locale "ja_JP.UTF-8")
+    
+    (message "Japanese language support enabled with UTF-8 encoding")))
+
+(defun md-roam-server--ensure-utf-8-encoding (content)
+  "Ensure CONTENT is properly encoded in UTF-8."
+  (when (and md-roam-server-utf-8-encoding content)
+    (if (stringp content)
+        (encode-coding-string content 'utf-8)
+      content)))
+
+(defun md-roam-server--decode-utf-8-content (content)
+  "Decode CONTENT from UTF-8 if needed."
+  (when (and md-roam-server-utf-8-encoding content)
+    (if (stringp content)
+        (decode-coding-string content 'utf-8)
+      content)))
+
+(defun md-roam-server--sanitize-japanese-content (content)
+  "Sanitize Japanese content while preserving UTF-8 encoding."
+  (when (and md-roam-server-japanese-enabled content (stringp content))
+    (let ((sanitized content))
+      ;; Preserve Japanese characters while sanitizing HTML
+      (setq sanitized (md-roam-server--sanitize-html sanitized))
+      ;; Ensure proper UTF-8 encoding
+      (setq sanitized (md-roam-server--ensure-utf-8-encoding sanitized))
+      sanitized)))
 
 (defun md-roam-server--current-timestamp ()
   "Return current timestamp in standard format."
@@ -186,6 +273,9 @@ This provides basic XSS protection by removing script tags and other dangerous e
   "Initialize org-roam database and ensure it's ready."
   (condition-case err
       (when (not md-roam-server-initialized)
+        ;; Setup Japanese language support first
+        (md-roam-server--setup-japanese-support)
+        
         ;; Setup md-roam for Markdown file support
         (setq md-roam-file-extension "md")
         (setq org-roam-file-extensions '("org" "md"))

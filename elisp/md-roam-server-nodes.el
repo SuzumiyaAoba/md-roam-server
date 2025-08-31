@@ -173,20 +173,20 @@
              (refs-raw (cdr (assoc 'refs json-data)))
              (category-raw (cdr (assoc 'category json-data)))
              (file-type (or (cdr (assoc 'file_type json-data)) "md")) ; Default to .md
-             ;; Sanitize inputs to prevent XSS
-             (title (md-roam-server--sanitize-html title-raw))
-             (content (md-roam-server--sanitize-html content-raw))
-             (category (md-roam-server--sanitize-html category-raw))
+             ;; Sanitize inputs to prevent XSS while preserving Japanese content
+             (title (md-roam-server--sanitize-japanese-content title-raw))
+             (content (md-roam-server--sanitize-japanese-content content-raw))
+             (category (md-roam-server--sanitize-japanese-content category-raw))
              ;; Convert vectors to lists for safe processing and sanitize
              (tags (when tags-raw
                      (let ((tags-list (if (vectorp tags-raw) (append tags-raw nil) tags-raw)))
-                       (mapcar 'md-roam-server--sanitize-html tags-list))))
+                       (mapcar 'md-roam-server--sanitize-japanese-content tags-list))))
              (aliases (when aliases-raw
                         (let ((aliases-list (if (vectorp aliases-raw) (append aliases-raw nil) aliases-raw)))
-                          (mapcar 'md-roam-server--sanitize-html aliases-list))))
+                          (mapcar 'md-roam-server--sanitize-japanese-content aliases-list))))
              (refs (when refs-raw
                      (let ((refs-list (if (vectorp refs-raw) (append refs-raw nil) refs-raw)))
-                       (mapcar 'md-roam-server--sanitize-html refs-list)))))
+                       (mapcar 'md-roam-server--sanitize-japanese-content refs-list)))))
         
         (if (or (not title) (string= title ""))
             (md-roam-server--create-error-response "title is required")
