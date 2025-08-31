@@ -94,6 +94,20 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 - Link type detection and relationship mapping
 - Complete graph traversal capabilities
 
+**Critical Debugging Patterns:**
+- **Port Conflicts**: Always check for existing processes on 8080/35901 before starting server
+- **Database Sync**: Use `POST /sync` endpoint or `org-roam-db-sync` to refresh database after external file changes
+- **ID Duplication**: Server has built-in detection and cleanup for node ID duplication issues
+- **File Encoding**: All file operations use UTF-8 with proper Japanese/Unicode support
+- **Race Conditions**: Server uses single-fork testing and atomic file operations to prevent concurrency issues
+
+**Elisp Development Patterns:**
+- Each module follows single-responsibility principle with clear separation of concerns
+- Network processes use 0.0.0.0 binding for Docker compatibility (not localhost)
+- All HTTP responses use standardized JSON format with status, message, timestamp
+- Error handling uses comprehensive `condition-case` blocks for robust operation
+- Database queries use direct `org-roam-db-query` for performance instead of file parsing
+
 ## Common Commands
 
 ### Docker Development (Recommended)
@@ -187,6 +201,26 @@ curl -X DELETE http://localhost:8080/nodes/NODE_ID
 **Kill Server Process:**
 ```bash
 pkill -f "emacs.*start-server.el"
+# Or kill any process using port 8080
+lsof -ti:8080 | xargs kill -9 || true
+```
+
+**Development Monitoring:**
+```bash
+# Check server health status
+make health
+curl -s http://localhost:8080/stats | jq '.status' || echo "❌ API not accessible"
+
+# Monitor logs
+make logs                  # View container logs
+make watch-logs           # Watch logs in real-time
+docker compose logs -f --tail=100  # Direct Docker command
+
+# Container management
+make status               # Check container status
+make shell               # Open shell in running container
+make clean              # Clean up Docker resources
+make reset              # Reset all data (destructive)
 ```
 
 ## Important Implementation Details
@@ -239,6 +273,42 @@ pkill -f "emacs.*start-server.el"
 - Safe directory creation and validation before file operations
 - Proper HTTP status codes: 200 (success), 201 (created), 400 (client error), 500 (server error)
 - Port conflict resolution (kill existing processes on 8080)
+
+**E2E Testing Framework:**
+- Tests use Vitest framework with comprehensive TypeScript configuration
+- Located in `tests/` directory with modular structure and global setup
+- Global setup handles server lifecycle management (start/stop)
+- Single fork execution prevents server conflicts during testing
+- 90-second timeouts for server initialization and complex operations
+- Defensive programming patterns for API response validation
+
+**Running E2E Tests:**
+```bash
+# Complete test suite via Makefile (starts server automatically)
+make e2e                    # Full E2E test run
+make e2e-watch             # Watch mode for development
+make e2e-coverage          # Run with coverage report
+
+# Direct npm commands (requires manual server start)
+cd tests && npm test              # Run all tests
+cd tests && npm run test:core     # Core functionality tests  
+cd tests && npm run test:watch    # Watch mode
+cd tests && npm run test:coverage # Coverage report
+cd tests && npm run test:quick    # Fast run (bail on first failure)
+```
+
+**Test Categories:**
+- **Core Tests**: `nodes.test.ts`, `search.test.ts`, `files.test.ts`, `server.test.ts`, `metadata.test.ts`
+- **Bug Investigation**: `id-duplication-bug.test.ts`, `metadata-duplication-bug.test.ts`, `debug-file-detection.test.ts`
+- **Syntax Tests**: `org-mode-syntax.test.ts`, `org-mode-syntax-simple.test.ts` - comprehensive org-mode constructs
+- **Edge Cases**: `external-modification-bug.test.ts`, `no-content-change-bug.test.ts`
+- **Extended Tests**: `japanese-unicode.test.ts`, `error-handling.test.ts`, `performance.test.ts`
+
+**Test Utilities:**
+- `ApiHelpers` class: Standardized API interaction with supertest and response validation
+- `TestCleanup` class: Automatic cleanup with retry logic and batch processing  
+- Global setup/teardown manages server lifecycle across test suites
+- Server auto-cleanup between test suites with background process detection
 
 **Testing Requirements:**
 - Docker environment preferred for consistent testing (use `make dev`)
