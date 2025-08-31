@@ -302,6 +302,13 @@ This provides basic XSS protection by removing script tags and other dangerous e
         ;; Start background sync timer for performance
         (md-roam-server--start-background-sync)
         
+        ;; Perform initial sync with timeout
+        (condition-case sync-err
+            (let ((org-roam-db-sync-timeout 10))
+              (org-roam-db-sync))
+          (error
+           (message "Initial sync error: %s" (error-message-string sync-err))))
+        
         (let ((node-count (caar (org-roam-db-query "SELECT COUNT(*) FROM nodes"))))
           (message "org-roam reinitialized: %s (%d nodes)" org-roam-directory node-count))
           
@@ -314,23 +321,25 @@ This provides basic XSS protection by removing script tags and other dangerous e
   (when md-roam-server-sync-timer
     (cancel-timer md-roam-server-sync-timer))
   (setq md-roam-server-sync-timer
-        (run-with-timer 2 nil 'md-roam-server--background-sync)))
+        (run-with-timer 1 nil 'md-roam-server--background-sync)))
 
 (defun md-roam-server--background-sync ()
   "Perform background database synchronization."
   (condition-case err
       (progn
         (message "Starting background org-roam database sync...")
-        (org-roam-db-sync)
+        ;; Use a shorter timeout for background sync
+        (let ((org-roam-db-sync-timeout 30))
+          (org-roam-db-sync))
         (message "Background org-roam database sync completed")
-        ;; Schedule next sync in 10 seconds
+        ;; Schedule next sync in 5 seconds for better responsiveness
         (setq md-roam-server-sync-timer
-              (run-with-timer 10 nil 'md-roam-server--background-sync)))
+              (run-with-timer 5 nil 'md-roam-server--background-sync)))
     (error
      (message "Background sync error: %s" (error-message-string err))
-     ;; Retry in 60 seconds on error
+     ;; Retry in 30 seconds on error
      (setq md-roam-server-sync-timer
-           (run-with-timer 60 nil 'md-roam-server--background-sync)))))
+           (run-with-timer 30 nil 'md-roam-server--background-sync)))))
 
 (provide 'md-roam-server-core)
 ;;; md-roam-server-core.el ends here

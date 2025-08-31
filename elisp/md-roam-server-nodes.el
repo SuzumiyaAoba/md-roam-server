@@ -231,7 +231,8 @@
                     (write-region yaml-content nil filepath)
                     ;; Perform immediate sync for critical operations with timeout protection
                     (condition-case sync-err
-                        (org-roam-db-sync)
+                        (let ((org-roam-db-sync-timeout 15))
+                          (org-roam-db-sync))
                       (error
                        (message "Sync error during markdown file creation: %s" (error-message-string sync-err))))
                     (md-roam-server--create-success-response
@@ -262,7 +263,8 @@
                     (write-region org-content nil filepath)
                     ;; Perform immediate sync for critical operations with timeout protection
                     (condition-case sync-err
-                        (org-roam-db-sync)
+                        (let ((org-roam-db-sync-timeout 15))
+                          (org-roam-db-sync))
                       (error
                        (message "Sync error during org file creation: %s" (error-message-string sync-err))))
                     (md-roam-server--create-success-response

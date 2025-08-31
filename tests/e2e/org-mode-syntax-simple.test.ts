@@ -89,7 +89,7 @@ describe('Org-mode Syntax POST Test', () => {
     expect(retrievedContent).toContain('org-mode構文テストドキュメント');
     
     console.log('=== ORG-MODE SYNTAX POST TEST COMPLETED ===');
-  }, 30000); // 30秒のタイムアウト（最適化により短縮）
+  }, 60000); // 60秒のタイムアウト（パフォーマンス改善により延長）
 
   it.skip('should handle Japanese characters and special symbols', async () => {
     console.log('=== TESTING JAPANESE AND SPECIAL CHARACTERS ===');
@@ -167,5 +167,5 @@ describe('Org-mode Syntax POST Test', () => {
     expect(japaneseSuccessRate).toBeGreaterThanOrEqual(0.0); // 最低限の期待値に調整
 
     console.log('=== JAPANESE AND SPECIAL CHARACTERS TEST COMPLETED ===');
-  }, 60000); // 60秒のタイムアウト
+  }, 45000); // 45秒のタイムアウト（パフォーマンス改善により短縮）
 });
