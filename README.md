@@ -1313,6 +1313,52 @@ lsof -i:8080,35901
 
 ## Testing
 
+The project includes comprehensive E2E tests that use a dedicated test configuration. Test files are created in the project's `tmp/org-roam` directory to avoid interfering with your actual org-roam data.
+
+### Test Configuration
+
+Tests use a separate configuration file (`tests/config/test-config.yml`) that:
+- Sets the org-roam directory to `./tmp/org-roam` (within the project)
+- Creates test files in an isolated environment
+- Automatically cleans up test artifacts
+
+### Running Tests
+
+```bash
+# Run all E2E tests
+make test
+
+# Run tests in watch mode
+make test-watch
+
+# Run tests with coverage report
+make test-coverage
+
+# Clean up test artifacts
+make test-clean
+```
+
+### Test Directory Structure
+
+```
+project/
+├── tmp/                    # Test artifacts (gitignored)
+│   └── org-roam/          # Test org-roam directory
+│       ├── org-roam.db    # Test database
+│       └── *.org          # Test org files
+├── tests/
+│   ├── config/
+│   │   └── test-config.yml # Test configuration
+│   └── e2e/               # Test files
+```
+
+### Test Environment
+
+- **Server Port**: 8080 (same as development)
+- **UI Port**: 35901 (same as development)
+- **Data Directory**: `./tmp/org-roam` (isolated from your data)
+- **Configuration**: `tests/config/test-config.yml`
+
 Test the endpoints with curl:
 ```bash
 # Files endpoint

@@ -107,15 +107,24 @@ shell:
 	docker compose exec md-roam-server bash
 
 # Testing commands
-test:
-	@echo "🧪 Testing md-roam-server API endpoints..."
-	@echo "Testing root endpoint..."
-	@curl -s http://localhost:8080/ | jq '.status' || echo "❌ Root endpoint failed"
-	@echo "Testing stats endpoint..."
-	@curl -s http://localhost:8080/stats | jq '.status' || echo "❌ Stats endpoint failed"
-	@echo "Testing config endpoint..."
-	@curl -s http://localhost:8080/config | jq '.status' || echo "❌ Config endpoint failed"
-	@echo "✅ API tests completed"
+test: ## Run E2E tests with test configuration
+	@echo "🧪 Running E2E tests with test configuration..."
+	@echo "📁 Test files will be created in: ./tmp/org-roam"
+	@cd tests && npm test
+
+test-watch: ## Run E2E tests in watch mode
+	@echo "🧪 Running E2E tests in watch mode..."
+	@cd tests && npm run test:watch
+
+test-coverage: ## Run E2E tests with coverage report
+	@echo "🧪 Running E2E tests with coverage..."
+	@cd tests && npm run test:coverage
+
+test-clean: ## Clean up test artifacts
+	@echo "🧹 Cleaning up test artifacts..."
+	@rm -rf tmp/
+	@rm -rf tests/tmp/
+	@echo "✅ Test artifacts cleaned up"
 
 test-ui:
 	@echo "🧪 Testing org-roam-ui accessibility..."

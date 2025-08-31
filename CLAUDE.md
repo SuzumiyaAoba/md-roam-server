@@ -286,13 +286,17 @@ make reset              # Reset all data (destructive)
 - Single fork execution prevents server conflicts during testing
 - 90-second timeouts for server initialization and complex operations
 - Defensive programming patterns for API response validation
+- **Test Environment**: Uses dedicated test configuration (`tests/config/test-config.yml`)
+- **Test Data Directory**: `./tmp/org-roam` (isolated from user data, gitignored)
+- **Test Database**: `./tmp/org-roam/org-roam.db` (separate from user database)
 
 **Running E2E Tests:**
 ```bash
 # Complete test suite via Makefile (starts server automatically)
-make e2e                    # Full E2E test run
-make e2e-watch             # Watch mode for development
-make e2e-coverage          # Run with coverage report
+make test                    # Full E2E test run
+make test-watch             # Watch mode for development
+make test-coverage          # Run with coverage report
+make test-clean             # Clean up test artifacts
 
 # Direct npm commands (requires manual server start)
 cd tests && npm test              # Run all tests

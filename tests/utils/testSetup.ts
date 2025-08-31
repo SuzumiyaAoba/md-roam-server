@@ -8,6 +8,8 @@ export const TEST_CONFIG = {
   UI_URL: process.env.TEST_UI_URL || 'http://localhost:35901',
   TIMEOUT: 30000,
   STARTUP_DELAY: 3000, // Wait time for server to fully start
+  TEST_ORG_ROAM_DIR: join(process.cwd(), '..', 'tmp', 'org-roam'), // Test org-roam directory
+  TEST_CONFIG_FILE: join(process.cwd(), 'config', 'test-config.yml'), // Test config file
 } as const;
 
 // Server management
@@ -28,6 +30,8 @@ export class TestServerManager {
     const isHealthy = await this.checkServerHealth();
     if (isHealthy) {
       console.log('✅ Server already running and healthy');
+      console.log('📁 Test org-roam directory:', TEST_CONFIG.TEST_ORG_ROAM_DIR);
+      console.log('⚙️  Test config file:', TEST_CONFIG.TEST_CONFIG_FILE);
       this.isServerRunning = true;
       return;
     }

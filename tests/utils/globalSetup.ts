@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 // Global setup for test suite
 export async function setup() {
@@ -7,6 +8,20 @@ export async function setup() {
   
   try {
     const projectRoot = join(process.cwd(), '..');
+    const testConfigPath = join(process.cwd(), 'config', 'test-config.yml');
+    const tmpDir = join(projectRoot, 'tmp');
+    const testOrgRoamDir = join(tmpDir, 'org-roam');
+    
+    // Create tmp directory and test org-roam directory
+    if (!existsSync(tmpDir)) {
+      mkdirSync(tmpDir, { recursive: true });
+      console.log('📁 Created tmp directory:', tmpDir);
+    }
+    
+    if (!existsSync(testOrgRoamDir)) {
+      mkdirSync(testOrgRoamDir, { recursive: true });
+      console.log('📁 Created test org-roam directory:', testOrgRoamDir);
+    }
     
     // Check if server is already running
     const isRunning = await checkServerHealth();
@@ -15,15 +30,18 @@ export async function setup() {
       return;
     }
 
-    // Start server
+    // Start server with test configuration
+    const env = { ...process.env, MD_ROAM_CONFIG_FILE: testConfigPath };
     execSync('./start.sh', { 
       stdio: 'pipe',
-      cwd: projectRoot 
+      cwd: projectRoot,
+      env
     });
     
     // Wait for server to be ready
     await waitForServer();
-    console.log('✅ Server started successfully');
+    console.log('✅ Server started successfully with test configuration');
+    console.log('📁 Test org-roam directory:', testOrgRoamDir);
     
   } catch (error) {
     console.error('❌ Failed to start server in global setup:', error);
