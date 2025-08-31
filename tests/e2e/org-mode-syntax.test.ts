@@ -98,7 +98,7 @@ describe('Org-mode Syntax Comprehensive Test', () => {
     console.log('=== ORG-MODE COMPREHENSIVE SYNTAX TEST COMPLETED ===');
     
     // TestCleanupが自動でクリーンアップを実行
-  }, 60000); // 60秒のタイムアウト（パフォーマンス改善により延長）
+  }, 30000); // 30秒のタイムアウト（パフォーマンス改善により短縮）
 
   it.skip('should handle org-mode specific edge cases', async () => {
     console.log('=== TESTING ORG-MODE EDGE CASES ===');
@@ -171,5 +171,5 @@ describe('Org-mode Syntax Comprehensive Test', () => {
     expect(edgeSuccessRate).toBeGreaterThanOrEqual(0.0); // 最低限の期待値に調整
 
     console.log('=== ORG-MODE EDGE CASES TEST COMPLETED ===');
-  }, 60000); // 60秒のタイムアウト（パフォーマンス改善により延長）
+  }, 30000); // 30秒のタイムアウト（パフォーマンス改善により短縮）
 });

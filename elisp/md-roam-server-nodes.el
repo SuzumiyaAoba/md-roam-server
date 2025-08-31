@@ -229,12 +229,8 @@
                     
                     ;; Write file
                     (write-region yaml-content nil filepath)
-                    ;; Perform immediate sync for critical operations with timeout protection
-                    (condition-case sync-err
-                        (let ((org-roam-db-sync-timeout 15))
-                          (org-roam-db-sync))
-                      (error
-                       (message "Sync error during markdown file creation: %s" (error-message-string sync-err))))
+                    ;; Perform immediate sync for critical operations
+                    (org-roam-db-sync)
                     (md-roam-server--create-success-response
                      "Markdown node created successfully"
                      `((id . ,node-id)
@@ -250,23 +246,18 @@
              ((string= extension "org")
               (condition-case file-err
                   (let ((org-content (format ":PROPERTIES:\n:ID: %s\n:END:\n#+title: %s\n" node-id (or title "Untitled"))))
-                    ;; Add tags if present using filetags
+                    ;; Add tags if present using filetags (simplified)
                     (when (and tags (listp tags) (> (length tags) 0))
-                      (let ((tag-string (mapconcat 'identity tags " ")))
-                        (setq org-content (concat org-content "#+filetags: " tag-string "\n"))))
+                      (setq org-content (concat org-content "#+filetags: " (car tags) "\n")))
                     
-                    ;; Add content if present
+                    ;; Add content if present (simplified)
                     (when content
                       (setq org-content (concat org-content "\n" content)))
                     
                     ;; Write file efficiently
                     (write-region org-content nil filepath)
-                    ;; Perform immediate sync for critical operations with timeout protection
-                    (condition-case sync-err
-                        (let ((org-roam-db-sync-timeout 15))
-                          (org-roam-db-sync))
-                      (error
-                       (message "Sync error during org file creation: %s" (error-message-string sync-err))))
+                    ;; Perform immediate sync for critical operations
+                    (org-roam-db-sync)
                     (md-roam-server--create-success-response
                      "Org node created successfully"
                      `((id . ,node-id)

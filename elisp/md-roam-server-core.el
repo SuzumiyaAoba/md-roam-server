@@ -156,37 +156,18 @@ Can be overridden by setting the MD_ROAM_CONFIG_FILE environment variable.")
 (defun md-roam-server--setup-japanese-support ()
   "Setup enhanced Japanese language support for the server."
   (when md-roam-server-japanese-enabled
-    ;; Set default coding system to UTF-8
+    ;; Set default coding system to UTF-8 (minimal setup for performance)
     (set-default-coding-systems 'utf-8)
     (setq default-buffer-file-coding-system 'utf-8)
-    (setq default-file-name-coding-system 'utf-8)
-    (setq default-keyboard-coding-system 'utf-8)
-    (setq default-terminal-coding-system 'utf-8)
     
-    ;; Set locale environment
+    ;; Set locale environment (minimal)
     (setenv "LANG" "ja_JP.UTF-8")
-    (setenv "LC_ALL" "ja_JP.UTF-8")
-    (setenv "LC_CTYPE" "ja_JP.UTF-8")
     
-    ;; Configure org-mode for Japanese
+    ;; Configure org-mode for Japanese (minimal)
     (setq org-export-coding-system 'utf-8)
-    (setq org-html-coding-system 'utf-8)
     
-    ;; Configure file encoding
+    ;; Configure file encoding (minimal)
     (setq file-name-coding-system 'utf-8)
-    (setq buffer-file-coding-system 'utf-8)
-    
-    ;; Additional Japanese language optimizations
-    (setq org-export-with-smart-quotes t)
-    (setq org-export-with-sub-superscripts t)
-    (setq org-export-with-entities t)
-    
-    ;; Optimize for Japanese text processing
-    (setq org-export-preserve-breaks t)
-    (setq org-export-with-toc t)
-    
-    ;; Set Japanese locale for better text processing
-    (setq system-time-locale "ja_JP.UTF-8")
     
     (message "Japanese language support enabled with UTF-8 encoding")))
 
@@ -302,9 +283,9 @@ This provides basic XSS protection by removing script tags and other dangerous e
         ;; Start background sync timer for performance
         (md-roam-server--start-background-sync)
         
-        ;; Perform initial sync with timeout
+        ;; Perform initial sync with shorter timeout
         (condition-case sync-err
-            (let ((org-roam-db-sync-timeout 10))
+            (let ((org-roam-db-sync-timeout 3))
               (org-roam-db-sync))
           (error
            (message "Initial sync error: %s" (error-message-string sync-err))))
@@ -329,17 +310,17 @@ This provides basic XSS protection by removing script tags and other dangerous e
       (progn
         (message "Starting background org-roam database sync...")
         ;; Use a shorter timeout for background sync
-        (let ((org-roam-db-sync-timeout 30))
+        (let ((org-roam-db-sync-timeout 10))
           (org-roam-db-sync))
         (message "Background org-roam database sync completed")
-        ;; Schedule next sync in 5 seconds for better responsiveness
+        ;; Schedule next sync in 1 second for better responsiveness
         (setq md-roam-server-sync-timer
-              (run-with-timer 5 nil 'md-roam-server--background-sync)))
+              (run-with-timer 1 nil 'md-roam-server--background-sync)))
     (error
      (message "Background sync error: %s" (error-message-string err))
-     ;; Retry in 30 seconds on error
+     ;; Retry in 10 seconds on error
      (setq md-roam-server-sync-timer
-           (run-with-timer 30 nil 'md-roam-server--background-sync)))))
+           (run-with-timer 10 nil 'md-roam-server--background-sync)))))
 
 (provide 'md-roam-server-core)
 ;;; md-roam-server-core.el ends here
