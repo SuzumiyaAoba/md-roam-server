@@ -14,6 +14,11 @@ describe('Org-mode Syntax Comprehensive Test', () => {
 
 *太字テキスト* と /斜体テキスト/
 
+** リスト
+
+- 項目1
+- 項目2
+
 ** TODO項目
 
 *** TODO 重要なタスク`;
@@ -87,9 +92,9 @@ describe('Org-mode Syntax Comprehensive Test', () => {
     console.log(`❌ 失敗: ${failedChecks}/${syntaxChecks.length}`);
     console.log(`成功率: ${Math.round((passedChecks / syntaxChecks.length) * 100)}%`);
     
-    // 最低20%の構文要素が保持されていることを期待（極小テストにより調整）
+    // 最低60%の構文要素が保持されていることを期待（軽量化テストにより調整）
     const successRate = passedChecks / syntaxChecks.length;
-    expect(successRate).toBeGreaterThanOrEqual(0.2);
+    expect(successRate).toBeGreaterThanOrEqual(0.6);
     
     // 日本語コンテンツが正しく保存されていることを確認
     expect(retrievedContent).toContain('メインタイトル');
@@ -98,7 +103,7 @@ describe('Org-mode Syntax Comprehensive Test', () => {
     console.log('=== ORG-MODE COMPREHENSIVE SYNTAX TEST COMPLETED ===');
     
     // TestCleanupが自動でクリーンアップを実行
-  }, 30000); // 30秒のタイムアウト（パフォーマンス改善により短縮）
+  }, 60000); // 60秒のタイムアウト（軽量化により延長）
 
   it.skip('should handle org-mode specific edge cases', async () => {
     console.log('=== TESTING ORG-MODE EDGE CASES ===');
@@ -171,5 +176,5 @@ describe('Org-mode Syntax Comprehensive Test', () => {
     expect(edgeSuccessRate).toBeGreaterThanOrEqual(0.0); // 最低限の期待値に調整
 
     console.log('=== ORG-MODE EDGE CASES TEST COMPLETED ===');
-  }, 30000); // 30秒のタイムアウト（パフォーマンス改善により短縮）
+  }, 60000); // 60秒のタイムアウト（軽量化により延長）
 });

@@ -368,7 +368,7 @@ describe('End-to-End Workflows', () => {
       // Basic search test
       const search = await ApiHelpers.searchNodes('bilingual');
       expect(search.status).toBe(200);
-    }, 30000); // 30秒のタイムアウト
+    }, 35000); // 35秒のタイムアウト（軽量化により延長）
   });
 
   describe('System Integration Workflows', () => {

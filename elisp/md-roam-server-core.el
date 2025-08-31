@@ -285,7 +285,7 @@ This provides basic XSS protection by removing script tags and other dangerous e
         
         ;; Perform initial sync with shorter timeout
         (condition-case sync-err
-            (let ((org-roam-db-sync-timeout 3))
+            (let ((org-roam-db-sync-timeout 1))
               (org-roam-db-sync))
           (error
            (message "Initial sync error: %s" (error-message-string sync-err))))
@@ -310,12 +310,12 @@ This provides basic XSS protection by removing script tags and other dangerous e
       (progn
         (message "Starting background org-roam database sync...")
         ;; Use a shorter timeout for background sync
-        (let ((org-roam-db-sync-timeout 10))
+        (let ((org-roam-db-sync-timeout 5))
           (org-roam-db-sync))
         (message "Background org-roam database sync completed")
-        ;; Schedule next sync in 1 second for better responsiveness
+        ;; Schedule next sync in 0.2 seconds for better responsiveness
         (setq md-roam-server-sync-timer
-              (run-with-timer 1 nil 'md-roam-server--background-sync)))
+              (run-with-timer 0.2 nil 'md-roam-server--background-sync)))
     (error
      (message "Background sync error: %s" (error-message-string err))
      ;; Retry in 10 seconds on error
