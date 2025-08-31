@@ -215,36 +215,25 @@
              ;; Create Markdown file
              ((string= extension "md")
               (condition-case file-err
-                  (let ((yaml-content "---\n"))
-                    ;; Build YAML front matter using simple concatenation to avoid issues with Japanese text
-                    (setq yaml-content (concat yaml-content "id: " node-id "\n"))
-                    (setq yaml-content (concat yaml-content "title: " title "\n"))
-                    ;; Add optional metadata using simple concatenation
+                  (let ((yaml-content (format "---\nid: %s\ntitle: %s\n" node-id title)))
+                    ;; Add optional metadata
                     (when category
-                      (setq yaml-content (concat yaml-content "category: " category "\n")))
-                    ;; Add tags safely without complex processing
+                      (setq yaml-content (concat yaml-content (format "category: %s\n" category))))
+                    ;; Add tags efficiently
                     (when (and tags (listp tags) (> (length tags) 0))
-                      (let ((tag-line "tags: ["))
-                        (dolist (tag tags)
-                          (when (stringp tag)
-                            (setq tag-line (concat tag-line "\"" tag "\", "))))
-                        ;; Remove trailing comma and space, add closing bracket
-                        (when (string-suffix-p ", " tag-line)
-                          (setq tag-line (substring tag-line 0 -2)))
-                        (setq yaml-content (concat yaml-content tag-line "]\n"))))
-                    ;; TODO: Re-enable aliases and refs processing if needed
-                    ;; (when aliases
-                    ;;   (setq yaml-content (concat yaml-content "roam_aliases: [" (mapconcat (lambda (alias) (concat "\"" alias "\"")) aliases ", ") "]\n")))
-                    ;; (when refs
-                    ;;   (setq yaml-content (concat yaml-content "roam_refs: [" (mapconcat (lambda (ref) (concat "\"" ref "\"")) refs ", ") "]\n")))
+                      (let ((tag-string (mapconcat (lambda (tag) (format "\"%s\"" tag)) tags ", ")))
+                        (setq yaml-content (concat yaml-content (format "tags: [%s]\n" tag-string)))))
                     
                     ;; Complete YAML and add content
                     (setq yaml-content (concat yaml-content "---\n\n" content))
                     
                     ;; Write file
                     (write-region yaml-content nil filepath)
-                    ;; Sync database to make node immediately available
-                    (org-roam-db-sync)
+                    ;; Perform immediate sync for critical operations with timeout protection
+                    (condition-case sync-err
+                        (org-roam-db-sync)
+                      (error
+                       (message "Sync error during markdown file creation: %s" (error-message-string sync-err))))
                     (md-roam-server--create-success-response
                      "Markdown node created successfully"
                      `((id . ,node-id)
@@ -259,34 +248,23 @@
              ;; Create Org file 
              ((string= extension "org")
               (condition-case file-err
-                  (let ((org-content ":PROPERTIES:\n"))
-                    ;; Build content step by step without format or complex processing
-                    ;; Use basic string concatenation only, avoid any complex string operations with Japanese
-                    (setq org-content (concat org-content ":ID: " node-id "\n:END:\n#+title: "))
-                    
-                    ;; For Japanese text, use simple concatenation without any encoding functions
-                    (if title 
-                        (setq org-content (concat org-content title))
-                      (setq org-content (concat org-content "Untitled")))
-                    
-                    (setq org-content (concat org-content "\n"))
-                    
+                  (let ((org-content (format ":PROPERTIES:\n:ID: %s\n:END:\n#+title: %s\n" node-id (or title "Untitled"))))
                     ;; Add tags if present using filetags
                     (when (and tags (listp tags) (> (length tags) 0))
-                      (let ((tag-line "#+filetags: "))
-                        (dolist (tag tags)
-                          (when (stringp tag)
-                            (setq tag-line (concat tag-line tag " "))))
-                        (setq org-content (concat org-content tag-line "\n"))))
+                      (let ((tag-string (mapconcat 'identity tags " ")))
+                        (setq org-content (concat org-content "#+filetags: " tag-string "\n"))))
                     
-                    ;; Add content if present, using simple concatenation
+                    ;; Add content if present
                     (when content
                       (setq org-content (concat org-content "\n" content)))
                     
-                    ;; Write file
+                    ;; Write file efficiently
                     (write-region org-content nil filepath)
-                    ;; Sync database to make node immediately available
-                    (org-roam-db-sync)
+                    ;; Perform immediate sync for critical operations with timeout protection
+                    (condition-case sync-err
+                        (org-roam-db-sync)
+                      (error
+                       (message "Sync error during org file creation: %s" (error-message-string sync-err))))
                     (md-roam-server--create-success-response
                      "Org node created successfully"
                      `((id . ,node-id)

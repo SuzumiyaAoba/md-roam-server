@@ -117,6 +117,10 @@
   (when md-roam-server-process
     (delete-process md-roam-server-process)
     (setq md-roam-server-process nil)
+    ;; Clean up background sync timer
+    (when md-roam-server-sync-timer
+      (cancel-timer md-roam-server-sync-timer)
+      (setq md-roam-server-sync-timer nil))
     (message "md-roam server stopped")))
 
 (provide 'md-roam-server-http)
