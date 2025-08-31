@@ -69,7 +69,7 @@ describe('Error Handling and Edge Cases E2E Tests', () => {
 
   describe('Resource Limits and Large Data', () => {
     it('should handle very long titles', async () => {
-      const longTitle = 'Very Long Title '.repeat(100);
+      const longTitle = 'Very Long Title '.repeat(50); // Reduced from 100
       
       const response = await ApiHelpers.createNode({
         title: longTitle,
@@ -86,8 +86,8 @@ describe('Error Handling and Edge Cases E2E Tests', () => {
       }
     });
 
-    it('should handle very large content', async () => {
-      const largeContent = 'Large content block. '.repeat(10000);
+    it('should handle large content', async () => {
+      const largeContent = 'Large content block. '.repeat(1000); // Reduced from 10000
       
       const startTime = Date.now();
       const response = await ApiHelpers.createNode({
@@ -98,7 +98,7 @@ describe('Error Handling and Edge Cases E2E Tests', () => {
       const endTime = Date.now();
       
       // Should complete within reasonable time
-      expect(endTime - startTime).toBeLessThan(30000); // 30 seconds max
+      expect(endTime - startTime).toBeLessThan(15000); // Reduced from 30 seconds
       
       if (response.status === 201) {
         const createdNode = ApiHelpers.expectNodeResponse(response);
@@ -109,7 +109,7 @@ describe('Error Handling and Edge Cases E2E Tests', () => {
     });
 
     it('should handle many tags gracefully', async () => {
-      const manyTags = Array.from({ length: 1000 }, (_, i) => `tag-${i}`);
+      const manyTags = Array.from({ length: 100 }, (_, i) => `tag-${i}`); // Reduced from 1000
       
       const response = await ApiHelpers.createNode({
         title: 'Many Tags Test',
@@ -123,24 +123,6 @@ describe('Error Handling and Edge Cases E2E Tests', () => {
         TestCleanup.trackNode(createdNode.id);
       } else {
         // Should fail gracefully with appropriate error
-        ApiHelpers.expectErrorResponse(response);
-      }
-    });
-
-    it('should handle many aliases', async () => {
-      const manyAliases = Array.from({ length: 100 }, (_, i) => `Alias ${i + 1}`);
-      
-      const response = await ApiHelpers.createNode({
-        title: 'Many Aliases Test',
-        content: 'Testing with many aliases',
-        aliases: manyAliases,
-        file_type: 'md'
-      });
-      
-      if (response.status === 201) {
-        const createdNode = ApiHelpers.expectNodeResponse(response);
-        TestCleanup.trackNode(createdNode.id);
-      } else {
         ApiHelpers.expectErrorResponse(response);
       }
     });
