@@ -48,6 +48,9 @@ describe('End-to-End Workflows', () => {
         title: updateData.title
       });
 
+      // Sync database to reflect the update
+      await ApiHelpers.syncDatabase();
+
       // Verify update
       const verifyResponse = await ApiHelpers.getNode(createdNode.id);
       expect(verifyResponse.status).toBe(200);

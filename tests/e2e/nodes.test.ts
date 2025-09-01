@@ -581,6 +581,9 @@ describe('Nodes API E2E Tests', () => {
         title: 'Updated CRUD Test Node'
       });
       
+      // Sync database to reflect the update
+      await ApiHelpers.syncDatabase();
+      
       // Verify node is still in list with updated title
       const afterUpdateResponse = await ApiHelpers.getAllNodes();
       expect(afterUpdateResponse.status).toBe(200);

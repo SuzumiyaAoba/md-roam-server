@@ -683,11 +683,7 @@
                  nil file-path))
                (t (error "Unsupported file type")))
               
-              ;; Try database sync but don't fail if it has issues
-              (condition-case sync-err
-                  (org-roam-db-sync)
-                (error 
-                 (message "Database sync failed but file was updated: %s" (error-message-string sync-err))))
+              ;; Skip database sync to prevent blocking - rely on background sync or manual /sync
               
               ;; Return response
               (md-roam-server--create-success-response
@@ -701,7 +697,7 @@
                  (tags . [])
                  (aliases . [])
                  (refs . [])
-                 (note . "Node updated with database sync")))))))
+                 (note . "Database sync skipped to avoid blocking - use POST /sync to update database")))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error updating node: %s" (error-message-string err))

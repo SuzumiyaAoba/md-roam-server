@@ -128,6 +128,9 @@ describe('ID Duplication Bug Investigation', () => {
       expect(nodesWithSameId.length).toBe(1);
     }
     
+    // Sync database to reflect all updates
+    await ApiHelpers.syncDatabase();
+    
     // Final verification
     const finalList = await ApiHelpers.getAllNodes();
     const finalNodesWithId = finalList.body.data?.filter((n: any) => n.id === testNode.id) || [];
