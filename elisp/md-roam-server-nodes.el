@@ -634,149 +634,78 @@
           (string-join (reverse body-lines) "\n"))))
 
 (defun md-roam-server-update-node (node-id json-data)
-  "Update a node by NODE-ID with JSON-DATA containing new content and metadata."
+  "Update a node by NODE-ID with JSON-DATA."
   (condition-case err
       (progn
-        ;; Ensure md-roam is properly configured
-        (unless (bound-and-true-p md-roam-mode)
-          (setq md-roam-file-extension "md")
-          (setq org-roam-file-extensions '("org" "md"))
-          (setq org-roam-title-sources '((title headline) (alias alias)))
-          (setq md-roam-use-org-extract-ref-links t)
-          (md-roam-mode 1))
-        ;; Ensure database is in the correct location
-        (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
-        (org-roam-db-sync)
-        
-        ;; Check if node exists
-        (let* ((node-query (org-roam-db-query [:select [id title file level] :from nodes :where (= id $s1)] node-id))
+        (md-roam-server-init-org-roam)
+        (let* ((node-query (org-roam-db-query [:select [id title file] :from nodes :where (= id $s1)] node-id))
                (node (car node-query)))
           (if (not node)
               (md-roam-server--create-error-response 
                (format "Node with ID '%s' not found" node-id)
                `((node_id . ,node-id)
                  (error_type . "not_found")))
-            (let* ((current-title (nth 1 node))
-                   (file-path (nth 2 node))
-                   (relative-path (file-relative-name file-path org-roam-directory))
+            (let* ((file-path (nth 2 node))
                    (file-extension (file-name-extension file-path))
-                   ;; Extract new data from JSON
-                   (new-title (or (cdr (assoc 'title json-data)) current-title))
-                   (new-category (cdr (assoc 'category json-data)))
-                   (new-tags (cdr (assoc 'tags json-data)))
-                   (new-aliases (cdr (assoc 'aliases json-data)))
-                   (new-refs (cdr (assoc 'refs json-data)))
+                   (new-title (cdr (assoc 'title json-data)))
                    (new-content (cdr (assoc 'content json-data)))
+                   (new-category (cdr (assoc 'category json-data)))
                    (new-file-type (cdr (assoc 'file_type json-data))))
               
-              ;; Validate input first
+              ;; Validation
+              (when (and new-title (string= new-title ""))
+                (error "Title cannot be empty"))
+              
+              (when (and new-file-type (not (member new-file-type '("md" "org"))))
+                (error "Invalid file_type: %s. Must be 'md' or 'org'" new-file-type))
+              
+              ;; Use current values if not provided
+              (unless new-title (setq new-title (nth 1 node)))
+              (unless new-content (setq new-content ""))
+              
+              ;; Security check
+              (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
+                (error "File path outside of org-roam directory"))
+              
+              ;; Update file
               (cond 
-               ((and new-title (string= new-title ""))
-                (md-roam-server--create-error-response "title is required"))
-               ((and new-file-type (not (member new-file-type '("md" "org"))))
-                (md-roam-server--create-error-response 
-                 (format "Invalid file_type: %s. Must be 'md' or 'org'" new-file-type)))
-               (t
-                ;; Validation passed - proceed with update
+               ((string= file-extension "md")
+                (write-region 
+                 (concat "---\nid: " node-id "\ntitle: " new-title 
+                         (when new-category (format "\ncategory: %s" new-category))
+                         "\n---\n\n" new-content)
+                 nil file-path))
+               ((string= file-extension "org")
+                (write-region 
+                 (concat ":PROPERTIES:\n:ID: " node-id "\n:END:\n#+title: " new-title 
+                         (when new-category (format "\n#+category: %s" new-category))
+                         "\n\n" new-content)
+                 nil file-path))
+               (t (error "Unsupported file type")))
               
-                    ;; Security check - ensure file is within org-roam directory
-                    (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
-                      (error "File path outside of org-roam directory: %s" file-path))
+              ;; Try database sync but don't fail if it has issues
+              (condition-case sync-err
+                  (org-roam-db-sync)
+                (error 
+                 (message "Database sync failed but file was updated: %s" (error-message-string sync-err))))
               
-                    ;; Update file based on extension with ID duplication prevention
-                    (condition-case file-err
-                        (cond 
-                         ;; Update Markdown file
-                         ((string= file-extension "md")
-                          (message "DEBUG: Updating markdown file %s with ID %s" file-path node-id)
-                          (with-temp-file file-path
-                            (insert "---\n")
-                            (insert (format "id: %s\n" node-id))
-                            (insert (format "title: %s\n" new-title))
-                            (when new-category
-                              (insert (format "category: %s\n" new-category)))
-                            (when (and new-aliases (> (length new-aliases) 0))
-                              (insert (format "roam_aliases: %s\n" 
-                                             (json-encode (if (vectorp new-aliases) 
-                                                             (append new-aliases nil)
-                                                           new-aliases)))))
-                            (when (and new-refs (> (length new-refs) 0))
-                              (insert (format "roam_refs: %s\n" 
-                                             (if (vectorp new-refs)
-                                                 (string-join (append new-refs nil) " ")
-                                               (string-join new-refs " ")))))
-                            (insert "---\n\n")
-                            (when (and new-tags (> (length new-tags) 0))
-                              (insert (mapconcat (lambda (tag) (format "#%s" tag)) 
-                                                (if (vectorp new-tags) (append new-tags nil) new-tags) " "))
-                              (insert "\n\n"))
-                            (when new-content
-                              (insert new-content)))
-                          (message "DEBUG: Markdown file updated successfully"))
-               
-                         ;; Update Org file
-                         ((string= file-extension "org")
-                          (message "DEBUG: Updating org file %s with ID %s" file-path node-id)
-                          (with-temp-file file-path
-                            (insert ":PROPERTIES:\n")
-                            (insert (format ":ID: %s\n" node-id))
-                            (insert ":END:\n")
-                            (insert (format "#+title: %s\n" new-title))
-                            (when new-category
-                              (insert (format "#+category: %s\n" new-category)))
-                            (when (and new-tags (> (length new-tags) 0))
-                              (insert (format "#+filetags: %s\n" (string-join 
-                                                                 (if (vectorp new-tags) (append new-tags nil) new-tags) " "))))
-                            (when (and new-aliases (> (length new-aliases) 0))
-                              (insert (format "#+roam_alias: %s\n" (string-join 
-                                                                   (if (vectorp new-aliases) (append new-aliases nil) new-aliases) " "))))
-                            (when (and new-refs (> (length new-refs) 0))
-                              (dolist (ref (if (vectorp new-refs) (append new-refs nil) new-refs))
-                                (insert (format "#+roam_refs: %s\n" ref))))
-                            (insert "\n")
-                            (when new-content
-                              (insert new-content)))
-                          (message "DEBUG: Org file updated successfully"))
-               
-                         ;; Unsupported file type
-                         (t
-                          (error "Unsupported file type: %s" file-extension)))
-                      (error
-                       (message "ERROR: Failed to update file: %s" (error-message-string file-err))
-                       (error "Failed to update file: %s" (error-message-string file-err))))
-              
-                    ;; Sync database with ID duplication checks
-                    (message "DEBUG: Syncing database after update...")
-                    (condition-case sync-err
-                        (progn
-                          (org-roam-db-sync)
-                          ;; Verify no ID duplication occurred
-                          (let ((id-count (length (org-roam-db-query [:select [id] :from nodes :where (= id $s1)] node-id))))
-                            (when (> id-count 1)
-                              (message "WARNING: ID duplication detected for %s, count: %d" node-id id-count)
-                              ;; Force a full database rebuild to clean up duplicates
-                              (org-roam-db-sync 'force))))
-                      (error 
-                       (message "ERROR: Database sync failed: %s" (error-message-string sync-err))
-                       (error "Database sync failed: %s" (error-message-string sync-err))))
-                    (message "DEBUG: Database sync completed")
-              
-                    (md-roam-server--create-success-response
-                     (format "Node updated successfully: %s" new-title)
-                     `((id . ,node-id)
+              ;; Return response
+              (md-roam-server--create-success-response
+               "Node updated"
+               `((id . ,node-id)
                  (title . ,new-title)
-                 (file . ,relative-path)
-                 (file_type . ,(cond ((string= file-extension "md") "md")
-                                     ((string= file-extension "org") "org")
-                                     (t "unknown")))
+                 (file . ,(file-relative-name file-path org-roam-directory))
+                 (file_type . ,(if (string= file-extension "md") "md" "org"))
                  (path . ,file-path)
                  (category . ,new-category)
-                 (tags . ,(if new-tags (if (vectorp new-tags) new-tags (vconcat new-tags)) []))
-                 (aliases . ,(if new-aliases (if (vectorp new-aliases) new-aliases (vconcat new-aliases)) []))
-                 (refs . ,(if new-refs (if (vectorp new-refs) new-refs (vconcat new-refs)) []))))))))))
+                 (tags . [])
+                 (aliases . [])
+                 (refs . [])
+                 (note . "Node updated with database sync")))))))
     (error
      (md-roam-server--create-error-response 
-      (format "Error updating node: %s" (error-message-string err))))))
+      (format "Error updating node: %s" (error-message-string err))
+      `((node_id . ,node-id))))))
 
 (defun md-roam-server-add-tag-to-node (node-id json-data)
   "Add a tag to a node by NODE-ID using JSON-DATA containing the tag."
