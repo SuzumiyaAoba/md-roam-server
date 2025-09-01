@@ -280,18 +280,12 @@ This provides basic XSS protection by removing script tags and other dangerous e
         ;; Ensure database is in the same directory as the notes
         (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
         
-        ;; Start background sync timer for performance
+        ;; Start background sync timer for performance (less aggressive)
         (md-roam-server--start-background-sync)
         
-        ;; Perform initial sync with shorter timeout
-        (condition-case sync-err
-            (let ((org-roam-db-sync-timeout 1))
-              (org-roam-db-sync))
-          (error
-           (message "Initial sync error: %s" (error-message-string sync-err))))
-        
-        (let ((node-count (caar (org-roam-db-query "SELECT COUNT(*) FROM nodes"))))
-          (message "org-roam reinitialized: %s (%d nodes)" org-roam-directory node-count))
+        ;; Skip initial sync to prevent blocking during updates
+        ;; Database will be synced by background process or manual /sync calls
+        (message "org-roam initialized (sync deferred): %s" org-roam-directory)
           
         (setq md-roam-server-initialized t))
     (error
@@ -302,7 +296,7 @@ This provides basic XSS protection by removing script tags and other dangerous e
   (when md-roam-server-sync-timer
     (cancel-timer md-roam-server-sync-timer))
   (setq md-roam-server-sync-timer
-        (run-with-timer 1 nil 'md-roam-server--background-sync)))
+        (run-with-timer 30 nil 'md-roam-server--background-sync)))
 
 (defun md-roam-server--background-sync ()
   "Perform background database synchronization."
@@ -313,14 +307,14 @@ This provides basic XSS protection by removing script tags and other dangerous e
         (let ((org-roam-db-sync-timeout 5))
           (org-roam-db-sync))
         (message "Background org-roam database sync completed")
-        ;; Schedule next sync in 0.2 seconds for better responsiveness
+        ;; Schedule next sync in 30 seconds to prevent blocking
         (setq md-roam-server-sync-timer
-              (run-with-timer 0.2 nil 'md-roam-server--background-sync)))
+              (run-with-timer 30 nil 'md-roam-server--background-sync)))
     (error
      (message "Background sync error: %s" (error-message-string err))
-     ;; Retry in 10 seconds on error
+     ;; Retry in 60 seconds on error to prevent spam
      (setq md-roam-server-sync-timer
-           (run-with-timer 10 nil 'md-roam-server--background-sync)))))
+           (run-with-timer 60 nil 'md-roam-server--background-sync)))))
 
 (provide 'md-roam-server-core)
 ;;; md-roam-server-core.el ends here

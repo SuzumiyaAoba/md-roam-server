@@ -293,7 +293,7 @@
         ;; Ensure database is in the correct location
         (setq org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
         (message "DEBUG stats: org-roam-directory=%s, db-location=%s" org-roam-directory org-roam-db-location)
-        (org-roam-db-sync)
+        ;; Skip database sync to prevent blocking during stats requests
         (let* ((total-nodes (caar (org-roam-db-query [:select (funcall count *) :from nodes])))
                (total-links (caar (org-roam-db-query [:select (funcall count *) :from links])))
                (total-tags (caar (org-roam-db-query [:select (funcall count :distinct tag) :from tags])))
