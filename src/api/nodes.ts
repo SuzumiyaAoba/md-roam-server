@@ -1,113 +1,64 @@
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { validator } from "hono/validator";
-import type { CreateNodeRequest, UpdateNodeRequest } from "../types";
+import { z } from "zod";
+import {
+  CreateNodeRequestSchema,
+  NodeIdParamSchema,
+  UpdateNodeRequestSchema,
+} from "../schemas";
 import { EmacsClient } from "../utils/emacs-client";
 import {
   errorResponse,
   notFoundResponse,
   successResponse,
-  validationErrorResponse,
 } from "../utils/response";
 
 const nodes = new Hono();
 const emacsClient = new EmacsClient();
 
 // POST /nodes - Create new node
-nodes.post(
-  "/",
-  validator("json", (value, c) => {
-    const { title, content, file_type, category, tags, aliases, refs } =
-      value as CreateNodeRequest;
+nodes.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
+  try {
+    const nodeData = c.req.valid("json");
 
-    if (!title || typeof title !== "string" || title.trim() === "") {
-      return validationErrorResponse(
-        c,
-        "Title is required and cannot be empty",
-      );
-    }
+    // Delegate node creation to Emacs server
+    const result = await emacsClient.createNode(nodeData);
 
-    if (file_type && !["md", "org"].includes(file_type)) {
-      return validationErrorResponse(
-        c,
-        'file_type must be either "md" or "org"',
-      );
-    }
-
-    return {
-      title: title.trim(),
-      content: content || "",
-      file_type: file_type || "md",
-      category,
-      tags: Array.isArray(tags) ? tags : [],
-      aliases: Array.isArray(aliases) ? aliases : [],
-      refs: Array.isArray(refs) ? refs : [],
-    };
-  }),
-  async (c) => {
-    try {
-      const nodeData = c.req.valid("json");
-
-      // Delegate node creation to Emacs server
-      const result = await emacsClient.createNode(nodeData);
-
-      if (result.status === "error") {
-        return errorResponse(
-          c,
-          result.message || "Failed to create node",
-          result.error,
-          400,
-        );
-      }
-
-      return successResponse(
-        c,
-        result.message || "Node created successfully",
-        result.data || result,
-        201,
-      );
-    } catch (error) {
-      console.error("Error creating node:", error);
+    if (result.status === "error") {
       return errorResponse(
         c,
-        "Failed to create node",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        result.message || "Failed to create node",
+        result.error,
+        400,
       );
     }
-  },
-);
+
+    return successResponse(
+      c,
+      result.message || "Node created successfully",
+      result.data || result,
+      201,
+    );
+  } catch (error) {
+    console.error("Error creating node:", error);
+    return errorResponse(
+      c,
+      "Failed to create node",
+      error instanceof Error ? error.message : "Emacs server unavailable",
+      503,
+    );
+  }
+});
 
 // PUT /nodes/:id - Update node
 nodes.put(
   "/:id",
-  validator("json", (value, c) => {
-    const { title, content, category, tags, aliases, refs } =
-      value as UpdateNodeRequest;
-
-    if (
-      title !== undefined &&
-      (typeof title !== "string" || title.trim() === "")
-    ) {
-      return validationErrorResponse(c, "Title cannot be empty if provided");
-    }
-
-    return {
-      title: title?.trim(),
-      content,
-      category,
-      tags: Array.isArray(tags) ? tags : undefined,
-      aliases: Array.isArray(aliases) ? aliases : undefined,
-      refs: Array.isArray(refs) ? refs : undefined,
-    };
-  }),
+  zValidator("param", NodeIdParamSchema),
+  zValidator("json", UpdateNodeRequestSchema),
   async (c) => {
     try {
-      const nodeId = c.req.param("id");
+      const { id: nodeId } = c.req.valid("param");
       const updateData = c.req.valid("json");
-
-      if (!nodeId) {
-        return validationErrorResponse(c, "Node ID is required");
-      }
 
       // Delegate node update to Emacs server
       const result = await emacsClient.updateNode(nodeId, updateData);
@@ -142,13 +93,9 @@ nodes.put(
 );
 
 // DELETE /nodes/:id - Delete node
-nodes.delete("/:id", async (c) => {
+nodes.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
-
-    if (!nodeId) {
-      return validationErrorResponse(c, "Node ID is required");
-    }
+    const { id: nodeId } = c.req.valid("param");
 
     // Delegate node deletion to Emacs server
     const result = await emacsClient.deleteNode(nodeId);
@@ -184,23 +131,17 @@ nodes.delete("/:id", async (c) => {
 // POST /nodes/:id/tags - Add tag to node
 nodes.post(
   "/:id/tags",
-  validator("json", (value, c) => {
-    const { tag } = value as { tag?: string };
-
-    if (!tag || typeof tag !== "string" || tag.trim() === "") {
-      return validationErrorResponse(c, "Tag is required and cannot be empty");
-    }
-
-    return { tag: tag.trim() };
-  }),
+  zValidator("param", NodeIdParamSchema),
+  zValidator(
+    "json",
+    z.object({
+      tag: z.string().min(1, "Tag is required and cannot be empty"),
+    }),
+  ),
   async (c) => {
     try {
-      const nodeId = c.req.param("id");
+      const { id: nodeId } = c.req.valid("param");
       const { tag } = c.req.valid("json");
-
-      if (!nodeId) {
-        return validationErrorResponse(c, "Node ID is required");
-      }
 
       // Delegate tag addition to Emacs server
       const result = await emacsClient.addTagToNode(nodeId, tag);
@@ -232,73 +173,64 @@ nodes.post(
 );
 
 // DELETE /nodes/:id/tags/:tag - Remove tag from node
-nodes.delete("/:id/tags/:tag", async (c) => {
-  try {
-    const nodeId = c.req.param("id");
-    const tag = c.req.param("tag");
+nodes.delete(
+  "/:id/tags/:tag",
+  zValidator(
+    "param",
+    NodeIdParamSchema.extend({
+      tag: z.string().min(1, "Tag is required"),
+    }),
+  ),
+  async (c) => {
+    try {
+      const { id: nodeId, tag } = c.req.valid("param");
 
-    if (!nodeId) {
-      return validationErrorResponse(c, "Node ID is required");
-    }
+      // Delegate tag removal to Emacs server
+      const result = await emacsClient.removeTagFromNode(
+        nodeId,
+        decodeURIComponent(tag),
+      );
 
-    if (!tag) {
-      return validationErrorResponse(c, "Tag is required");
-    }
+      if (result.status === "error") {
+        return errorResponse(
+          c,
+          result.message || "Failed to remove tag",
+          result.error,
+          400,
+        );
+      }
 
-    // Delegate tag removal to Emacs server
-    const result = await emacsClient.removeTagFromNode(
-      nodeId,
-      decodeURIComponent(tag),
-    );
-
-    if (result.status === "error") {
+      return successResponse(
+        c,
+        result.message || "Tag removed successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error removing tag:", error);
       return errorResponse(
         c,
-        result.message || "Failed to remove tag",
-        result.error,
-        400,
+        "Failed to remove tag",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
       );
     }
-
-    return successResponse(
-      c,
-      result.message || "Tag removed successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error removing tag:", error);
-    return errorResponse(
-      c,
-      "Failed to remove tag",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
+  },
+);
 
 // POST /nodes/:id/categories - Add category to node
 nodes.post(
   "/:id/categories",
-  validator("json", (value, c) => {
-    const { category } = value as { category?: string };
-
-    if (!category || typeof category !== "string" || category.trim() === "") {
-      return validationErrorResponse(
-        c,
-        "Category is required and cannot be empty",
-      );
-    }
-
-    return { category: category.trim() };
-  }),
+  zValidator("param", NodeIdParamSchema),
+  zValidator(
+    "json",
+    z.object({
+      category: z.string().min(1, "Category is required and cannot be empty"),
+    }),
+  ),
   async (c) => {
     try {
-      const nodeId = c.req.param("id");
+      const { id: nodeId } = c.req.valid("param");
       const { category } = c.req.valid("json");
-
-      if (!nodeId) {
-        return validationErrorResponse(c, "Node ID is required");
-      }
 
       // Delegate category addition to Emacs server
       const result = await emacsClient.addCategoryToNode(nodeId, category);
@@ -330,49 +262,49 @@ nodes.post(
 );
 
 // DELETE /nodes/:id/categories/:category - Remove category from node
-nodes.delete("/:id/categories/:category", async (c) => {
-  try {
-    const nodeId = c.req.param("id");
-    const category = c.req.param("category");
+nodes.delete(
+  "/:id/categories/:category",
+  zValidator(
+    "param",
+    NodeIdParamSchema.extend({
+      category: z.string().min(1, "Category is required"),
+    }),
+  ),
+  async (c) => {
+    try {
+      const { id: nodeId, category } = c.req.valid("param");
 
-    if (!nodeId) {
-      return validationErrorResponse(c, "Node ID is required");
-    }
+      // Delegate category removal to Emacs server
+      const result = await emacsClient.removeCategoryFromNode(
+        nodeId,
+        decodeURIComponent(category),
+      );
 
-    if (!category) {
-      return validationErrorResponse(c, "Category is required");
-    }
+      if (result.status === "error") {
+        return errorResponse(
+          c,
+          result.message || "Failed to remove category",
+          result.error,
+          400,
+        );
+      }
 
-    // Delegate category removal to Emacs server
-    const result = await emacsClient.removeCategoryFromNode(
-      nodeId,
-      decodeURIComponent(category),
-    );
-
-    if (result.status === "error") {
+      return successResponse(
+        c,
+        result.message || "Category removed successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error removing category:", error);
       return errorResponse(
         c,
-        result.message || "Failed to remove category",
-        result.error,
-        400,
+        "Failed to remove category",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
       );
     }
-
-    return successResponse(
-      c,
-      result.message || "Category removed successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error removing category:", error);
-    return errorResponse(
-      c,
-      "Failed to remove category",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
+  },
+);
 
 // GET requests are delegated to Emacs server
 nodes.get("/", async (c) => {
@@ -394,9 +326,9 @@ nodes.get("/", async (c) => {
   }
 });
 
-nodes.get("/:id", async (c) => {
+nodes.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
+    const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.getNode(nodeId);
 
     if (result.status === "error") {
@@ -419,9 +351,9 @@ nodes.get("/:id", async (c) => {
   }
 });
 
-nodes.get("/:id/content", async (c) => {
+nodes.get("/:id/content", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
+    const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.getNodeContent(nodeId);
 
     if (result.status === "error") {
@@ -445,34 +377,38 @@ nodes.get("/:id/content", async (c) => {
 });
 
 // Additional GET endpoints for complete node operations
-nodes.get("/:id/backlinks", async (c) => {
-  try {
-    const nodeId = c.req.param("id");
-    const result = await emacsClient.get(`/nodes/${nodeId}/backlinks`);
+nodes.get(
+  "/:id/backlinks",
+  zValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      const { id: nodeId } = c.req.valid("param");
+      const result = await emacsClient.get(`/nodes/${nodeId}/backlinks`);
 
-    if (result.status === "error") {
-      return notFoundResponse(c, "Node");
+      if (result.status === "error") {
+        return notFoundResponse(c, "Node");
+      }
+
+      return successResponse(
+        c,
+        "Node backlinks retrieved successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error retrieving node backlinks:", error);
+      return errorResponse(
+        c,
+        "Failed to retrieve node backlinks",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
+      );
     }
+  },
+);
 
-    return successResponse(
-      c,
-      "Node backlinks retrieved successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error retrieving node backlinks:", error);
-    return errorResponse(
-      c,
-      "Failed to retrieve node backlinks",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
-
-nodes.get("/:id/links", async (c) => {
+nodes.get("/:id/links", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
+    const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.get(`/nodes/${nodeId}/links`);
 
     if (result.status === "error") {
@@ -495,9 +431,9 @@ nodes.get("/:id/links", async (c) => {
   }
 });
 
-nodes.get("/:id/aliases", async (c) => {
+nodes.get("/:id/aliases", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
+    const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.get(`/nodes/${nodeId}/aliases`);
 
     if (result.status === "error") {
@@ -520,9 +456,9 @@ nodes.get("/:id/aliases", async (c) => {
   }
 });
 
-nodes.get("/:id/refs", async (c) => {
+nodes.get("/:id/refs", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
+    const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.get(`/nodes/${nodeId}/refs`);
 
     if (result.status === "error") {
@@ -545,9 +481,9 @@ nodes.get("/:id/refs", async (c) => {
   }
 });
 
-nodes.get("/:id/parse", async (c) => {
+nodes.get("/:id/parse", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const nodeId = c.req.param("id");
+    const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.get(`/nodes/${nodeId}/parse`);
 
     if (result.status === "error") {

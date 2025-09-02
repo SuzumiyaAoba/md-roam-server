@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
+import type { ZodError } from "zod";
 import filesRoutes from "./api/files";
 import nodesRoutes from "./api/nodes";
 import searchRoutes from "./api/search";
@@ -11,6 +12,36 @@ import tagsRoutes from "./api/tags";
 import uiRoutes from "./api/ui";
 
 const app = new Hono();
+
+// Error handling middleware for Zod validation errors
+app.onError((err, c) => {
+  if (err.name === "ZodError") {
+    const zodError = err as ZodError;
+    return c.json(
+      {
+        status: "error",
+        message: "Validation failed",
+        timestamp: new Date().toISOString(),
+        error_code: "VALIDATION_ERROR",
+        details: {
+          issues: zodError.issues || [],
+        },
+      },
+      400,
+    );
+  }
+
+  // Generic error response
+  return c.json(
+    {
+      status: "error",
+      message: err.message || "Internal server error",
+      timestamp: new Date().toISOString(),
+      error_code: "INTERNAL_ERROR",
+    },
+    500,
+  );
+});
 
 // Middleware
 app.use(logger());
@@ -27,7 +58,8 @@ app.use(
 // Health check
 app.get("/health", (c) => {
   return c.json({
-    status: "ok",
+    status: "success",
+    message: "MD-Roam Server API is healthy",
     timestamp: new Date().toISOString(),
     service: "md-roam-server-api",
   });
@@ -81,8 +113,8 @@ app.get("/", (c) => {
   });
 });
 
-const port = process.env.API_PORT
-  ? Number.parseInt(process.env.API_PORT, 10)
+const port = process.env["API_PORT"]
+  ? Number.parseInt(process.env["API_PORT"], 10)
   : 3001;
 
 console.log(`🚀 MD-Roam Server API starting on port ${port}`);

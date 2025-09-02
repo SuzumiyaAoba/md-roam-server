@@ -1,5 +1,4 @@
 import type { Context } from "hono";
-import type { ApiResponse } from "../types";
 
 export function successResponse<T>(
   c: Context,
@@ -7,13 +6,13 @@ export function successResponse<T>(
   data?: T,
   status = 200,
 ): Response {
-  const response: ApiResponse<T> = {
-    status: "success",
+  const response = {
+    status: "success" as const,
     message,
     timestamp: new Date().toISOString(),
     data,
   };
-  return c.json(response, status);
+  return c.json(response, status as any);
 }
 
 export function errorResponse(
@@ -22,13 +21,13 @@ export function errorResponse(
   error?: string,
   status = 400,
 ): Response {
-  const response: ApiResponse = {
-    status: "error",
+  const response = {
+    status: "error" as const,
     message,
     timestamp: new Date().toISOString(),
     error,
   };
-  return c.json(response, status);
+  return c.json(response, status as any);
 }
 
 export function notFoundResponse(c: Context, resource = "Resource"): Response {

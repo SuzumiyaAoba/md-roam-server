@@ -1,48 +1,41 @@
-export interface Node {
-  id: string;
-  title: string;
-  content?: string;
-  file?: string;
-  file_type: "md" | "org";
-  path?: string;
-  level?: number;
-  category?: string;
-  tags: string[];
-  aliases: string[];
-  refs: string[];
-  created_at?: string;
-  updated_at?: string;
-}
+// Re-export types from schemas for backward compatibility
+export type {
+  CreateNodeRequest,
+  DatabaseStats,
+  FileInfo,
+  Link,
+  Node,
+  NodeContent,
+  NodeIdParam,
+  NodeMetadata,
+  PaginationQuery,
+  RawFile,
+  SearchQuery,
+  SearchResult,
+  ServerInfo,
+  TagInfo,
+  TagNameParam,
+  UpdateNodeRequest,
+} from "../schemas";
 
-export interface CreateNodeRequest {
-  title: string;
-  content?: string;
-  file_type?: "md" | "org";
-  category?: string;
-  tags?: string[];
-  aliases?: string[];
-  refs?: string[];
-}
-
-export interface UpdateNodeRequest {
-  title?: string;
-  content?: string;
-  category?: string;
-  tags?: string[];
-  aliases?: string[];
-  refs?: string[];
-}
-
-export interface ApiResponse<T = unknown> {
+// Legacy type aliases for backward compatibility
+export type ApiResponse<T = unknown> = {
   status: "success" | "error";
   message: string;
   timestamp: string;
-  data?: T;
-  error?: string;
-}
+} & (
+  | {
+      status: "success";
+      data?: T;
+    }
+  | {
+      status: "error";
+      error?: string;
+    }
+);
 
-export interface NodeSearchResult {
+export type NodeSearchResult = {
   nodes: Node[];
   count: number;
   query?: string;
-}
+};

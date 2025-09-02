@@ -6,11 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/server.ts",
-    "build": "bun build src/server.ts --outdir ./dist",
+    "build": "bun build src/server.ts --outdir ./dist --target bun",
     "start": "bun dist/server.js",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check --write .",
+    "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "api:dev": "bun --watch src/server.ts"
   },
@@ -24,7 +25,9 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.1",
-    "hono": "^4.9.5"
+    "@hono/zod-validator": "^0.7.2",
+    "hono": "^4.9.5",
+    "zod": "^4.1.5"
   },
   "lint-staged": {
     "*.{ts,js}": [

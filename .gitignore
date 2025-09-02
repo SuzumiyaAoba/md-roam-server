@@ -1,5 +1,7 @@
 .claude/*
 
+dist/
+
 # Test artifacts
 tmp/
 tests/tmp/
