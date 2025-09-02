@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
+    "@tsconfig/strictest": "^2.0.5",
     "@types/bun": "latest",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
