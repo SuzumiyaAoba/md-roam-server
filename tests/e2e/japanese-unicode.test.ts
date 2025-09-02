@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
+import { describe, expect, it } from "vitest";
 import { EXTENDED_TEST_NODES } from "@/fixtures/extendedTestData";
-import { NodeData } from "@/utils/types";
+import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
 
 describe("Japanese and Unicode Content E2E Tests", () => {
   describe("Japanese Content Support", () => {
@@ -162,7 +161,7 @@ describe("Japanese and Unicode Content E2E Tests", () => {
     });
 
     it("should search emoji content", async () => {
-      const testNode = await TestCleanup.createTestNode(
+      const _testNode = await TestCleanup.createTestNode(
         EXTENDED_TEST_NODES.japanese[2],
       );
 
@@ -257,7 +256,7 @@ describe("Japanese and Unicode Content E2E Tests", () => {
       // Expect at least 2 out of 3 to succeed (better reliability)
       expect(responses.length).toBeGreaterThanOrEqual(2);
 
-      responses.forEach((response, index) => {
+      responses.forEach((response, _index) => {
         if (response.status === 201) {
           const createdNode = ApiHelpers.expectNodeResponse(response);
           TestCleanup.trackNode(createdNode.id);

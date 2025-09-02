@@ -1,5 +1,5 @@
 import { ApiHelpers } from "./apiHelpers";
-import { CreateNodePayload, UpdateNodePayload } from "./types";
+import type { CreateNodePayload } from "./types";
 
 /**
  * Comprehensive test coverage utilities for boundary testing and edge case validation
@@ -34,25 +34,26 @@ export class ApiCoverageTracker {
 
   static markEndpointCovered(method: string, path: string): void {
     const endpoint = `${method.toUpperCase()} ${path}`;
-    this.coveredEndpoints.add(endpoint);
+    ApiCoverageTracker.coveredEndpoints.add(endpoint);
   }
 
   static getCoverageReport(): EndpointCoverageReport {
-    const covered = Array.from(this.coveredEndpoints);
-    const uncovered = this.apiEndpoints.filter(
-      (endpoint) => !this.coveredEndpoints.has(endpoint),
+    const covered = Array.from(ApiCoverageTracker.coveredEndpoints);
+    const uncovered = ApiCoverageTracker.apiEndpoints.filter(
+      (endpoint) => !ApiCoverageTracker.coveredEndpoints.has(endpoint),
     );
 
     return {
-      totalEndpoints: this.apiEndpoints.length,
+      totalEndpoints: ApiCoverageTracker.apiEndpoints.length,
       coveredEndpoints: covered,
       uncoveredEndpoints: uncovered,
-      coveragePercentage: (covered.length / this.apiEndpoints.length) * 100,
+      coveragePercentage:
+        (covered.length / ApiCoverageTracker.apiEndpoints.length) * 100,
     };
   }
 
   static resetCoverage(): void {
-    this.coveredEndpoints.clear();
+    ApiCoverageTracker.coveredEndpoints.clear();
   }
 }
 
@@ -173,7 +174,9 @@ export class BoundaryValueTests {
     const tests: NodeBoundaryTest[] = [];
 
     // Title boundary tests
-    for (const titleTest of this.generateStringBoundaryTests("title")) {
+    for (const titleTest of BoundaryValueTests.generateStringBoundaryTests(
+      "title",
+    )) {
       tests.push({
         name: `node_creation_${titleTest.name}`,
         payload: {
@@ -186,7 +189,9 @@ export class BoundaryValueTests {
     }
 
     // Content boundary tests
-    for (const contentTest of this.generateStringBoundaryTests("content")) {
+    for (const contentTest of BoundaryValueTests.generateStringBoundaryTests(
+      "content",
+    )) {
       tests.push({
         name: `node_creation_${contentTest.name}`,
         payload: {
@@ -199,7 +204,9 @@ export class BoundaryValueTests {
     }
 
     // Tags boundary tests
-    for (const tagsTest of this.generateArrayBoundaryTests("tags")) {
+    for (const tagsTest of BoundaryValueTests.generateArrayBoundaryTests(
+      "tags",
+    )) {
       tests.push({
         name: `node_creation_${tagsTest.name}`,
         payload: {
@@ -435,7 +442,7 @@ export class InputValidationTests {
             );
           }
         }
-      } catch (error) {
+      } catch (_error) {
         results.push({
           testName: test.name,
           field: test.field,
@@ -635,7 +642,7 @@ export class SecurityTestGenerator {
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         results.push({
           testName: `${testType}_${test.name}_error`,
           testType,

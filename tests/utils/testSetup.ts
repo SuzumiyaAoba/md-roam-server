@@ -1,6 +1,4 @@
-import { execSync } from "child_process";
-import { existsSync } from "fs";
-import { join } from "path";
+import { join } from "node:path";
 
 // Global test configuration
 export const TEST_CONFIG = {
@@ -15,8 +13,6 @@ export const TEST_CONFIG = {
 // Server management
 export class TestServerManager {
   private static instance: TestServerManager;
-  private serverProcess: any = null;
-  private isServerRunning = false;
 
   static getInstance(): TestServerManager {
     if (!TestServerManager.instance) {
@@ -54,26 +50,6 @@ export class TestServerManager {
     } catch {
       return false;
     }
-  }
-
-  private async waitForServer(): Promise<void> {
-    const maxRetries = 20;
-    const retryDelay = 1000;
-
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const isHealthy = await this.checkServerHealth();
-        if (isHealthy) {
-          return;
-        }
-      } catch {
-        // Server not ready yet
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, retryDelay));
-    }
-
-    throw new Error("Server failed to start within timeout period");
   }
 }
 

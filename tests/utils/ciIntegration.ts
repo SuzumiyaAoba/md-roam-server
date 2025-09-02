@@ -1,5 +1,5 @@
-import { TestAnalytics, HealthCheckMonitor } from "./testMonitoring";
 import { TestReportGenerator } from "./testCoverage";
+import { HealthCheckMonitor, TestAnalytics } from "./testMonitoring";
 import { RobustCleanup } from "./testReliability";
 
 /**
@@ -8,7 +8,6 @@ import { RobustCleanup } from "./testReliability";
 
 // CI/CD Pipeline Integration
 export class CiCdIntegration {
-  private static readonly CONFIG_FILE = ".ci-config.json";
   private static config: CiConfig | null = null;
 
   /**
@@ -21,7 +20,7 @@ export class CiCdIntegration {
       environment: process.env.NODE_ENV || "test",
       parallel: {
         enabled: true,
-        maxConcurrency: parseInt(process.env.TEST_CONCURRENCY || "4"),
+        maxConcurrency: parseInt(process.env.TEST_CONCURRENCY || "4", 10),
         timeoutMultiplier: parseFloat(
           process.env.TEST_TIMEOUT_MULTIPLIER || "1.5",
         ),
@@ -29,7 +28,7 @@ export class CiCdIntegration {
       qualityGates: {
         minCoverage: parseFloat(process.env.MIN_COVERAGE || "85"),
         maxFailureRate: parseFloat(process.env.MAX_FAILURE_RATE || "5"),
-        maxResponseTime: parseInt(process.env.MAX_RESPONSE_TIME || "2000"),
+        maxResponseTime: parseInt(process.env.MAX_RESPONSE_TIME || "2000", 10),
         requiredHealthChecks: ["server_connectivity", "database_connectivity"],
       },
       notifications: {
@@ -43,7 +42,10 @@ export class CiCdIntegration {
       },
       artifacts: {
         enabled: true,
-        retentionDays: parseInt(process.env.ARTIFACT_RETENTION_DAYS || "30"),
+        retentionDays: parseInt(
+          process.env.ARTIFACT_RETENTION_DAYS || "30",
+          10,
+        ),
         paths: ["coverage/", "test-results/", "logs/", "reports/"],
       },
       deployment: {
@@ -53,9 +55,9 @@ export class CiCdIntegration {
       },
     };
 
-    this.config = { ...defaultConfig, ...configOverrides };
+    CiCdIntegration.config = { ...defaultConfig, ...configOverrides };
     console.log(
-      `🔧 CI/CD configuration initialized for ${this.config.environment} environment`,
+      `🔧 CI/CD configuration initialized for ${CiCdIntegration.config.environment} environment`,
     );
   }
 
@@ -74,13 +76,16 @@ export class CiCdIntegration {
 
     try {
       // Clean up any leftover test data
-      const cleanupStep = await this.executeStep("cleanup", async () => {
-        await RobustCleanup.forceCleanupAll();
-      });
+      const cleanupStep = await CiCdIntegration.executeStep(
+        "cleanup",
+        async () => {
+          await RobustCleanup.forceCleanupAll();
+        },
+      );
       result.steps.push(cleanupStep);
 
       // Initialize health checks
-      const healthCheckStep = await this.executeStep(
+      const healthCheckStep = await CiCdIntegration.executeStep(
         "health_checks",
         async () => {
           HealthCheckMonitor.registerDefaultHealthChecks();
@@ -95,10 +100,10 @@ export class CiCdIntegration {
       result.steps.push(healthCheckStep);
 
       // Verify environment configuration
-      const configStep = await this.executeStep(
+      const configStep = await CiCdIntegration.executeStep(
         "environment_config",
         async () => {
-          await this.verifyEnvironmentConfig();
+          await CiCdIntegration.verifyEnvironmentConfig();
         },
       );
       result.steps.push(configStep);
@@ -112,8 +117,8 @@ export class CiCdIntegration {
 
       console.error(`❌ Pre-test setup failed: ${result.error}`);
 
-      if (this.config?.notifications.enabled) {
-        await this.sendNotification(
+      if (CiCdIntegration.config?.notifications.enabled) {
+        await CiCdIntegration.sendNotification(
           "failure",
           `Pre-test setup failed: ${result.error}`,
         );
@@ -141,7 +146,7 @@ export class CiCdIntegration {
 
     try {
       // Generate comprehensive test report
-      const reportStep = await this.executeStep(
+      const reportStep = await CiCdIntegration.executeStep(
         "generate_reports",
         async () => {
           const coverageReport =
@@ -157,21 +162,24 @@ export class CiCdIntegration {
       result.steps.push(reportStep);
 
       // Clean up test resources
-      const cleanupStep = await this.executeStep("cleanup", async () => {
-        const cleanupResult = await RobustCleanup.cleanupAllNodes();
-        if (cleanupResult.failed.length > 0) {
-          console.warn(
-            `Some cleanup operations failed: ${cleanupResult.failed.length} nodes`,
-          );
-        }
-      });
+      const cleanupStep = await CiCdIntegration.executeStep(
+        "cleanup",
+        async () => {
+          const cleanupResult = await RobustCleanup.cleanupAllNodes();
+          if (cleanupResult.failed.length > 0) {
+            console.warn(
+              `Some cleanup operations failed: ${cleanupResult.failed.length} nodes`,
+            );
+          }
+        },
+      );
       result.steps.push(cleanupStep);
 
       // Quality gate evaluation
-      const qualityGateStep = await this.executeStep(
+      const qualityGateStep = await CiCdIntegration.executeStep(
         "quality_gates",
         async () => {
-          const gateResult = await this.evaluateQualityGates(
+          const gateResult = await CiCdIntegration.evaluateQualityGates(
             testResults,
             result.reports,
           );
@@ -185,11 +193,14 @@ export class CiCdIntegration {
       result.steps.push(qualityGateStep);
 
       // Send notifications
-      if (this.config?.notifications.enabled) {
-        const notificationStep = await this.executeStep(
+      if (CiCdIntegration.config?.notifications.enabled) {
+        const notificationStep = await CiCdIntegration.executeStep(
           "notifications",
           async () => {
-            await this.sendTestResultNotifications(testResults, result.reports);
+            await CiCdIntegration.sendTestResultNotifications(
+              testResults,
+              result.reports,
+            );
           },
         );
         result.steps.push(notificationStep);
@@ -204,8 +215,8 @@ export class CiCdIntegration {
 
       console.error(`❌ Post-test cleanup failed: ${result.error}`);
 
-      if (this.config?.notifications.enabled) {
-        await this.sendNotification(
+      if (CiCdIntegration.config?.notifications.enabled) {
+        await CiCdIntegration.sendNotification(
           "failure",
           `Post-test cleanup failed: ${result.error}`,
         );
@@ -228,11 +239,11 @@ export class CiCdIntegration {
       details: {},
     };
 
-    if (!this.config) {
+    if (!CiCdIntegration.config) {
       throw new Error("CI/CD configuration not initialized");
     }
 
-    const gates = this.config.qualityGates;
+    const gates = CiCdIntegration.config.qualityGates;
 
     // Test success rate gate
     const successRate =
@@ -352,24 +363,24 @@ export class CiCdIntegration {
     reports: { coverage?: any; analytics?: any },
   ): Promise<void> {
     if (
-      !this.config?.notifications.enabled ||
-      !this.config.notifications.webhookUrl
+      !CiCdIntegration.config?.notifications.enabled ||
+      !CiCdIntegration.config.notifications.webhookUrl
     ) {
       return;
     }
 
     const isSuccess = testResults.failCount === 0;
     const channel = isSuccess
-      ? this.config.notifications.channels.success
-      : this.config.notifications.channels.failure;
+      ? CiCdIntegration.config.notifications.channels.success
+      : CiCdIntegration.config.notifications.channels.failure;
 
-    const message = this.formatTestResultMessage(
+    const message = CiCdIntegration.formatTestResultMessage(
       testResults,
       reports,
       isSuccess,
     );
 
-    await this.sendNotification(
+    await CiCdIntegration.sendNotification(
       isSuccess ? "success" : "failure",
       message,
       channel,
@@ -414,7 +425,7 @@ export class CiCdIntegration {
       }
     }
 
-    message += `\n🏗️ Environment: ${this.config?.environment || "unknown"}\n`;
+    message += `\n🏗️ Environment: ${CiCdIntegration.config?.environment || "unknown"}\n`;
     message += `📅 Time: ${new Date().toISOString()}\n`;
 
     return message;
@@ -428,7 +439,7 @@ export class CiCdIntegration {
     message: string,
     channel?: string,
   ): Promise<void> {
-    if (!this.config?.notifications.webhookUrl) {
+    if (!CiCdIntegration.config?.notifications.webhookUrl) {
       return;
     }
 
@@ -440,11 +451,14 @@ export class CiCdIntegration {
         icon_emoji: type === "success" ? ":white_check_mark:" : ":x:",
       };
 
-      const response = await fetch(this.config.notifications.webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        CiCdIntegration.config.notifications.webhookUrl,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (!response.ok) {
         console.warn(`Failed to send notification: ${response.status}`);
@@ -463,7 +477,7 @@ export class TestOrchestrator {
    * Register test suite
    */
   static registerSuite(suite: TestSuite): void {
-    this.testSuites.set(suite.name, suite);
+    TestOrchestrator.testSuites.set(suite.name, suite);
     console.log(`📋 Registered test suite: ${suite.name}`);
   }
 
@@ -502,16 +516,23 @@ export class TestOrchestrator {
 
     try {
       // Execute suites based on options
-      const suitesToRun = options.suites || Array.from(this.testSuites.keys());
+      const suitesToRun =
+        options.suites || Array.from(TestOrchestrator.testSuites.keys());
 
       if (options.parallel && suitesToRun.length > 1) {
-        result.suites = await this.executeInParallel(suitesToRun, options);
+        result.suites = await TestOrchestrator.executeInParallel(
+          suitesToRun,
+          options,
+        );
       } else {
-        result.suites = await this.executeSequentially(suitesToRun, options);
+        result.suites = await TestOrchestrator.executeSequentially(
+          suitesToRun,
+          options,
+        );
       }
 
       // Calculate summary
-      result.summary = this.calculateSummary(result.suites);
+      result.summary = TestOrchestrator.calculateSummary(result.suites);
       result.totalDuration = Date.now() - startTime;
 
       // Check if any suite failed
@@ -545,7 +566,7 @@ export class TestOrchestrator {
     for (let i = 0; i < suiteNames.length; i += maxConcurrency) {
       const batch = suiteNames.slice(i, i + maxConcurrency);
       const batchPromises = batch.map((suiteName) =>
-        this.executeSuite(suiteName, options),
+        TestOrchestrator.executeSuite(suiteName, options),
       );
       const batchResults = await Promise.allSettled(batchPromises);
 
@@ -582,7 +603,7 @@ export class TestOrchestrator {
     const results: SuiteResult[] = [];
 
     for (const suiteName of suiteNames) {
-      const result = await this.executeSuite(suiteName, options);
+      const result = await TestOrchestrator.executeSuite(suiteName, options);
       results.push(result);
 
       // Stop on first failure if fail-fast is enabled
@@ -602,7 +623,7 @@ export class TestOrchestrator {
     suiteName: string,
     options: ExecutionOptions,
   ): Promise<SuiteResult> {
-    const suite = this.testSuites.get(suiteName);
+    const suite = TestOrchestrator.testSuites.get(suiteName);
     if (!suite) {
       return {
         name: suiteName,
@@ -697,7 +718,7 @@ export class TestOrchestrator {
    * Get registered suites
    */
   static getRegisteredSuites(): string[] {
-    return Array.from(this.testSuites.keys());
+    return Array.from(TestOrchestrator.testSuites.keys());
   }
 }
 
@@ -731,21 +752,33 @@ export class DeploymentIntegration {
 
       // Execute deployment steps
       result.steps.push(
-        await this.executeDeploymentStep("validate", async () => {
-          await this.validateDeploymentConditions(testResults, environment);
-        }),
+        await DeploymentIntegration.executeDeploymentStep(
+          "validate",
+          async () => {
+            await DeploymentIntegration.validateDeploymentConditions(
+              testResults,
+              environment,
+            );
+          },
+        ),
       );
 
       result.steps.push(
-        await this.executeDeploymentStep("deploy", async () => {
-          await this.performDeployment(environment);
-        }),
+        await DeploymentIntegration.executeDeploymentStep(
+          "deploy",
+          async () => {
+            await DeploymentIntegration.performDeployment(environment);
+          },
+        ),
       );
 
       result.steps.push(
-        await this.executeDeploymentStep("verify", async () => {
-          await this.verifyDeployment(environment);
-        }),
+        await DeploymentIntegration.executeDeploymentStep(
+          "verify",
+          async () => {
+            await DeploymentIntegration.verifyDeployment(environment);
+          },
+        ),
       );
 
       result.success = result.steps.every((step) => step.success);
@@ -787,7 +820,7 @@ export class DeploymentIntegration {
   }
 
   private static async validateDeploymentConditions(
-    testResults: TestExecutionSummary,
+    _testResults: TestExecutionSummary,
     environment: string,
   ): Promise<void> {
     // Add deployment validation logic here

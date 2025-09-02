@@ -1,7 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import { EXTENDED_TEST_NODES } from "@/fixtures/extendedTestData";
-import { NodeData } from "@/utils/types";
 
 describe("End-to-End Workflows", () => {
   describe("Complete Node Lifecycle", () => {
@@ -206,7 +204,7 @@ describe("End-to-End Workflows", () => {
         refs: [`node:${generalNode.id}`],
       });
 
-      const detailedNode = await TestCleanup.createTestNode({
+      const _detailedNode = await TestCleanup.createTestNode({
         title: "JavaScript Async/Await",
         content: "Detailed explanation of async/await in JavaScript.",
         tags: ["programming", "javascript", "async", "detailed"],
@@ -233,7 +231,7 @@ describe("End-to-End Workflows", () => {
 
     it("should support tag-based content organization", async () => {
       // Create nodes with hierarchical tags
-      const nodes = await Promise.all([
+      const _nodes = await Promise.all([
         TestCleanup.createTestNode({
           title: "Frontend Development",
           tags: ["development", "frontend", "web"],
@@ -274,7 +272,7 @@ describe("End-to-End Workflows", () => {
   describe("Research and Note-Taking Workflows", () => {
     it("should support academic research workflow", async () => {
       // Research topic node
-      const researchTopic = await TestCleanup.createTestNode({
+      const _researchTopic = await TestCleanup.createTestNode({
         title: "AI Healthcare Research Topic",
         content:
           "# Research Topic\n\nInvestigating AI applications in healthcare.",
@@ -301,7 +299,7 @@ describe("End-to-End Workflows", () => {
       ]);
 
       // Synthesis and analysis nodes
-      const analysisNode = await TestCleanup.createTestNode({
+      const _analysisNode = await TestCleanup.createTestNode({
         title: "AI Healthcare Research Literature Analysis",
         content: "Comparative analysis of recent AI healthcare research.",
         tags: ["research", "analysis", "synthesis"],
@@ -322,7 +320,7 @@ describe("End-to-End Workflows", () => {
 
     it("should support personal knowledge management", async () => {
       // Daily notes
-      const dailyNote = await TestCleanup.createTestNode({
+      const _dailyNote = await TestCleanup.createTestNode({
         title: "Daily Note - 2024-01-15",
         content:
           "# Daily Thoughts\n\n- Learning about E2E testing\n- Working on node creation fixes",
@@ -339,7 +337,7 @@ describe("End-to-End Workflows", () => {
       });
 
       // Meeting notes
-      const meetingNote = await TestCleanup.createTestNode({
+      const _meetingNote = await TestCleanup.createTestNode({
         title: "Meeting: API Design Review",
         content:
           "# Meeting Notes\n\nDiscussed API endpoints and testing strategy.",
@@ -349,7 +347,7 @@ describe("End-to-End Workflows", () => {
       });
 
       // Learning notes
-      const learningNote = await TestCleanup.createTestNode({
+      const _learningNote = await TestCleanup.createTestNode({
         title: "Learning: Vitest Testing Framework",
         content:
           "# Learning Notes\n\nVitest is a fast testing framework for Vite.",
@@ -370,7 +368,7 @@ describe("End-to-End Workflows", () => {
   describe("Multi-Language Content Workflows", () => {
     it.skip("should support bilingual note-taking", async () => {
       // Simplified bilingual test
-      const bilingualNote = await TestCleanup.createTestNode({
+      const _bilingualNote = await TestCleanup.createTestNode({
         title: "Bilingual Test - バイリンガルテスト",
         content: "English content\n\n日本語コンテンツ",
         tags: ["bilingual", "test"],

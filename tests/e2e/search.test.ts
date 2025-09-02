@@ -1,14 +1,13 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import { TEST_SEARCH_QUERIES } from "@/fixtures/testData";
-import { NodeData, SearchResponse } from "@/utils/types";
+import type { NodeData, SearchResponse } from "@/utils/types";
 
 describe("Search API E2E Tests", () => {
-  let testNodes: NodeData[];
+  let _testNodes: NodeData[];
 
   beforeEach(async () => {
     // Create test nodes with searchable content
-    testNodes = await Promise.all([
+    _testNodes = await Promise.all([
       TestCleanup.createTestNode({
         title: "Markdown Search Test",
         content: "This is a test markdown document with searchable content",
@@ -148,7 +147,7 @@ describe("Search API E2E Tests", () => {
 
     it("should handle URL-encoded search queries", async () => {
       const query = "test content";
-      const encodedQuery = encodeURIComponent(query);
+      const _encodedQuery = encodeURIComponent(query);
 
       // Make request with encoded query directly
       const response = await ApiHelpers.searchNodes(query);

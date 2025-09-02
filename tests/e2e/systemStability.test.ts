@@ -1,32 +1,28 @@
-import { describe, it, beforeAll, afterAll, expect } from "vitest";
-import { TestServerManager } from "../utils/testSetup";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { CiCdIntegration } from "../utils/ciIntegration";
+import {
+  ApiCoverageTracker,
+  BoundaryValueTests,
+  SecurityTestGenerator,
+  TestReportGenerator,
+} from "../utils/testCoverage";
+import {
+  HealthCheckMonitor,
+  TestAnalytics,
+  TestMonitor,
+} from "../utils/testMonitoring";
 import {
   FluentApiClient,
-  NodeDataBuilder,
   NodeAssertions,
+  NodeDataBuilder,
 } from "../utils/testQuality";
 import {
   RetryableOperations,
   RobustCleanup,
-  TestStateVerification,
   TestPerformanceMonitor,
+  TestStateVerification,
 } from "../utils/testReliability";
-import {
-  BoundaryValueTests,
-  SecurityTestGenerator,
-  TestReportGenerator,
-  ApiCoverageTracker,
-} from "../utils/testCoverage";
-import {
-  TestMonitor,
-  HealthCheckMonitor,
-  TestAnalytics,
-} from "../utils/testMonitoring";
-import {
-  CiCdIntegration,
-  TestOrchestrator,
-  DeploymentIntegration,
-} from "../utils/ciIntegration";
+import { TestServerManager } from "../utils/testSetup";
 
 /**
  * Comprehensive system stability tests demonstrating enhanced test quality
@@ -34,7 +30,7 @@ import {
 
 describe("System Stability & Quality Enhancement", () => {
   let serverManager: TestServerManager;
-  let testMonitorSession: any;
+  let _testMonitorSession: any;
 
   beforeAll(async () => {
     // Initialize all quality systems
@@ -52,7 +48,7 @@ describe("System Stability & Quality Enhancement", () => {
     await serverManager.start();
 
     // Start test monitoring
-    testMonitorSession = TestMonitor.startMonitoring("system_stability");
+    _testMonitorSession = TestMonitor.startMonitoring("system_stability");
 
     // Register health checks
     HealthCheckMonitor.registerDefaultHealthChecks();
@@ -239,7 +235,7 @@ describe("System Stability & Quality Enhancement", () => {
 
       // Analyze results
       const passedTests = results.filter((r) => r.passed);
-      const failedTests = results.filter((r) => !r.passed);
+      const _failedTests = results.filter((r) => !r.passed);
 
       console.log(
         `Boundary tests: ${passedTests.length}/${results.length} passed`,
@@ -463,7 +459,7 @@ describe("System Stability & Quality Enhancement", () => {
       const monitoringReport =
         TestMonitor.getMonitoringReport("system_stability");
       expect(monitoringReport).toBeDefined();
-      expect(monitoringReport!.summary.testCount).toBeGreaterThan(0);
+      expect(monitoringReport?.summary.testCount).toBeGreaterThan(0);
 
       // Check for alerts
       const activeAlerts = TestMonitor.getActiveAlerts();

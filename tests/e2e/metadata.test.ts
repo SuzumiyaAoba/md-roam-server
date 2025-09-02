@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import { NodeData, TagsResponse } from "@/utils/types";
+import type { NodeData } from "@/utils/types";
 
 describe("Metadata API E2E Tests", () => {
-  let testNodes: NodeData[];
+  let _testNodes: NodeData[];
 
   beforeEach(async () => {
     // Create test nodes with various metadata
-    testNodes = await Promise.all([
+    _testNodes = await Promise.all([
       TestCleanup.createTestNode({
         title: "Node with Common Tags",
         content: "Content with common tags",

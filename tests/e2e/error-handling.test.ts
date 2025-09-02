@@ -1,10 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import {
-  EXTENDED_TEST_NODES,
-  ERROR_TEST_SCENARIOS,
-} from "@/fixtures/extendedTestData";
-import { api } from "@/utils/apiHelpers";
+import { describe, expect, it } from "vitest";
+import { ApiHelpers, api, TestCleanup } from "@/utils/apiHelpers";
 
 describe("Error Handling and Edge Cases E2E Tests", () => {
   describe("Invalid Request Handling", () => {
@@ -314,7 +309,7 @@ describe("Error Handling and Edge Cases E2E Tests", () => {
 
       // Should either work or fail gracefully
       if (response.status >= 200 && response.status < 300) {
-        if (response.body && response.body.id) {
+        if (response.body?.id) {
           TestCleanup.trackNode(response.body.id);
         }
       } else {
@@ -325,7 +320,7 @@ describe("Error Handling and Edge Cases E2E Tests", () => {
     it("should handle very large request bodies", async () => {
       const largePayload = {
         title: "Large Request Test",
-        content: "Large content: " + "x".repeat(100000),
+        content: `Large content: ${"x".repeat(100000)}`,
         tags: Array.from({ length: 100 }, (_, i) => `large-tag-${i}`),
         file_type: "md" as const,
       };

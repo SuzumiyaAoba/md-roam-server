@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
 
 describe("Org-mode Syntax POST Test", () => {

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import { DatabaseStats, ServerInfo } from "@/utils/types";
+import type { ServerInfo } from "@/utils/types";
 
 describe("Server API E2E Tests", () => {
   describe("GET / - Health Check", () => {
@@ -164,7 +164,7 @@ describe("Server API E2E Tests", () => {
     it("should update last sync time in stats", async () => {
       // Skip last_sync test as it's not in current API response
       // Get initial stats
-      const initialStatsResponse = await ApiHelpers.getStats();
+      const _initialStatsResponse = await ApiHelpers.getStats();
 
       // Wait a moment then sync
       await new Promise((resolve) => setTimeout(resolve, 1000));

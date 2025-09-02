@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import { NodeData } from "@/utils/types";
+import type { NodeData } from "@/utils/types";
 
 describe("Files API E2E Tests", () => {
-  let testNodes: NodeData[];
+  let _testNodes: NodeData[];
 
   beforeEach(async () => {
     // Create test files with different types
-    testNodes = await Promise.all([
+    _testNodes = await Promise.all([
       TestCleanup.createTestNode({
         title: "Markdown File Test",
         content: "# Heading\n\nThis is markdown content with **bold** text.",
@@ -74,11 +74,11 @@ describe("Files API E2E Tests", () => {
 
       const markdownFiles =
         files && Array.isArray(files)
-          ? files.filter((file: any) => file.file && file.file.endsWith(".md"))
+          ? files.filter((file: any) => file.file?.endsWith(".md"))
           : [];
       const orgFiles =
         files && Array.isArray(files)
-          ? files.filter((file: any) => file.file && file.file.endsWith(".org"))
+          ? files.filter((file: any) => file.file?.endsWith(".org"))
           : [];
 
       expect(markdownFiles.length).toBeGreaterThan(0);
@@ -183,11 +183,11 @@ describe("Files API E2E Tests", () => {
       // Only test file existence if rawFiles is not null/undefined
       if (rawFiles && Array.isArray(rawFiles) && rawFiles.length > 0) {
         // Should have both .md and .org files if any files exist
-        const markdownFiles = rawFiles.filter(
-          (file: any) => file.file && file.file.endsWith(".md"),
+        const markdownFiles = rawFiles.filter((file: any) =>
+          file.file?.endsWith(".md"),
         );
-        const orgFiles = rawFiles.filter(
-          (file: any) => file.file && file.file.endsWith(".org"),
+        const orgFiles = rawFiles.filter((file: any) =>
+          file.file?.endsWith(".org"),
         );
 
         // If we have files, we expect at least some to be .md or .org

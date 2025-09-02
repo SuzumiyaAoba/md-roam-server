@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
+import { beforeEach, describe, expect, it } from "vitest";
 import { TEST_NODES, TEST_UPDATES } from "@/fixtures/testData";
-import { NodeData, CreateNodeRequest, UpdateNodePayload } from "@/utils/types";
+import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
+import type {
+  CreateNodeRequest,
+  NodeData,
+  UpdateNodePayload,
+} from "@/utils/types";
 
 describe("Nodes API E2E Tests", () => {
   describe("POST /nodes - Node Creation", () => {
@@ -267,7 +271,7 @@ describe("Nodes API E2E Tests", () => {
       // First get current state
       const initialResponse = await ApiHelpers.getAllNodes();
       expect(initialResponse.status).toBe(200);
-      const initialCount = initialResponse.body.data
+      const _initialCount = initialResponse.body.data
         ? initialResponse.body.data.length
         : 0;
 

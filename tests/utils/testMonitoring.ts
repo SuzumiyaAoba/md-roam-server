@@ -1,5 +1,4 @@
 import { ApiHelpers } from "./apiHelpers";
-import { TestMeasurement, PerformanceReport } from "./testReliability";
 
 /**
  * Comprehensive test monitoring, alerting, and analytics system
@@ -39,8 +38,8 @@ export class TestMonitor {
       },
     };
 
-    this.alerts.set(suiteName, []);
-    this.metrics.set(suiteName, []);
+    TestMonitor.alerts.set(suiteName, []);
+    TestMonitor.metrics.set(suiteName, []);
 
     console.log(`📊 Starting monitoring for test suite: ${suiteName}`);
     return session;
@@ -62,16 +61,16 @@ export class TestMonitor {
       status: result.status,
       errorMessage: result.errorMessage,
       responseTime: result.responseTime,
-      memoryUsage: this.getMemoryUsage(),
+      memoryUsage: TestMonitor.getMemoryUsage(),
     };
 
-    if (!this.metrics.has(suiteName)) {
-      this.metrics.set(suiteName, []);
+    if (!TestMonitor.metrics.has(suiteName)) {
+      TestMonitor.metrics.set(suiteName, []);
     }
-    this.metrics.get(suiteName)!.push(metric);
+    TestMonitor.metrics.get(suiteName)?.push(metric);
 
     // Check thresholds and generate alerts
-    this.checkThresholds(suiteName, metric);
+    TestMonitor.checkThresholds(suiteName, metric);
 
     // Log significant events
     if (result.status === "failed") {
@@ -80,7 +79,7 @@ export class TestMonitor {
       );
     } else if (
       result.responseTime &&
-      result.responseTime > this.thresholds.responseTime.warning
+      result.responseTime > TestMonitor.thresholds.responseTime.warning
     ) {
       console.warn(`⚠️  Slow test: ${testName} took ${result.responseTime}ms`);
     }
@@ -90,24 +89,26 @@ export class TestMonitor {
    * Check monitoring thresholds and generate alerts
    */
   private static checkThresholds(suiteName: string, metric: TestMetric): void {
-    const alerts = this.alerts.get(suiteName) || [];
+    const alerts = TestMonitor.alerts.get(suiteName) || [];
 
     // Response time alerts
     if (metric.responseTime) {
-      if (metric.responseTime > this.thresholds.responseTime.critical) {
+      if (metric.responseTime > TestMonitor.thresholds.responseTime.critical) {
         alerts.push({
           type: "critical",
           category: "performance",
-          message: `Critical response time: ${metric.responseTime}ms (threshold: ${this.thresholds.responseTime.critical}ms)`,
+          message: `Critical response time: ${metric.responseTime}ms (threshold: ${TestMonitor.thresholds.responseTime.critical}ms)`,
           timestamp: Date.now(),
           testName: metric.testName,
           value: metric.responseTime,
         });
-      } else if (metric.responseTime > this.thresholds.responseTime.warning) {
+      } else if (
+        metric.responseTime > TestMonitor.thresholds.responseTime.warning
+      ) {
         alerts.push({
           type: "warning",
           category: "performance",
-          message: `High response time: ${metric.responseTime}ms (threshold: ${this.thresholds.responseTime.warning}ms)`,
+          message: `High response time: ${metric.responseTime}ms (threshold: ${TestMonitor.thresholds.responseTime.warning}ms)`,
           timestamp: Date.now(),
           testName: metric.testName,
           value: metric.responseTime,
@@ -116,7 +117,7 @@ export class TestMonitor {
     }
 
     // Memory usage alerts
-    if (metric.memoryUsage > this.thresholds.memoryUsage.critical) {
+    if (metric.memoryUsage > TestMonitor.thresholds.memoryUsage.critical) {
       alerts.push({
         type: "critical",
         category: "memory",
@@ -125,7 +126,9 @@ export class TestMonitor {
         testName: metric.testName,
         value: metric.memoryUsage,
       });
-    } else if (metric.memoryUsage > this.thresholds.memoryUsage.warning) {
+    } else if (
+      metric.memoryUsage > TestMonitor.thresholds.memoryUsage.warning
+    ) {
       alerts.push({
         type: "warning",
         category: "memory",
@@ -136,7 +139,7 @@ export class TestMonitor {
       });
     }
 
-    this.alerts.set(suiteName, alerts);
+    TestMonitor.alerts.set(suiteName, alerts);
   }
 
   /**
@@ -156,8 +159,8 @@ export class TestMonitor {
    * Get monitoring report for a test suite
    */
   static getMonitoringReport(suiteName: string): MonitoringReport | null {
-    const metrics = this.metrics.get(suiteName);
-    const alerts = this.alerts.get(suiteName);
+    const metrics = TestMonitor.metrics.get(suiteName);
+    const alerts = TestMonitor.alerts.get(suiteName);
 
     if (!metrics) {
       return null;
@@ -200,7 +203,7 @@ export class TestMonitor {
         totalDuration: durations.reduce((a, b) => a + b, 0),
       },
       alerts: alerts || [],
-      trends: this.calculateTrends(metrics),
+      trends: TestMonitor.calculateTrends(metrics),
       timestamp: Date.now(),
     };
   }
@@ -212,12 +215,12 @@ export class TestMonitor {
     const recentMetrics = metrics.slice(-10); // Last 10 tests
     const olderMetrics = metrics.slice(-20, -10); // Previous 10 tests
 
-    const recentAvgResponseTime = this.calculateAverage(
+    const recentAvgResponseTime = TestMonitor.calculateAverage(
       recentMetrics
         .map((m) => m.responseTime)
         .filter((rt) => rt !== undefined) as number[],
     );
-    const olderAvgResponseTime = this.calculateAverage(
+    const olderAvgResponseTime = TestMonitor.calculateAverage(
       olderMetrics
         .map((m) => m.responseTime)
         .filter((rt) => rt !== undefined) as number[],
@@ -270,11 +273,11 @@ export class TestMonitor {
    */
   static clearMonitoringData(suiteName?: string): void {
     if (suiteName) {
-      this.alerts.delete(suiteName);
-      this.metrics.delete(suiteName);
+      TestMonitor.alerts.delete(suiteName);
+      TestMonitor.metrics.delete(suiteName);
     } else {
-      this.alerts.clear();
-      this.metrics.clear();
+      TestMonitor.alerts.clear();
+      TestMonitor.metrics.clear();
     }
   }
 
@@ -283,7 +286,7 @@ export class TestMonitor {
    */
   static getActiveAlerts(): AlertSummary {
     const allAlerts: TestAlert[] = [];
-    for (const alerts of this.alerts.values()) {
+    for (const alerts of TestMonitor.alerts.values()) {
       allAlerts.push(...alerts);
     }
 
@@ -291,7 +294,7 @@ export class TestMonitor {
       total: allAlerts.length,
       critical: allAlerts.filter((a) => a.type === "critical").length,
       warning: allAlerts.filter((a) => a.type === "warning").length,
-      byCategory: this.groupAlertsByCategory(allAlerts),
+      byCategory: TestMonitor.groupAlertsByCategory(allAlerts),
       recent: allAlerts.filter((a) => Date.now() - a.timestamp < 300000), // Last 5 minutes
     };
   }
@@ -310,7 +313,6 @@ export class TestMonitor {
 // Health Check System
 export class HealthCheckMonitor {
   private static checks = new Map<string, HealthCheck>();
-  private static checkInterval = 60000; // 1 minute
   private static timers = new Map<string, NodeJS.Timeout>();
 
   /**
@@ -326,15 +328,15 @@ export class HealthCheckMonitor {
       consecutiveFailures: 0,
     };
 
-    this.checks.set(check.name, healthCheck);
+    HealthCheckMonitor.checks.set(check.name, healthCheck);
 
     // Start periodic checking
     if (check.interval) {
       const timer = setInterval(
-        () => this.runHealthCheck(check.name),
+        () => HealthCheckMonitor.runHealthCheck(check.name),
         check.interval,
       );
-      this.timers.set(check.name, timer);
+      HealthCheckMonitor.timers.set(check.name, timer);
     }
 
     console.log(`🏥 Health check registered: ${check.name}`);
@@ -344,7 +346,7 @@ export class HealthCheckMonitor {
    * Run a specific health check
    */
   static async runHealthCheck(checkName: string): Promise<HealthCheckResult> {
-    const check = this.checks.get(checkName);
+    const check = HealthCheckMonitor.checks.get(checkName);
     if (!check) {
       throw new Error(`Health check not found: ${checkName}`);
     }
@@ -394,9 +396,9 @@ export class HealthCheckMonitor {
   static async runAllHealthChecks(): Promise<HealthCheckSummary> {
     const results: HealthCheckResult[] = [];
 
-    for (const checkName of this.checks.keys()) {
+    for (const checkName of HealthCheckMonitor.checks.keys()) {
       try {
-        const result = await this.runHealthCheck(checkName);
+        const result = await HealthCheckMonitor.runHealthCheck(checkName);
         results.push(result);
       } catch (error) {
         results.push({
@@ -425,17 +427,17 @@ export class HealthCheckMonitor {
    * Get health check status
    */
   static getHealthStatus(): Record<string, HealthCheck> {
-    return Object.fromEntries(this.checks);
+    return Object.fromEntries(HealthCheckMonitor.checks);
   }
 
   /**
    * Stop all health checks
    */
   static stopAllHealthChecks(): void {
-    for (const timer of this.timers.values()) {
+    for (const timer of HealthCheckMonitor.timers.values()) {
       clearInterval(timer);
     }
-    this.timers.clear();
+    HealthCheckMonitor.timers.clear();
     console.log("🏥 All health checks stopped");
   }
 
@@ -444,7 +446,7 @@ export class HealthCheckMonitor {
    */
   static registerDefaultHealthChecks(): void {
     // Server connectivity check
-    this.registerHealthCheck({
+    HealthCheckMonitor.registerHealthCheck({
       name: "server_connectivity",
       description: "Check if the server is responding",
       checkFunction: async () => {
@@ -458,7 +460,7 @@ export class HealthCheckMonitor {
     });
 
     // Database connectivity check
-    this.registerHealthCheck({
+    HealthCheckMonitor.registerHealthCheck({
       name: "database_connectivity",
       description: "Check if the database is accessible",
       checkFunction: async () => {
@@ -475,7 +477,7 @@ export class HealthCheckMonitor {
     });
 
     // API responsiveness check
-    this.registerHealthCheck({
+    HealthCheckMonitor.registerHealthCheck({
       name: "api_responsiveness",
       description: "Check API response time",
       checkFunction: async () => {
@@ -510,11 +512,13 @@ export class TestAnalytics {
       timestamp: Date.now(),
     };
 
-    this.testHistory.push(entry);
+    TestAnalytics.testHistory.push(entry);
 
     // Maintain history size limit
-    if (this.testHistory.length > this.maxHistorySize) {
-      this.testHistory = this.testHistory.slice(-this.maxHistorySize);
+    if (TestAnalytics.testHistory.length > TestAnalytics.maxHistorySize) {
+      TestAnalytics.testHistory = TestAnalytics.testHistory.slice(
+        -TestAnalytics.maxHistorySize,
+      );
     }
   }
 
@@ -523,29 +527,31 @@ export class TestAnalytics {
    */
   static generateAnalyticsReport(timeRange?: TimeRange): AnalyticsReport {
     const filteredHistory = timeRange
-      ? this.testHistory.filter(
+      ? TestAnalytics.testHistory.filter(
           (entry) =>
             entry.timestamp >= timeRange.start &&
             entry.timestamp <= timeRange.end,
         )
-      : this.testHistory;
+      : TestAnalytics.testHistory;
 
     if (filteredHistory.length === 0) {
-      return this.getEmptyReport();
+      return TestAnalytics.getEmptyReport();
     }
 
     // Test execution trends
-    const executionTrends = this.calculateExecutionTrends(filteredHistory);
+    const executionTrends =
+      TestAnalytics.calculateExecutionTrends(filteredHistory);
 
     // Performance metrics
     const performanceMetrics =
-      this.calculatePerformanceMetrics(filteredHistory);
+      TestAnalytics.calculatePerformanceMetrics(filteredHistory);
 
     // Quality metrics
-    const qualityMetrics = this.calculateQualityMetrics(filteredHistory);
+    const qualityMetrics =
+      TestAnalytics.calculateQualityMetrics(filteredHistory);
 
     // Failure analysis
-    const failureAnalysis = this.analyzeFailures(filteredHistory);
+    const failureAnalysis = TestAnalytics.analyzeFailures(filteredHistory);
 
     return {
       timeRange: timeRange || {
@@ -558,7 +564,7 @@ export class TestAnalytics {
         totalTests: filteredHistory.reduce((sum, e) => sum + e.testCount, 0),
         totalPasses: filteredHistory.reduce((sum, e) => sum + e.passCount, 0),
         totalFailures: filteredHistory.reduce((sum, e) => sum + e.failCount, 0),
-        avgExecutionTime: this.calculateAverage(
+        avgExecutionTime: TestAnalytics.calculateAverage(
           filteredHistory.map((e) => e.duration),
         ),
       },
@@ -573,23 +579,25 @@ export class TestAnalytics {
   private static calculateExecutionTrends(
     history: TestHistoryEntry[],
   ): ExecutionTrends {
-    const dailyGroups = this.groupByDay(history);
+    const dailyGroups = TestAnalytics.groupByDay(history);
     const dailyStats = Object.entries(dailyGroups).map(([date, entries]) => ({
       date,
       executions: entries.length,
       tests: entries.reduce((sum, e) => sum + e.testCount, 0),
       passes: entries.reduce((sum, e) => sum + e.passCount, 0),
       failures: entries.reduce((sum, e) => sum + e.failCount, 0),
-      avgDuration: this.calculateAverage(entries.map((e) => e.duration)),
+      avgDuration: TestAnalytics.calculateAverage(
+        entries.map((e) => e.duration),
+      ),
     }));
 
     return {
       daily: dailyStats,
       overall: {
-        trend: this.calculateTrendDirection(
+        trend: TestAnalytics.calculateTrendDirection(
           dailyStats.map((d) => d.executions),
         ),
-        successRateTrend: this.calculateTrendDirection(
+        successRateTrend: TestAnalytics.calculateTrendDirection(
           dailyStats.map((d) => (d.tests > 0 ? d.passes / d.tests : 0)),
         ),
       },
@@ -606,20 +614,22 @@ export class TestAnalytics {
 
     return {
       executionTime: {
-        avg: this.calculateAverage(durations),
+        avg: TestAnalytics.calculateAverage(durations),
         min: Math.min(...durations),
         max: Math.max(...durations),
-        p95: this.calculatePercentile(durations, 0.95),
-        trend: this.calculateTrendDirection(durations.slice(-10)),
+        p95: TestAnalytics.calculatePercentile(durations, 0.95),
+        trend: TestAnalytics.calculateTrendDirection(durations.slice(-10)),
       },
       responseTime:
         avgResponseTimes.length > 0
           ? {
-              avg: this.calculateAverage(avgResponseTimes),
+              avg: TestAnalytics.calculateAverage(avgResponseTimes),
               min: Math.min(...avgResponseTimes),
               max: Math.max(...avgResponseTimes),
-              p95: this.calculatePercentile(avgResponseTimes, 0.95),
-              trend: this.calculateTrendDirection(avgResponseTimes.slice(-10)),
+              p95: TestAnalytics.calculatePercentile(avgResponseTimes, 0.95),
+              trend: TestAnalytics.calculateTrendDirection(
+                avgResponseTimes.slice(-10),
+              ),
             }
           : undefined,
     };
@@ -632,33 +642,33 @@ export class TestAnalytics {
       e.testCount > 0 ? e.passCount / e.testCount : 0,
     );
 
-    const flakyTests = this.identifyFlakyTests(history);
+    const flakyTests = TestAnalytics.identifyFlakyTests(history);
 
     return {
       successRate: {
-        current: this.calculateAverage(successRates.slice(-5)),
-        overall: this.calculateAverage(successRates),
-        trend: this.calculateTrendDirection(successRates.slice(-10)),
+        current: TestAnalytics.calculateAverage(successRates.slice(-5)),
+        overall: TestAnalytics.calculateAverage(successRates),
+        trend: TestAnalytics.calculateTrendDirection(successRates.slice(-10)),
       },
       stability: {
         flakyTestCount: flakyTests.length,
         flakyTests: flakyTests.slice(0, 10), // Top 10 flaky tests
-        consistencyScore: this.calculateConsistencyScore(history),
+        consistencyScore: TestAnalytics.calculateConsistencyScore(history),
       },
     };
   }
 
   private static analyzeFailures(history: TestHistoryEntry[]): FailureAnalysis {
     const failures = history.filter((e) => e.failCount > 0);
-    const failuresByType = this.groupFailuresByType(failures);
-    const topFailingTests = this.getTopFailingTests(failures);
+    const failuresByType = TestAnalytics.groupFailuresByType(failures);
+    const topFailingTests = TestAnalytics.getTopFailingTests(failures);
 
     return {
       totalFailures: failures.reduce((sum, f) => sum + f.failCount, 0),
       failureRate: history.length > 0 ? failures.length / history.length : 0,
       byType: failuresByType,
       topFailingTests,
-      recentTrend: this.calculateTrendDirection(
+      recentTrend: TestAnalytics.calculateTrendDirection(
         history.slice(-10).map((e) => e.failCount),
       ),
     };
@@ -704,8 +714,8 @@ export class TestAnalytics {
 
     if (older.length === 0) return "stable";
 
-    const recentAvg = this.calculateAverage(recent);
-    const olderAvg = this.calculateAverage(older);
+    const recentAvg = TestAnalytics.calculateAverage(recent);
+    const olderAvg = TestAnalytics.calculateAverage(older);
 
     const changePercent = Math.abs((recentAvg - olderAvg) / olderAvg);
 
@@ -713,7 +723,7 @@ export class TestAnalytics {
     return recentAvg > olderAvg ? "improving" : "degrading";
   }
 
-  private static identifyFlakyTests(history: TestHistoryEntry[]): string[] {
+  private static identifyFlakyTests(_history: TestHistoryEntry[]): string[] {
     // This is a simplified implementation
     // In practice, you'd track individual test results
     return [];
@@ -727,7 +737,7 @@ export class TestAnalytics {
     const successRates = history.map((e) =>
       e.testCount > 0 ? e.passCount / e.testCount : 1,
     );
-    const variance = this.calculateVariance(successRates);
+    const variance = TestAnalytics.calculateVariance(successRates);
 
     // Convert variance to consistency score (0-1, higher is better)
     return Math.max(0, 1 - variance);
@@ -736,9 +746,9 @@ export class TestAnalytics {
   private static calculateVariance(values: number[]): number {
     if (values.length === 0) return 0;
 
-    const mean = this.calculateAverage(values);
-    const squaredDiffs = values.map((value) => Math.pow(value - mean, 2));
-    return this.calculateAverage(squaredDiffs);
+    const mean = TestAnalytics.calculateAverage(values);
+    const squaredDiffs = values.map((value) => (value - mean) ** 2);
+    return TestAnalytics.calculateAverage(squaredDiffs);
   }
 
   private static groupFailuresByType(
@@ -760,7 +770,7 @@ export class TestAnalytics {
   }
 
   private static getTopFailingTests(
-    failures: TestHistoryEntry[],
+    _failures: TestHistoryEntry[],
   ): Array<{ testName: string; failureCount: number }> {
     // Simplified implementation
     return [];
@@ -817,14 +827,14 @@ export class TestAnalytics {
    * Clear analytics history
    */
   static clearHistory(): void {
-    this.testHistory = [];
+    TestAnalytics.testHistory = [];
   }
 
   /**
    * Export analytics data
    */
   static exportData(): TestHistoryEntry[] {
-    return [...this.testHistory];
+    return [...TestAnalytics.testHistory];
   }
 }
 

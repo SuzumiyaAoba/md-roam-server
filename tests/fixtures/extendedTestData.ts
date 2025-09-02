@@ -1,4 +1,4 @@
-import { CreateNodePayload, UpdateNodePayload } from "@/utils/types";
+import type { CreateNodePayload, UpdateNodePayload } from "@/utils/types";
 
 // Extended test data with comprehensive coverage
 export const EXTENDED_TEST_NODES: {
@@ -287,7 +287,7 @@ export const EXTENDED_TEST_UPDATES: {
   // Edge case updates
   edgeCases: [
     { title: "" }, // Empty title (should fail)
-    { content: "Very long content: " + "Long text. ".repeat(1000) },
+    { content: `Very long content: ${"Long text. ".repeat(1000)}` },
     { tags: [] }, // Empty array
     { tags: Array.from({ length: 100 }, (_, i) => `bulk-tag-${i}`) },
     { title: "Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?" },
@@ -326,8 +326,7 @@ export const PERFORMANCE_TEST_SCENARIOS = {
   largeContentNodes: (count: number) =>
     Array.from({ length: count }, (_, i) => ({
       title: `Large Content Node ${i + 1}`,
-      content:
-        "Large content block: " + "Lorem ipsum dolor sit amet. ".repeat(10000),
+      content: `Large content block: ${"Lorem ipsum dolor sit amet. ".repeat(10000)}`,
       tags: [`large-${i}`],
       file_type: "md" as const,
     })),

@@ -1,4 +1,4 @@
-import { CreateNodePayload, UpdateNodePayload, TestData } from "@/utils/types";
+import type { CreateNodePayload, UpdateNodePayload } from "@/utils/types";
 
 export const TEST_NODES: {
   markdown: CreateNodePayload[];
@@ -184,7 +184,7 @@ export function createTestDataVariations(
 
     // Without optional fields
     {
-      title: baseData.title + " (minimal)",
+      title: `${baseData.title} (minimal)`,
       content: baseData.content,
       file_type: baseData.file_type,
     },
@@ -192,17 +192,17 @@ export function createTestDataVariations(
     // With all optional fields
     {
       ...baseData,
-      title: baseData.title + " (maximal)",
+      title: `${baseData.title} (maximal)`,
       tags: [...(baseData.tags || []), "maximal", "complete"],
       aliases: [...(baseData.aliases || []), "Max Test"],
       refs: [...(baseData.refs || []), "https://test-ref.com"],
-      category: (baseData.category || "default") + "-maximal",
+      category: `${baseData.category || "default"}-maximal`,
     },
 
     // Edge cases
     {
-      title: baseData.title + " (edge-case)",
-      content: baseData.content + "\n\n" + "Special chars: éñ中文🚀",
+      title: `${baseData.title} (edge-case)`,
+      content: `${baseData.content}\n\nSpecial chars: éñ中文🚀`,
       tags: ["edge-case", "unicode", "特殊文字"],
       file_type: baseData.file_type,
     },

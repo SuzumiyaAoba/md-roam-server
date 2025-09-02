@@ -1,5 +1,5 @@
 import { ApiHelpers } from "./apiHelpers";
-import { NodeData, CreateNodePayload } from "./types";
+import type { CreateNodePayload, NodeData } from "./types";
 
 /**
  * Enhanced test reliability utilities for stable, reproducible testing
@@ -40,7 +40,7 @@ export class TestIsolation {
     baseData: Partial<CreateNodePayload>,
     testName: string,
   ): CreateNodePayload {
-    const testId = this.generateTestId(testName);
+    const testId = TestIsolation.generateTestId(testName);
     return {
       title: `${baseData.title || "Test Node"} [${testId}]`,
       content: `${baseData.content || "Test content"}\n\n<!-- Test ID: ${testId} -->`,
@@ -106,7 +106,7 @@ export class RetryableOperations {
   ): Promise<NodeData> {
     const isolatedData = TestIsolation.createIsolatedNode(nodeData, testName);
 
-    return await this.withRetry(
+    return await RetryableOperations.withRetry(
       async () => {
         const response = await ApiHelpers.createNode(isolatedData);
         if (response.status !== 201) {
@@ -127,7 +127,7 @@ export class RetryableOperations {
   static async waitForServerHealthy(timeoutMs = 30000): Promise<void> {
     const startTime = Date.now();
 
-    await this.withRetry(
+    await RetryableOperations.withRetry(
       async () => {
         if (Date.now() - startTime > timeoutMs) {
           throw new Error(`Server health check timeout after ${timeoutMs}ms`);
@@ -151,25 +151,25 @@ export class RobustCleanup {
   private static maxCleanupAttempts = 3;
 
   static trackNode(nodeId: string): void {
-    this.trackedNodes.add(nodeId);
-    this.cleanupAttempts.set(nodeId, 0);
+    RobustCleanup.trackedNodes.add(nodeId);
+    RobustCleanup.cleanupAttempts.set(nodeId, 0);
   }
 
   static async cleanupAllNodes(): Promise<CleanupResult> {
     const results: CleanupResult = {
       successful: [],
       failed: [],
-      total: this.trackedNodes.size,
+      total: RobustCleanup.trackedNodes.size,
     };
 
     console.log(
-      `🧹 Starting robust cleanup of ${this.trackedNodes.size} nodes...`,
+      `🧹 Starting robust cleanup of ${RobustCleanup.trackedNodes.size} nodes...`,
     );
 
-    for (const nodeId of this.trackedNodes) {
-      const attempts = this.cleanupAttempts.get(nodeId) || 0;
+    for (const nodeId of RobustCleanup.trackedNodes) {
+      const attempts = RobustCleanup.cleanupAttempts.get(nodeId) || 0;
 
-      if (attempts >= this.maxCleanupAttempts) {
+      if (attempts >= RobustCleanup.maxCleanupAttempts) {
         results.failed.push({
           nodeId,
           reason: "Max cleanup attempts exceeded",
@@ -178,21 +178,21 @@ export class RobustCleanup {
       }
 
       try {
-        await this.cleanupSingleNode(nodeId);
+        await RobustCleanup.cleanupSingleNode(nodeId);
         results.successful.push(nodeId);
-        this.trackedNodes.delete(nodeId);
-        this.cleanupAttempts.delete(nodeId);
+        RobustCleanup.trackedNodes.delete(nodeId);
+        RobustCleanup.cleanupAttempts.delete(nodeId);
       } catch (error) {
         const newAttempts = attempts + 1;
-        this.cleanupAttempts.set(nodeId, newAttempts);
+        RobustCleanup.cleanupAttempts.set(nodeId, newAttempts);
 
-        if (newAttempts >= this.maxCleanupAttempts) {
+        if (newAttempts >= RobustCleanup.maxCleanupAttempts) {
           results.failed.push({
             nodeId,
             reason: `Failed after ${newAttempts} attempts: ${error}`,
           });
-          this.trackedNodes.delete(nodeId);
-          this.cleanupAttempts.delete(nodeId);
+          RobustCleanup.trackedNodes.delete(nodeId);
+          RobustCleanup.cleanupAttempts.delete(nodeId);
         }
       }
     }
@@ -237,9 +237,9 @@ export class RobustCleanup {
 
   static getCleanupStats(): CleanupStats {
     return {
-      trackedNodes: this.trackedNodes.size,
-      pendingCleanup: Array.from(this.trackedNodes),
-      attemptCounts: Object.fromEntries(this.cleanupAttempts),
+      trackedNodes: RobustCleanup.trackedNodes.size,
+      pendingCleanup: Array.from(RobustCleanup.trackedNodes),
+      attemptCounts: Object.fromEntries(RobustCleanup.cleanupAttempts),
     };
   }
 
@@ -248,7 +248,7 @@ export class RobustCleanup {
       "🔥 Force cleanup: attempting to clean all tracked nodes regardless of failures",
     );
 
-    for (const nodeId of this.trackedNodes) {
+    for (const nodeId of RobustCleanup.trackedNodes) {
       try {
         await ApiHelpers.deleteNode(nodeId);
       } catch (error) {
@@ -257,8 +257,8 @@ export class RobustCleanup {
     }
 
     // Clear all tracking
-    this.trackedNodes.clear();
-    this.cleanupAttempts.clear();
+    RobustCleanup.trackedNodes.clear();
+    RobustCleanup.cleanupAttempts.clear();
   }
 }
 
@@ -295,7 +295,7 @@ export class TestStateVerification {
    * Clean any leftover test data from previous runs
    */
   static async cleanLeftoverTestData(): Promise<number> {
-    const envState = await this.verifyCleanEnvironment();
+    const envState = await TestStateVerification.verifyCleanEnvironment();
 
     if (envState.isClean) {
       return 0;
@@ -344,10 +344,10 @@ export class TestPerformanceMonitor {
       timestamp: new Date().toISOString(),
     };
 
-    if (!this.measurements.has(timer.testName)) {
-      this.measurements.set(timer.testName, []);
+    if (!TestPerformanceMonitor.measurements.has(timer.testName)) {
+      TestPerformanceMonitor.measurements.set(timer.testName, []);
     }
-    this.measurements.get(timer.testName)!.push(measurement);
+    TestPerformanceMonitor.measurements.get(timer.testName)?.push(measurement);
 
     // Log slow operations
     if (timer.duration > 5000) {
@@ -361,18 +361,18 @@ export class TestPerformanceMonitor {
 
   static getTestMeasurements(testName?: string): TestMeasurement[] {
     if (testName) {
-      return this.measurements.get(testName) || [];
+      return TestPerformanceMonitor.measurements.get(testName) || [];
     }
 
     const allMeasurements: TestMeasurement[] = [];
-    for (const measurements of this.measurements.values()) {
+    for (const measurements of TestPerformanceMonitor.measurements.values()) {
       allMeasurements.push(...measurements);
     }
     return allMeasurements;
   }
 
   static getPerformanceReport(): PerformanceReport {
-    const allMeasurements = this.getTestMeasurements();
+    const allMeasurements = TestPerformanceMonitor.getTestMeasurements();
 
     if (allMeasurements.length === 0) {
       return {
@@ -432,7 +432,7 @@ export class TestPerformanceMonitor {
   }
 
   static clearMeasurements(): void {
-    this.measurements.clear();
+    TestPerformanceMonitor.measurements.clear();
   }
 }
 

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { TestCleanup, ApiHelpers } from "../utils/apiHelpers";
+import { beforeEach, describe, expect, it } from "vitest";
+import { ApiHelpers, TestCleanup } from "../utils/apiHelpers";
 
 describe("Update Blocking Prevention E2E Tests", () => {
   beforeEach(async () => {
@@ -78,7 +78,7 @@ describe("Update Blocking Prevention E2E Tests", () => {
       const updateResponses = await Promise.all(updatePromises);
 
       // All updates should succeed
-      updateResponses.forEach((response, index) => {
+      updateResponses.forEach((response, _index) => {
         expect(response.status).toBe(200);
         expect(response.body.status).toBe("success");
       });

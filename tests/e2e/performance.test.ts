@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
+import { describe, expect, it } from "vitest";
 import {
   EXTENDED_TEST_NODES,
   PERFORMANCE_TEST_SCENARIOS,
 } from "@/fixtures/extendedTestData";
-import { NodeData } from "@/utils/types";
+import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
 
 describe("Performance E2E Tests", () => {
   const PERFORMANCE_THRESHOLDS = {
@@ -127,7 +126,7 @@ describe("Performance E2E Tests", () => {
 
     it("should search within performance threshold", async () => {
       // Create searchable test data
-      const searchableNodes = await Promise.all([
+      const _searchableNodes = await Promise.all([
         TestCleanup.createTestNode({
           title: "Performance Search Test 1",
           tags: ["performance"],

@@ -5,7 +5,7 @@ export interface BaseResponse {
   timestamp: string;
 }
 
-export interface SuccessResponse<T = any> extends BaseResponse {
+export interface SuccessResponse<T = unknown> extends BaseResponse {
   status: "success";
   data?: T;
 }
@@ -13,7 +13,7 @@ export interface SuccessResponse<T = any> extends BaseResponse {
 export interface ErrorResponse extends BaseResponse {
   status: "error";
   error_code?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Node Types
@@ -40,7 +40,7 @@ export interface NodeMetadata {
   aliases?: string[];
   refs?: string[];
   category?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface CreateNodePayload {
@@ -159,7 +159,7 @@ export interface TestConfig {
 }
 
 // Assertion Helpers
-export interface ExpectedResponse<T = any> {
+export interface ExpectedResponse<T = unknown> {
   status?: number;
   contentType?: string | RegExp;
   body?: Partial<T>;

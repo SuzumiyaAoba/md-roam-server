@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { ApiHelpers } from "./apiHelpers";
-import { CreateNodePayload, UpdateNodePayload, NodeData } from "./types";
+import type { CreateNodePayload, NodeData, UpdateNodePayload } from "./types";
 
 /**
  * Test quality and maintainability utilities for cleaner, more reliable tests
@@ -107,8 +107,6 @@ export class NodeDataBuilder {
 
 // Fluent API Client with Page Object Pattern
 export class FluentApiClient {
-  private nodeId?: string;
-
   static forNode(nodeId: string): FluentApiClient {
     const client = new FluentApiClient();
     client.nodeId = nodeId;
@@ -262,7 +260,7 @@ export class ApiResponse<T> {
     return this;
   }
 
-  shouldHaveResponseTimeBelow(maxTimeMs: number): this {
+  shouldHaveResponseTimeBelow(_maxTimeMs: number): this {
     // This would require timing measurement from the calling code
     // Implementation depends on how timing is tracked
     return this;
@@ -353,10 +351,7 @@ export class NodeAssertions {
    * Assert Japanese content is handled properly
    */
   static assertJapaneseContentSupport(node: any): void {
-    if (
-      node.title &&
-      node.title.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/)
-    ) {
+    if (node.title?.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/)) {
       // Contains Japanese characters
       expect(node.title.length).toBeGreaterThan(0);
       expect(node.file).toBeDefined();
@@ -526,7 +521,6 @@ export class TestScenarios {
     return {
       name,
       iterations,
-      maxTimeMs,
       results,
       avgTimeMs:
         results.length > 0
@@ -555,7 +549,7 @@ export class TestDocumentationGenerator {
       description,
       steps,
       timestamp: new Date().toISOString(),
-      tags: this.extractTagsFromName(testName),
+      tags: TestDocumentationGenerator.extractTagsFromName(testName),
     };
   }
 

@@ -1,7 +1,6 @@
-import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
-import fs from "fs";
-import path from "path";
 
 describe("External File Modification Bug Investigation", () => {
   it("should handle updates after external file modifications", async () => {
