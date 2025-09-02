@@ -1,17 +1,17 @@
 // Core API Response Types
 export interface BaseResponse {
-  status: 'success' | 'error';
+  status: "success" | "error";
   message: string;
   timestamp: string;
 }
 
 export interface SuccessResponse<T = any> extends BaseResponse {
-  status: 'success';
+  status: "success";
   data?: T;
 }
 
 export interface ErrorResponse extends BaseResponse {
-  status: 'error';
+  status: "error";
   error_code?: string;
   details?: Record<string, any>;
 }
@@ -21,7 +21,7 @@ export interface Node {
   id: string;
   title: string;
   file: string;
-  file_type: 'md' | 'org';
+  file_type: "md" | "org";
   path: string;
   mtime?: string;
   size?: number;
@@ -50,7 +50,7 @@ export interface CreateNodePayload {
   aliases?: string[];
   refs?: string[];
   category?: string;
-  file_type?: 'md' | 'org';
+  file_type?: "md" | "org";
 }
 
 export interface UpdateNodePayload extends Partial<CreateNodePayload> {

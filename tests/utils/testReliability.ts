@@ -1,5 +1,5 @@
-import { ApiHelpers } from './apiHelpers';
-import { NodeData, CreateNodePayload } from './types';
+import { ApiHelpers } from "./apiHelpers";
+import { NodeData, CreateNodePayload } from "./types";
 
 /**
  * Enhanced test reliability utilities for stable, reproducible testing
@@ -36,16 +36,21 @@ export class TestIsolation {
   /**
    * Create isolated test data with unique identifiers
    */
-  static createIsolatedNode(baseData: Partial<CreateNodePayload>, testName: string): CreateNodePayload {
+  static createIsolatedNode(
+    baseData: Partial<CreateNodePayload>,
+    testName: string,
+  ): CreateNodePayload {
     const testId = this.generateTestId(testName);
     return {
-      title: `${baseData.title || 'Test Node'} [${testId}]`,
-      content: `${baseData.content || 'Test content'}\n\n<!-- Test ID: ${testId} -->`,
-      tags: [...(baseData.tags || []), `test-${testId}`, 'isolated-test'],
-      aliases: baseData.aliases?.map(alias => `${alias} [${testId}]`) || [`Test Alias [${testId}]`],
+      title: `${baseData.title || "Test Node"} [${testId}]`,
+      content: `${baseData.content || "Test content"}\n\n<!-- Test ID: ${testId} -->`,
+      tags: [...(baseData.tags || []), `test-${testId}`, "isolated-test"],
+      aliases: baseData.aliases?.map((alias) => `${alias} [${testId}]`) || [
+        `Test Alias [${testId}]`,
+      ],
       refs: baseData.refs || [],
-      category: baseData.category || 'test-isolation',
-      file_type: baseData.file_type || 'md',
+      category: baseData.category || "test-isolation",
+      file_type: baseData.file_type || "md",
     };
   }
 }
@@ -58,7 +63,7 @@ export class RetryableOperations {
   static async withRetry<T>(
     operation: () => Promise<T>,
     config: Partial<RetryConfig> = {},
-    operationName = 'operation'
+    operationName = "operation",
   ): Promise<T> {
     const finalConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
     let lastError: Error;
@@ -69,9 +74,9 @@ export class RetryableOperations {
         return await operation();
       } catch (error) {
         lastError = error as Error;
-        
+
         console.warn(
-          `${operationName} failed on attempt ${attempt}/${finalConfig.maxAttempts}: ${lastError.message}`
+          `${operationName} failed on attempt ${attempt}/${finalConfig.maxAttempts}: ${lastError.message}`,
         );
 
         if (attempt === finalConfig.maxAttempts) {
@@ -79,32 +84,40 @@ export class RetryableOperations {
         }
 
         // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay = Math.min(delay * finalConfig.backoffFactor, finalConfig.maxDelayMs);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(
+          delay * finalConfig.backoffFactor,
+          finalConfig.maxDelayMs,
+        );
       }
     }
 
     throw new Error(
-      `${operationName} failed after ${finalConfig.maxAttempts} attempts. Last error: ${lastError.message}`
+      `${operationName} failed after ${finalConfig.maxAttempts} attempts. Last error: ${lastError.message}`,
     );
   }
 
   /**
    * Robust node creation with retry
    */
-  static async createNodeReliably(nodeData: CreateNodePayload, testName: string): Promise<NodeData> {
+  static async createNodeReliably(
+    nodeData: CreateNodePayload,
+    testName: string,
+  ): Promise<NodeData> {
     const isolatedData = TestIsolation.createIsolatedNode(nodeData, testName);
-    
+
     return await this.withRetry(
       async () => {
         const response = await ApiHelpers.createNode(isolatedData);
         if (response.status !== 201) {
-          throw new Error(`Node creation failed with status ${response.status}: ${response.body?.message}`);
+          throw new Error(
+            `Node creation failed with status ${response.status}: ${response.body?.message}`,
+          );
         }
         return ApiHelpers.expectNodeResponse(response);
       },
       { maxAttempts: 3, delayMs: 1000 },
-      'createNode'
+      "createNode",
     );
   }
 
@@ -113,20 +126,20 @@ export class RetryableOperations {
    */
   static async waitForServerHealthy(timeoutMs = 30000): Promise<void> {
     const startTime = Date.now();
-    
+
     await this.withRetry(
       async () => {
         if (Date.now() - startTime > timeoutMs) {
           throw new Error(`Server health check timeout after ${timeoutMs}ms`);
         }
-        
+
         const response = await ApiHelpers.healthCheck();
         if (response.status !== 200) {
           throw new Error(`Server not healthy: ${response.status}`);
         }
       },
       { maxAttempts: 30, delayMs: 1000, maxDelayMs: 2000 },
-      'serverHealthCheck'
+      "serverHealthCheck",
     );
   }
 }
@@ -149,13 +162,18 @@ export class RobustCleanup {
       total: this.trackedNodes.size,
     };
 
-    console.log(`🧹 Starting robust cleanup of ${this.trackedNodes.size} nodes...`);
+    console.log(
+      `🧹 Starting robust cleanup of ${this.trackedNodes.size} nodes...`,
+    );
 
     for (const nodeId of this.trackedNodes) {
       const attempts = this.cleanupAttempts.get(nodeId) || 0;
-      
+
       if (attempts >= this.maxCleanupAttempts) {
-        results.failed.push({ nodeId, reason: 'Max cleanup attempts exceeded' });
+        results.failed.push({
+          nodeId,
+          reason: "Max cleanup attempts exceeded",
+        });
         continue;
       }
 
@@ -167,11 +185,11 @@ export class RobustCleanup {
       } catch (error) {
         const newAttempts = attempts + 1;
         this.cleanupAttempts.set(nodeId, newAttempts);
-        
+
         if (newAttempts >= this.maxCleanupAttempts) {
-          results.failed.push({ 
-            nodeId, 
-            reason: `Failed after ${newAttempts} attempts: ${error}` 
+          results.failed.push({
+            nodeId,
+            reason: `Failed after ${newAttempts} attempts: ${error}`,
           });
           this.trackedNodes.delete(nodeId);
           this.cleanupAttempts.delete(nodeId);
@@ -179,10 +197,12 @@ export class RobustCleanup {
       }
     }
 
-    console.log(`✅ Cleanup completed: ${results.successful.length} successful, ${results.failed.length} failed`);
-    
+    console.log(
+      `✅ Cleanup completed: ${results.successful.length} successful, ${results.failed.length} failed`,
+    );
+
     if (results.failed.length > 0) {
-      console.warn('Failed cleanups:', results.failed);
+      console.warn("Failed cleanups:", results.failed);
     }
 
     return results;
@@ -211,7 +231,7 @@ export class RobustCleanup {
         }
       },
       { maxAttempts: 2, delayMs: 500 },
-      `deleteNode(${nodeId})`
+      `deleteNode(${nodeId})`,
     );
   }
 
@@ -224,8 +244,10 @@ export class RobustCleanup {
   }
 
   static async forceCleanupAll(): Promise<void> {
-    console.log('🔥 Force cleanup: attempting to clean all tracked nodes regardless of failures');
-    
+    console.log(
+      "🔥 Force cleanup: attempting to clean all tracked nodes regardless of failures",
+    );
+
     for (const nodeId of this.trackedNodes) {
       try {
         await ApiHelpers.deleteNode(nodeId);
@@ -233,7 +255,7 @@ export class RobustCleanup {
         console.warn(`Force cleanup failed for ${nodeId}:`, error);
       }
     }
-    
+
     // Clear all tracking
     this.trackedNodes.clear();
     this.cleanupAttempts.clear();
@@ -248,12 +270,14 @@ export class TestStateVerification {
   static async verifyCleanEnvironment(): Promise<EnvironmentState> {
     const stats = await ApiHelpers.getStats();
     const allNodes = await ApiHelpers.getAllNodes();
-    
-    const testNodes = allNodes.body.data?.filter((node: any) => 
-      node.title?.includes('[') || 
-      node.tags?.some((tag: string) => tag.startsWith('test-')) ||
-      node.category === 'test-isolation'
-    ) || [];
+
+    const testNodes =
+      allNodes.body.data?.filter(
+        (node: any) =>
+          node.title?.includes("[") ||
+          node.tags?.some((tag: string) => tag.startsWith("test-")) ||
+          node.category === "test-isolation",
+      ) || [];
 
     return {
       isClean: testNodes.length === 0,
@@ -262,7 +286,7 @@ export class TestStateVerification {
       testNodeDetails: testNodes.map((node: any) => ({
         id: node.id,
         title: node.title,
-        tags: node.tags || []
+        tags: node.tags || [],
       })),
     };
   }
@@ -272,13 +296,15 @@ export class TestStateVerification {
    */
   static async cleanLeftoverTestData(): Promise<number> {
     const envState = await this.verifyCleanEnvironment();
-    
+
     if (envState.isClean) {
       return 0;
     }
 
-    console.log(`🧹 Cleaning ${envState.testNodesFound} leftover test nodes...`);
-    
+    console.log(
+      `🧹 Cleaning ${envState.testNodesFound} leftover test nodes...`,
+    );
+
     let cleanedCount = 0;
     for (const testNode of envState.testNodeDetails) {
       try {
@@ -325,7 +351,9 @@ export class TestPerformanceMonitor {
 
     // Log slow operations
     if (timer.duration > 5000) {
-      console.warn(`⚠️  Slow operation detected: ${timer.testName}.${timer.operation} took ${timer.duration.toFixed(2)}ms`);
+      console.warn(
+        `⚠️  Slow operation detected: ${timer.testName}.${timer.operation} took ${timer.duration.toFixed(2)}ms`,
+      );
     }
 
     return measurement;
@@ -335,7 +363,7 @@ export class TestPerformanceMonitor {
     if (testName) {
       return this.measurements.get(testName) || [];
     }
-    
+
     const allMeasurements: TestMeasurement[] = [];
     for (const measurements of this.measurements.values()) {
       allMeasurements.push(...measurements);
@@ -345,7 +373,7 @@ export class TestPerformanceMonitor {
 
   static getPerformanceReport(): PerformanceReport {
     const allMeasurements = this.getTestMeasurements();
-    
+
     if (allMeasurements.length === 0) {
       return {
         totalTests: 0,
@@ -358,34 +386,47 @@ export class TestPerformanceMonitor {
       };
     }
 
-    const durations = allMeasurements.map(m => m.duration);
-    const operationStats: Record<string, { count: number; avgDuration: number; maxDuration: number }> = {};
-    
+    const durations = allMeasurements.map((m) => m.duration);
+    const operationStats: Record<
+      string,
+      { count: number; avgDuration: number; maxDuration: number }
+    > = {};
+
     // Calculate operation statistics
     for (const measurement of allMeasurements) {
       if (!operationStats[measurement.operation]) {
-        operationStats[measurement.operation] = { count: 0, avgDuration: 0, maxDuration: 0 };
+        operationStats[measurement.operation] = {
+          count: 0,
+          avgDuration: 0,
+          maxDuration: 0,
+        };
       }
-      
+
       const stats = operationStats[measurement.operation];
       stats.count++;
       stats.maxDuration = Math.max(stats.maxDuration, measurement.duration);
     }
-    
+
     // Calculate averages
     for (const operation in operationStats) {
-      const opMeasurements = allMeasurements.filter(m => m.operation === operation);
-      const avgDuration = opMeasurements.reduce((sum, m) => sum + m.duration, 0) / opMeasurements.length;
+      const opMeasurements = allMeasurements.filter(
+        (m) => m.operation === operation,
+      );
+      const avgDuration =
+        opMeasurements.reduce((sum, m) => sum + m.duration, 0) /
+        opMeasurements.length;
       operationStats[operation].avgDuration = avgDuration;
     }
 
     return {
-      totalTests: new Set(allMeasurements.map(m => m.testName)).size,
+      totalTests: new Set(allMeasurements.map((m) => m.testName)).size,
       totalOperations: allMeasurements.length,
       avgDuration: durations.reduce((a, b) => a + b, 0) / durations.length,
       maxDuration: Math.max(...durations),
       minDuration: Math.min(...durations),
-      slowOperations: allMeasurements.filter(m => m.duration > 5000).sort((a, b) => b.duration - a.duration),
+      slowOperations: allMeasurements
+        .filter((m) => m.duration > 5000)
+        .sort((a, b) => b.duration - a.duration),
       operationStats,
     };
   }
@@ -441,9 +482,12 @@ export interface PerformanceReport {
   maxDuration: number;
   minDuration: number;
   slowOperations: TestMeasurement[];
-  operationStats: Record<string, {
-    count: number;
-    avgDuration: number;
-    maxDuration: number;
-  }>;
+  operationStats: Record<
+    string,
+    {
+      count: number;
+      avgDuration: number;
+      maxDuration: number;
+    }
+  >;
 }

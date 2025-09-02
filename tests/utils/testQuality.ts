@@ -1,6 +1,6 @@
-import { expect } from 'vitest';
-import { ApiHelpers } from './apiHelpers';
-import { CreateNodePayload, UpdateNodePayload, NodeData } from './types';
+import { expect } from "vitest";
+import { ApiHelpers } from "./apiHelpers";
+import { CreateNodePayload, UpdateNodePayload, NodeData } from "./types";
 
 /**
  * Test quality and maintainability utilities for cleaner, more reliable tests
@@ -45,65 +45,62 @@ export class NodeDataBuilder {
   }
 
   asMarkdown(): NodeDataBuilder {
-    this.data.file_type = 'md';
+    this.data.file_type = "md";
     return this;
   }
 
   asOrg(): NodeDataBuilder {
-    this.data.file_type = 'org';
+    this.data.file_type = "org";
     return this;
   }
 
   asJapanese(): NodeDataBuilder {
-    return this
-      .withTitle('日本語テストノード')
-      .withContent('# 日本語ヘッダー\n\nこれは日本語のテストコンテンツです。')
-      .withTags('日本語', 'テスト')
-      .withAliases('Japanese Test Node');
+    return this.withTitle("日本語テストノード")
+      .withContent("# 日本語ヘッダー\n\nこれは日本語のテストコンテンツです。")
+      .withTags("日本語", "テスト")
+      .withAliases("Japanese Test Node");
   }
 
   asRich(): NodeDataBuilder {
-    return this
-      .withTitle('Rich Content Node')
-      .withContent('# Header\n\nThis is **bold** and *italic* text with [links](https://example.com).')
-      .withTags('rich', 'formatted', 'test')
-      .withAliases('Rich Node', 'Formatted Node')
-      .withRefs('https://example.com')
-      .withCategory('testing');
+    return this.withTitle("Rich Content Node")
+      .withContent(
+        "# Header\n\nThis is **bold** and *italic* text with [links](https://example.com).",
+      )
+      .withTags("rich", "formatted", "test")
+      .withAliases("Rich Node", "Formatted Node")
+      .withRefs("https://example.com")
+      .withCategory("testing");
   }
 
   asMinimal(): NodeDataBuilder {
-    return this
-      .withTitle('Minimal Test Node')
-      .asMarkdown();
+    return this.withTitle("Minimal Test Node").asMarkdown();
   }
 
   asLarge(): NodeDataBuilder {
-    const largeContent = 'Large content block. '.repeat(1000);
-    const manyTags = Array.from({length: 50}, (_, i) => `tag-${i}`);
-    const manyAliases = Array.from({length: 20}, (_, i) => `Alias ${i + 1}`);
+    const largeContent = "Large content block. ".repeat(1000);
+    const manyTags = Array.from({ length: 50 }, (_, i) => `tag-${i}`);
+    const manyAliases = Array.from({ length: 20 }, (_, i) => `Alias ${i + 1}`);
 
-    return this
-      .withTitle('Large Content Node')
+    return this.withTitle("Large Content Node")
       .withContent(largeContent)
       .withTags(...manyTags)
       .withAliases(...manyAliases)
-      .withCategory('performance-testing');
+      .withCategory("performance-testing");
   }
 
   build(): CreateNodePayload {
     if (!this.data.title) {
-      throw new Error('Title is required for node creation');
+      throw new Error("Title is required for node creation");
     }
 
     return {
       title: this.data.title,
-      content: this.data.content || '',
+      content: this.data.content || "",
       tags: this.data.tags || [],
       aliases: this.data.aliases || [],
       refs: this.data.refs || [],
       category: this.data.category,
-      file_type: this.data.file_type || 'md',
+      file_type: this.data.file_type || "md",
     };
   }
 }
@@ -151,7 +148,10 @@ export class NodesApiClient {
     return new ApiResponse(response);
   }
 
-  async update(nodeId: string, updateData: Partial<UpdateNodePayload>): Promise<ApiResponse<NodeData>> {
+  async update(
+    nodeId: string,
+    updateData: Partial<UpdateNodePayload>,
+  ): Promise<ApiResponse<NodeData>> {
     const response = await ApiHelpers.updateNode(nodeId, updateData);
     return new ApiResponse(response);
   }
@@ -218,7 +218,7 @@ export class ApiResponse<T> {
   shouldBeSuccessful(): this {
     expect(this.status).toBeGreaterThanOrEqual(200);
     expect(this.status).toBeLessThan(300);
-    expect(this.body).toHaveProperty('status', 'success');
+    expect(this.body).toHaveProperty("status", "success");
     return this;
   }
 
@@ -233,18 +233,20 @@ export class ApiResponse<T> {
     } else {
       expect(this.status).toBeGreaterThanOrEqual(400);
     }
-    expect(this.body).toHaveProperty('status', 'error');
+    expect(this.body).toHaveProperty("status", "error");
     return this;
   }
 
   shouldHaveData(): this {
-    expect(this.body).toHaveProperty('data');
+    expect(this.body).toHaveProperty("data");
     return this;
   }
 
   shouldHaveTimestamp(): this {
-    expect(this.body).toHaveProperty('timestamp');
-    expect(this.body.timestamp).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(this.body).toHaveProperty("timestamp");
+    expect(this.body.timestamp).toMatch(
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+    );
     return this;
   }
 
@@ -279,33 +281,35 @@ export class NodeAssertions {
    */
   static assertValidNode(node: any, expectedData?: Partial<NodeData>): void {
     // Basic structure
-    expect(node).toBeTypeOf('object');
-    expect(node).toHaveProperty('id');
-    expect(node).toHaveProperty('title');
-    expect(node).toHaveProperty('file');
-    expect(node).toHaveProperty('file_type');
-    expect(node).toHaveProperty('path');
+    expect(node).toBeTypeOf("object");
+    expect(node).toHaveProperty("id");
+    expect(node).toHaveProperty("title");
+    expect(node).toHaveProperty("file");
+    expect(node).toHaveProperty("file_type");
+    expect(node).toHaveProperty("path");
 
     // Type validation
-    expect(typeof node.id).toBe('string');
-    expect(typeof node.title).toBe('string');
-    expect(typeof node.file).toBe('string');
-    expect(typeof node.path).toBe('string');
-    expect(['md', 'org']).toContain(node.file_type);
+    expect(typeof node.id).toBe("string");
+    expect(typeof node.title).toBe("string");
+    expect(typeof node.file).toBe("string");
+    expect(typeof node.path).toBe("string");
+    expect(["md", "org"]).toContain(node.file_type);
 
     // ID format validation (UUID-like)
-    expect(node.id).toMatch(/^[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}$/);
+    expect(node.id).toMatch(
+      /^[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}$/,
+    );
 
     // File extension consistency
-    if (node.file_type === 'md') {
+    if (node.file_type === "md") {
       expect(node.file).toMatch(/\.md$/);
-    } else if (node.file_type === 'org') {
+    } else if (node.file_type === "org") {
       expect(node.file).toMatch(/\.org$/);
     }
 
     // Path validation
     expect(node.path).toContain(node.file);
-    expect(node.path).not.toContain('../'); // No path traversal
+    expect(node.path).not.toContain("../"); // No path traversal
 
     // Expected data validation
     if (expectedData) {
@@ -322,26 +326,26 @@ export class NodeAssertions {
     if (node.tags) {
       expect(Array.isArray(node.tags)).toBe(true);
       node.tags.forEach((tag: any) => {
-        expect(typeof tag).toBe('string');
+        expect(typeof tag).toBe("string");
       });
     }
 
     if (node.aliases) {
       expect(Array.isArray(node.aliases)).toBe(true);
       node.aliases.forEach((alias: any) => {
-        expect(typeof alias).toBe('string');
+        expect(typeof alias).toBe("string");
       });
     }
 
     if (node.refs) {
       expect(Array.isArray(node.refs)).toBe(true);
       node.refs.forEach((ref: any) => {
-        expect(typeof ref).toBe('string');
+        expect(typeof ref).toBe("string");
       });
     }
 
     if (node.category) {
-      expect(typeof node.category).toBe('string');
+      expect(typeof node.category).toBe("string");
     }
   }
 
@@ -349,15 +353,18 @@ export class NodeAssertions {
    * Assert Japanese content is handled properly
    */
   static assertJapaneseContentSupport(node: any): void {
-    if (node.title && node.title.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/)) {
+    if (
+      node.title &&
+      node.title.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/)
+    ) {
       // Contains Japanese characters
       expect(node.title.length).toBeGreaterThan(0);
       expect(node.file).toBeDefined();
       expect(node.path).toBeDefined();
-      
+
       // Should not contain corrupted characters
-      expect(node.title).not.toContain('�'); // Replacement character
-      expect(node.title).not.toContain('?'); // Sometimes indicates encoding issues
+      expect(node.title).not.toContain("�"); // Replacement character
+      expect(node.title).not.toContain("?"); // Sometimes indicates encoding issues
     }
   }
 }
@@ -370,7 +377,7 @@ export class TestScenarios {
   static async executeCrudScenario(
     name: string,
     nodeData: CreateNodePayload,
-    updateData: Partial<UpdateNodePayload>
+    updateData: Partial<UpdateNodePayload>,
   ): Promise<CrudScenarioResult> {
     const scenario: CrudScenarioResult = {
       name,
@@ -385,7 +392,10 @@ export class TestScenarios {
       scenario.steps.create = {
         success: createResponse.status === 201,
         responseTime: 0, // Would need timing implementation
-        error: createResponse.status !== 201 ? createResponse.body?.message : undefined,
+        error:
+          createResponse.status !== 201
+            ? createResponse.body?.message
+            : undefined,
       };
 
       if (!scenario.steps.create.success) {
@@ -394,55 +404,82 @@ export class TestScenarios {
 
       const createdNode = createResponse.getData();
       scenario.nodeId = createdNode.id;
-      NodeAssertions.assertValidNode(createdNode, { title: nodeData.title, file_type: nodeData.file_type });
+      NodeAssertions.assertValidNode(createdNode, {
+        title: nodeData.title,
+        file_type: nodeData.file_type,
+      });
 
       // Read
       const readResponse = await FluentApiClient.nodes().get(createdNode.id);
       scenario.steps.read = {
         success: readResponse.status === 200,
         responseTime: 0,
-        error: readResponse.status !== 200 ? readResponse.body?.message : undefined,
+        error:
+          readResponse.status !== 200 ? readResponse.body?.message : undefined,
       };
 
       if (scenario.steps.read.success) {
         const readNode = readResponse.getData();
-        NodeAssertions.assertValidNode(readNode, { id: createdNode.id, title: nodeData.title });
+        NodeAssertions.assertValidNode(readNode, {
+          id: createdNode.id,
+          title: nodeData.title,
+        });
       }
 
       // Update
-      const updateResponse = await FluentApiClient.nodes().update(createdNode.id, updateData);
+      const updateResponse = await FluentApiClient.nodes().update(
+        createdNode.id,
+        updateData,
+      );
       scenario.steps.update = {
         success: updateResponse.status === 200,
         responseTime: 0,
-        error: updateResponse.status !== 200 ? updateResponse.body?.message : undefined,
+        error:
+          updateResponse.status !== 200
+            ? updateResponse.body?.message
+            : undefined,
       };
 
       if (scenario.steps.update.success && updateData.title) {
         const updatedNode = updateResponse.getData();
-        NodeAssertions.assertValidNode(updatedNode, { id: createdNode.id, title: updateData.title });
+        NodeAssertions.assertValidNode(updatedNode, {
+          id: createdNode.id,
+          title: updateData.title,
+        });
       }
 
       // Delete
-      const deleteResponse = await FluentApiClient.nodes().delete(createdNode.id);
+      const deleteResponse = await FluentApiClient.nodes().delete(
+        createdNode.id,
+      );
       scenario.steps.delete = {
         success: deleteResponse.status === 200,
         responseTime: 0,
-        error: deleteResponse.status !== 200 ? deleteResponse.body?.message : undefined,
+        error:
+          deleteResponse.status !== 200
+            ? deleteResponse.body?.message
+            : undefined,
       };
 
       // Verify deletion
       if (scenario.steps.delete.success) {
-        const verifyResponse = await FluentApiClient.nodes().get(createdNode.id);
+        const verifyResponse = await FluentApiClient.nodes().get(
+          createdNode.id,
+        );
         scenario.steps.verifyDeletion = {
           success: verifyResponse.status === 404,
           responseTime: 0,
-          error: verifyResponse.status !== 404 ? 'Node still exists after deletion' : undefined,
+          error:
+            verifyResponse.status !== 404
+              ? "Node still exists after deletion"
+              : undefined,
         };
       }
 
       // Overall success
-      scenario.success = Object.values(scenario.steps).every(step => step.success);
-
+      scenario.success = Object.values(scenario.steps).every(
+        (step) => step.success,
+      );
     } catch (error) {
       scenario.steps.exception = {
         success: false,
@@ -461,7 +498,7 @@ export class TestScenarios {
     name: string,
     operation: () => Promise<any>,
     maxTimeMs: number,
-    iterations = 1
+    iterations = 1,
   ): Promise<PerformanceScenarioResult> {
     const results: number[] = [];
     let success = true;
@@ -469,13 +506,13 @@ export class TestScenarios {
 
     for (let i = 0; i < iterations; i++) {
       const startTime = performance.now();
-      
+
       try {
         await operation();
         const endTime = performance.now();
         const duration = endTime - startTime;
         results.push(duration);
-        
+
         if (duration > maxTimeMs) {
           success = false;
         }
@@ -491,7 +528,10 @@ export class TestScenarios {
       iterations,
       maxTimeMs,
       results,
-      avgTimeMs: results.length > 0 ? results.reduce((a, b) => a + b, 0) / results.length : 0,
+      avgTimeMs:
+        results.length > 0
+          ? results.reduce((a, b) => a + b, 0) / results.length
+          : 0,
       minTimeMs: results.length > 0 ? Math.min(...results) : 0,
       maxTimeMs: results.length > 0 ? Math.max(...results) : 0,
       success,
@@ -505,7 +545,11 @@ export class TestDocumentationGenerator {
   /**
    * Generate test case documentation
    */
-  static generateTestDoc(testName: string, description: string, steps: string[]): TestDocumentation {
+  static generateTestDoc(
+    testName: string,
+    description: string,
+    steps: string[],
+  ): TestDocumentation {
     return {
       testName,
       description,
@@ -517,14 +561,16 @@ export class TestDocumentationGenerator {
 
   private static extractTagsFromName(testName: string): string[] {
     const tags = [];
-    
-    if (testName.includes('japanese') || testName.includes('unicode')) tags.push('i18n');
-    if (testName.includes('performance')) tags.push('performance');
-    if (testName.includes('error') || testName.includes('invalid')) tags.push('error-handling');
-    if (testName.includes('security')) tags.push('security');
-    if (testName.includes('crud')) tags.push('crud');
-    if (testName.includes('workflow')) tags.push('workflow');
-    
+
+    if (testName.includes("japanese") || testName.includes("unicode"))
+      tags.push("i18n");
+    if (testName.includes("performance")) tags.push("performance");
+    if (testName.includes("error") || testName.includes("invalid"))
+      tags.push("error-handling");
+    if (testName.includes("security")) tags.push("security");
+    if (testName.includes("crud")) tags.push("crud");
+    if (testName.includes("workflow")) tags.push("workflow");
+
     return tags;
   }
 
@@ -533,9 +579,9 @@ export class TestDocumentationGenerator {
    */
   static generateSuiteSummary(docs: TestDocumentation[]): TestSuiteSummary {
     const tagCounts: Record<string, number> = {};
-    
-    docs.forEach(doc => {
-      doc.tags.forEach(tag => {
+
+    docs.forEach((doc) => {
+      doc.tags.forEach((tag) => {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
       });
     });
@@ -551,11 +597,14 @@ export class TestDocumentationGenerator {
 // Type definitions
 export interface CrudScenarioResult {
   name: string;
-  steps: Record<string, {
-    success: boolean;
-    responseTime: number;
-    error?: string;
-  }>;
+  steps: Record<
+    string,
+    {
+      success: boolean;
+      responseTime: number;
+      error?: string;
+    }
+  >;
   success: boolean;
   nodeId?: string;
 }

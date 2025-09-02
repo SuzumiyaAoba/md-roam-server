@@ -1,15 +1,15 @@
-import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { execSync } from "child_process";
+import { existsSync } from "fs";
+import { join } from "path";
 
 // Global test configuration
 export const TEST_CONFIG = {
-  SERVER_URL: process.env.TEST_SERVER_URL || 'http://localhost:8080',
-  UI_URL: process.env.TEST_UI_URL || 'http://localhost:35901',
+  SERVER_URL: process.env.TEST_SERVER_URL || "http://localhost:8080",
+  UI_URL: process.env.TEST_UI_URL || "http://localhost:35901",
   TIMEOUT: 90000, // Increased timeout to match vitest config
   STARTUP_DELAY: 3000, // Wait time for server to fully start
-  TEST_ORG_ROAM_DIR: join(process.cwd(), '..', 'tmp', 'org-roam'), // Test org-roam directory
-  TEST_CONFIG_FILE: join(process.cwd(), 'config', 'test-config.yml'), // Test config file
+  TEST_ORG_ROAM_DIR: join(process.cwd(), "..", "tmp", "org-roam"), // Test org-roam directory
+  TEST_CONFIG_FILE: join(process.cwd(), "config", "test-config.yml"), // Test config file
 } as const;
 
 // Server management
@@ -29,21 +29,21 @@ export class TestServerManager {
     // In global setup mode, just check if server is healthy
     const isHealthy = await this.checkServerHealth();
     if (isHealthy) {
-      console.log('✅ Server already running and healthy');
-      console.log('📁 Test org-roam directory:', TEST_CONFIG.TEST_ORG_ROAM_DIR);
-      console.log('⚙️  Test config file:', TEST_CONFIG.TEST_CONFIG_FILE);
+      console.log("✅ Server already running and healthy");
+      console.log("📁 Test org-roam directory:", TEST_CONFIG.TEST_ORG_ROAM_DIR);
+      console.log("⚙️  Test config file:", TEST_CONFIG.TEST_CONFIG_FILE);
       this.isServerRunning = true;
       return;
     }
 
     // If server is not healthy, throw an error since global setup should have started it
-    throw new Error('Server is not running. Global setup may have failed.');
+    throw new Error("Server is not running. Global setup may have failed.");
   }
 
   async stopServer(): Promise<void> {
     // In global setup mode, individual tests don't stop the server
     // Server will be stopped in global teardown
-    console.log('ℹ️  Server management handled by global setup/teardown');
+    console.log("ℹ️  Server management handled by global setup/teardown");
     this.isServerRunning = false;
   }
 
@@ -69,11 +69,11 @@ export class TestServerManager {
       } catch {
         // Server not ready yet
       }
-      
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
-    
-    throw new Error('Server failed to start within timeout period');
+
+    throw new Error("Server failed to start within timeout period");
   }
 }
 

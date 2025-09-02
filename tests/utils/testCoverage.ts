@@ -1,5 +1,5 @@
-import { ApiHelpers } from './apiHelpers';
-import { CreateNodePayload, UpdateNodePayload } from './types';
+import { ApiHelpers } from "./apiHelpers";
+import { CreateNodePayload, UpdateNodePayload } from "./types";
 
 /**
  * Comprehensive test coverage utilities for boundary testing and edge case validation
@@ -9,27 +9,27 @@ import { CreateNodePayload, UpdateNodePayload } from './types';
 export class ApiCoverageTracker {
   private static coveredEndpoints = new Set<string>();
   private static apiEndpoints = [
-    'GET /',
-    'GET /nodes',
-    'POST /nodes',
-    'GET /nodes/:id',
-    'PUT /nodes/:id', 
-    'DELETE /nodes/:id',
-    'GET /files',
-    'GET /files/raw',
-    'GET /search/:query',
-    'GET /stats',
-    'GET /tags',
-    'POST /sync',
+    "GET /",
+    "GET /nodes",
+    "POST /nodes",
+    "GET /nodes/:id",
+    "PUT /nodes/:id",
+    "DELETE /nodes/:id",
+    "GET /files",
+    "GET /files/raw",
+    "GET /search/:query",
+    "GET /stats",
+    "GET /tags",
+    "POST /sync",
     // Extended endpoints (if implemented)
-    'GET /nodes/:id/content',
-    'GET /nodes/:id/parse',
-    'GET /nodes/:id/backlinks',
-    'GET /nodes/:id/links',
-    'GET /tags/:tag/nodes',
-    'GET /aliases/:alias/nodes',
-    'GET /refs/:ref/nodes',
-    'GET /citations/:citation/nodes',
+    "GET /nodes/:id/content",
+    "GET /nodes/:id/parse",
+    "GET /nodes/:id/backlinks",
+    "GET /nodes/:id/links",
+    "GET /tags/:tag/nodes",
+    "GET /aliases/:alias/nodes",
+    "GET /refs/:ref/nodes",
+    "GET /citations/:citation/nodes",
   ];
 
   static markEndpointCovered(method: string, path: string): void {
@@ -39,8 +39,10 @@ export class ApiCoverageTracker {
 
   static getCoverageReport(): EndpointCoverageReport {
     const covered = Array.from(this.coveredEndpoints);
-    const uncovered = this.apiEndpoints.filter(endpoint => !this.coveredEndpoints.has(endpoint));
-    
+    const uncovered = this.apiEndpoints.filter(
+      (endpoint) => !this.coveredEndpoints.has(endpoint),
+    );
+
     return {
       totalEndpoints: this.apiEndpoints.length,
       coveredEndpoints: covered,
@@ -59,36 +61,108 @@ export class BoundaryValueTests {
   /**
    * Generate boundary test cases for string fields
    */
-  static generateStringBoundaryTests(fieldName: string): Array<StringBoundaryTest> {
+  static generateStringBoundaryTests(
+    fieldName: string,
+  ): Array<StringBoundaryTest> {
     return [
-      { name: `${fieldName}_empty`, value: '', expectedValid: false },
-      { name: `${fieldName}_single_char`, value: 'A', expectedValid: true },
-      { name: `${fieldName}_normal`, value: 'Normal test string', expectedValid: true },
-      { name: `${fieldName}_very_long`, value: 'x'.repeat(1000), expectedValid: true },
-      { name: `${fieldName}_extremely_long`, value: 'x'.repeat(10000), expectedValid: false },
-      { name: `${fieldName}_unicode`, value: '🌟日本語中文العربية', expectedValid: true },
-      { name: `${fieldName}_special_chars`, value: '!@#$%^&*()_+-=[]{}|;:,.<>?', expectedValid: true },
-      { name: `${fieldName}_newlines`, value: 'Line 1\nLine 2\rLine 3\r\nLine 4', expectedValid: true },
-      { name: `${fieldName}_tabs`, value: 'Col1\tCol2\tCol3', expectedValid: true },
-      { name: `${fieldName}_null_char`, value: 'Test\0Null', expectedValid: true },
-      { name: `${fieldName}_control_chars`, value: 'Test\x01\x02\x03', expectedValid: true },
+      { name: `${fieldName}_empty`, value: "", expectedValid: false },
+      { name: `${fieldName}_single_char`, value: "A", expectedValid: true },
+      {
+        name: `${fieldName}_normal`,
+        value: "Normal test string",
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_very_long`,
+        value: "x".repeat(1000),
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_extremely_long`,
+        value: "x".repeat(10000),
+        expectedValid: false,
+      },
+      {
+        name: `${fieldName}_unicode`,
+        value: "🌟日本語中文العربية",
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_special_chars`,
+        value: "!@#$%^&*()_+-=[]{}|;:,.<>?",
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_newlines`,
+        value: "Line 1\nLine 2\rLine 3\r\nLine 4",
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_tabs`,
+        value: "Col1\tCol2\tCol3",
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_null_char`,
+        value: "Test\0Null",
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_control_chars`,
+        value: "Test\x01\x02\x03",
+        expectedValid: true,
+      },
     ];
   }
 
   /**
    * Generate boundary test cases for array fields
    */
-  static generateArrayBoundaryTests(fieldName: string): Array<ArrayBoundaryTest> {
+  static generateArrayBoundaryTests(
+    fieldName: string,
+  ): Array<ArrayBoundaryTest> {
     return [
       { name: `${fieldName}_empty_array`, value: [], expectedValid: true },
-      { name: `${fieldName}_single_item`, value: ['item1'], expectedValid: true },
-      { name: `${fieldName}_normal`, value: ['item1', 'item2', 'item3'], expectedValid: true },
-      { name: `${fieldName}_many_items`, value: Array.from({length: 100}, (_, i) => `item${i}`), expectedValid: true },
-      { name: `${fieldName}_too_many_items`, value: Array.from({length: 10000}, (_, i) => `item${i}`), expectedValid: false },
-      { name: `${fieldName}_unicode_items`, value: ['🌟', '日本語', '中文'], expectedValid: true },
-      { name: `${fieldName}_long_items`, value: ['x'.repeat(1000)], expectedValid: true },
-      { name: `${fieldName}_empty_string_items`, value: ['', 'valid', ''], expectedValid: true },
-      { name: `${fieldName}_duplicate_items`, value: ['item', 'item', 'item'], expectedValid: true },
+      {
+        name: `${fieldName}_single_item`,
+        value: ["item1"],
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_normal`,
+        value: ["item1", "item2", "item3"],
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_many_items`,
+        value: Array.from({ length: 100 }, (_, i) => `item${i}`),
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_too_many_items`,
+        value: Array.from({ length: 10000 }, (_, i) => `item${i}`),
+        expectedValid: false,
+      },
+      {
+        name: `${fieldName}_unicode_items`,
+        value: ["🌟", "日本語", "中文"],
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_long_items`,
+        value: ["x".repeat(1000)],
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_empty_string_items`,
+        value: ["", "valid", ""],
+        expectedValid: true,
+      },
+      {
+        name: `${fieldName}_duplicate_items`,
+        value: ["item", "item", "item"],
+        expectedValid: true,
+      },
     ];
   }
 
@@ -97,42 +171,42 @@ export class BoundaryValueTests {
    */
   static generateNodeCreationBoundaryTests(): Array<NodeBoundaryTest> {
     const tests: NodeBoundaryTest[] = [];
-    
+
     // Title boundary tests
-    for (const titleTest of this.generateStringBoundaryTests('title')) {
+    for (const titleTest of this.generateStringBoundaryTests("title")) {
       tests.push({
         name: `node_creation_${titleTest.name}`,
         payload: {
           title: titleTest.value,
-          content: 'Test content',
-          file_type: 'md',
+          content: "Test content",
+          file_type: "md",
         },
         expectedValid: titleTest.expectedValid && titleTest.value.length > 0, // Title required
       });
     }
 
     // Content boundary tests
-    for (const contentTest of this.generateStringBoundaryTests('content')) {
+    for (const contentTest of this.generateStringBoundaryTests("content")) {
       tests.push({
         name: `node_creation_${contentTest.name}`,
         payload: {
-          title: 'Test Title',
+          title: "Test Title",
           content: contentTest.value,
-          file_type: 'md',
+          file_type: "md",
         },
         expectedValid: contentTest.expectedValid,
       });
     }
 
     // Tags boundary tests
-    for (const tagsTest of this.generateArrayBoundaryTests('tags')) {
+    for (const tagsTest of this.generateArrayBoundaryTests("tags")) {
       tests.push({
         name: `node_creation_${tagsTest.name}`,
         payload: {
-          title: 'Test Title',
-          content: 'Test content',
+          title: "Test Title",
+          content: "Test content",
           tags: tagsTest.value,
-          file_type: 'md',
+          file_type: "md",
         },
         expectedValid: tagsTest.expectedValid,
       });
@@ -140,19 +214,19 @@ export class BoundaryValueTests {
 
     // File type boundary tests
     const fileTypeTests = [
-      { name: 'file_type_md', value: 'md', expectedValid: true },
-      { name: 'file_type_org', value: 'org', expectedValid: true },
-      { name: 'file_type_invalid', value: 'invalid', expectedValid: false },
-      { name: 'file_type_empty', value: '', expectedValid: false },
-      { name: 'file_type_null', value: null, expectedValid: true }, // Should default to md
+      { name: "file_type_md", value: "md", expectedValid: true },
+      { name: "file_type_org", value: "org", expectedValid: true },
+      { name: "file_type_invalid", value: "invalid", expectedValid: false },
+      { name: "file_type_empty", value: "", expectedValid: false },
+      { name: "file_type_null", value: null, expectedValid: true }, // Should default to md
     ];
 
     for (const fileTypeTest of fileTypeTests) {
       tests.push({
         name: `node_creation_${fileTypeTest.name}`,
         payload: {
-          title: 'Test Title',
-          content: 'Test content',
+          title: "Test Title",
+          content: "Test content",
           file_type: fileTypeTest.value as any,
         },
         expectedValid: fileTypeTest.expectedValid,
@@ -165,14 +239,16 @@ export class BoundaryValueTests {
   /**
    * Execute boundary tests for node creation
    */
-  static async executeBoundaryTests(tests: NodeBoundaryTest[]): Promise<BoundaryTestResult[]> {
+  static async executeBoundaryTests(
+    tests: NodeBoundaryTest[],
+  ): Promise<BoundaryTestResult[]> {
     const results: BoundaryTestResult[] = [];
-    
+
     for (const test of tests) {
       try {
         const response = await ApiHelpers.createNode(test.payload);
         const actualValid = response.status >= 200 && response.status < 300;
-        
+
         results.push({
           testName: test.name,
           expectedValid: test.expectedValid,
@@ -187,7 +263,10 @@ export class BoundaryValueTests {
           try {
             await ApiHelpers.deleteNode(response.body.id);
           } catch (cleanupError) {
-            console.warn(`Cleanup failed for ${response.body.id}:`, cleanupError);
+            console.warn(
+              `Cleanup failed for ${response.body.id}:`,
+              cleanupError,
+            );
           }
         }
       } catch (error) {
@@ -213,16 +292,40 @@ export class InputValidationTests {
    */
   static generateInvalidJsonTests(): Array<InvalidJsonTest> {
     return [
-      { name: 'incomplete_json', json: '{"title": "Test"', expectedError: 'parse' },
-      { name: 'invalid_syntax', json: '{"title": }', expectedError: 'parse' },
-      { name: 'not_json', json: 'not json at all', expectedError: 'parse' },
-      { name: 'empty_string', json: '', expectedError: 'parse' },
-      { name: 'null_value', json: 'null', expectedError: 'validation' },
-      { name: 'array_instead_object', json: '["not", "an", "object"]', expectedError: 'validation' },
-      { name: 'number_instead_object', json: '123', expectedError: 'validation' },
-      { name: 'string_instead_object', json: '"string"', expectedError: 'validation' },
-      { name: 'nested_invalid', json: '{"title": {"nested": "object"}}', expectedError: 'validation' },
-      { name: 'circular_reference', json: '{"a": {"b": {"c": "value"}}}', expectedError: 'validation' },
+      {
+        name: "incomplete_json",
+        json: '{"title": "Test"',
+        expectedError: "parse",
+      },
+      { name: "invalid_syntax", json: '{"title": }', expectedError: "parse" },
+      { name: "not_json", json: "not json at all", expectedError: "parse" },
+      { name: "empty_string", json: "", expectedError: "parse" },
+      { name: "null_value", json: "null", expectedError: "validation" },
+      {
+        name: "array_instead_object",
+        json: '["not", "an", "object"]',
+        expectedError: "validation",
+      },
+      {
+        name: "number_instead_object",
+        json: "123",
+        expectedError: "validation",
+      },
+      {
+        name: "string_instead_object",
+        json: '"string"',
+        expectedError: "validation",
+      },
+      {
+        name: "nested_invalid",
+        json: '{"title": {"nested": "object"}}',
+        expectedError: "validation",
+      },
+      {
+        name: "circular_reference",
+        json: '{"a": {"b": {"c": "value"}}}',
+        expectedError: "validation",
+      },
     ];
   }
 
@@ -231,39 +334,86 @@ export class InputValidationTests {
    */
   static generateTypeMismatchTests(): Array<TypeMismatchTest> {
     return [
-      { name: 'title_number', field: 'title', value: 123, expectedValid: false },
-      { name: 'title_array', field: 'title', value: ['array'], expectedValid: false },
-      { name: 'title_object', field: 'title', value: {}, expectedValid: false },
-      { name: 'title_boolean', field: 'title', value: true, expectedValid: false },
-      { name: 'content_number', field: 'content', value: 123, expectedValid: false },
-      { name: 'content_array', field: 'content', value: ['content'], expectedValid: false },
-      { name: 'tags_string', field: 'tags', value: 'not array', expectedValid: false },
-      { name: 'tags_number', field: 'tags', value: 123, expectedValid: false },
-      { name: 'tags_object', field: 'tags', value: {}, expectedValid: false },
-      { name: 'aliases_string', field: 'aliases', value: 'not array', expectedValid: false },
-      { name: 'file_type_number', field: 'file_type', value: 123, expectedValid: false },
-      { name: 'file_type_array', field: 'file_type', value: ['md'], expectedValid: false },
+      {
+        name: "title_number",
+        field: "title",
+        value: 123,
+        expectedValid: false,
+      },
+      {
+        name: "title_array",
+        field: "title",
+        value: ["array"],
+        expectedValid: false,
+      },
+      { name: "title_object", field: "title", value: {}, expectedValid: false },
+      {
+        name: "title_boolean",
+        field: "title",
+        value: true,
+        expectedValid: false,
+      },
+      {
+        name: "content_number",
+        field: "content",
+        value: 123,
+        expectedValid: false,
+      },
+      {
+        name: "content_array",
+        field: "content",
+        value: ["content"],
+        expectedValid: false,
+      },
+      {
+        name: "tags_string",
+        field: "tags",
+        value: "not array",
+        expectedValid: false,
+      },
+      { name: "tags_number", field: "tags", value: 123, expectedValid: false },
+      { name: "tags_object", field: "tags", value: {}, expectedValid: false },
+      {
+        name: "aliases_string",
+        field: "aliases",
+        value: "not array",
+        expectedValid: false,
+      },
+      {
+        name: "file_type_number",
+        field: "file_type",
+        value: 123,
+        expectedValid: false,
+      },
+      {
+        name: "file_type_array",
+        field: "file_type",
+        value: ["md"],
+        expectedValid: false,
+      },
     ];
   }
 
   /**
    * Execute type mismatch tests
    */
-  static async executeTypeMismatchTests(tests: TypeMismatchTest[]): Promise<TypeMismatchResult[]> {
+  static async executeTypeMismatchTests(
+    tests: TypeMismatchTest[],
+  ): Promise<TypeMismatchResult[]> {
     const results: TypeMismatchResult[] = [];
-    
+
     for (const test of tests) {
       try {
         const payload = {
-          title: 'Valid Title',
-          content: 'Valid content',
-          file_type: 'md',
+          title: "Valid Title",
+          content: "Valid content",
+          file_type: "md",
           [test.field]: test.value,
         } as any;
 
         const response = await ApiHelpers.createNode(payload);
         const actualValid = response.status >= 200 && response.status < 300;
-        
+
         results.push({
           testName: test.name,
           field: test.field,
@@ -279,7 +429,10 @@ export class InputValidationTests {
           try {
             await ApiHelpers.deleteNode(response.body.id);
           } catch (cleanupError) {
-            console.warn(`Cleanup failed for ${response.body.id}:`, cleanupError);
+            console.warn(
+              `Cleanup failed for ${response.body.id}:`,
+              cleanupError,
+            );
           }
         }
       } catch (error) {
@@ -306,14 +459,47 @@ export class SecurityTestGenerator {
    */
   static generateXssTests(): Array<SecurityTest> {
     return [
-      { name: 'script_tag', payload: '<script>alert("xss")</script>', riskLevel: 'high' },
-      { name: 'img_onerror', payload: '<img src="x" onerror="alert(1)">', riskLevel: 'high' },
-      { name: 'svg_onload', payload: '<svg onload="alert(1)">', riskLevel: 'high' },
-      { name: 'iframe_src', payload: '<iframe src="javascript:alert(1)"></iframe>', riskLevel: 'high' },
-      { name: 'a_href_javascript', payload: '<a href="javascript:alert(1)">link</a>', riskLevel: 'medium' },
-      { name: 'div_onclick', payload: '<div onclick="alert(1)">click</div>', riskLevel: 'medium' },
-      { name: 'style_expression', payload: '<div style="expression(alert(1))">test</div>', riskLevel: 'medium' },
-      { name: 'meta_refresh', payload: '<meta http-equiv="refresh" content="0;url=javascript:alert(1)">', riskLevel: 'low' },
+      {
+        name: "script_tag",
+        payload: '<script>alert("xss")</script>',
+        riskLevel: "high",
+      },
+      {
+        name: "img_onerror",
+        payload: '<img src="x" onerror="alert(1)">',
+        riskLevel: "high",
+      },
+      {
+        name: "svg_onload",
+        payload: '<svg onload="alert(1)">',
+        riskLevel: "high",
+      },
+      {
+        name: "iframe_src",
+        payload: '<iframe src="javascript:alert(1)"></iframe>',
+        riskLevel: "high",
+      },
+      {
+        name: "a_href_javascript",
+        payload: '<a href="javascript:alert(1)">link</a>',
+        riskLevel: "medium",
+      },
+      {
+        name: "div_onclick",
+        payload: '<div onclick="alert(1)">click</div>',
+        riskLevel: "medium",
+      },
+      {
+        name: "style_expression",
+        payload: '<div style="expression(alert(1))">test</div>',
+        riskLevel: "medium",
+      },
+      {
+        name: "meta_refresh",
+        payload:
+          '<meta http-equiv="refresh" content="0;url=javascript:alert(1)">',
+        riskLevel: "low",
+      },
     ];
   }
 
@@ -322,12 +508,33 @@ export class SecurityTestGenerator {
    */
   static generateSqlInjectionTests(): Array<SecurityTest> {
     return [
-      { name: 'classic_injection', payload: "'; DROP TABLE nodes; --", riskLevel: 'high' },
-      { name: 'union_select', payload: "' UNION SELECT * FROM nodes --", riskLevel: 'high' },
-      { name: 'boolean_blind', payload: "' AND 1=1 --", riskLevel: 'medium' },
-      { name: 'time_based', payload: "'; WAITFOR DELAY '00:00:05' --", riskLevel: 'medium' },
-      { name: 'error_based', payload: "' AND (SELECT COUNT(*) FROM nodes) > 0 --", riskLevel: 'medium' },
-      { name: 'nested_injection', payload: "' OR (SELECT SUBSTRING((SELECT password FROM users), 1, 1)) = 'a", riskLevel: 'low' },
+      {
+        name: "classic_injection",
+        payload: "'; DROP TABLE nodes; --",
+        riskLevel: "high",
+      },
+      {
+        name: "union_select",
+        payload: "' UNION SELECT * FROM nodes --",
+        riskLevel: "high",
+      },
+      { name: "boolean_blind", payload: "' AND 1=1 --", riskLevel: "medium" },
+      {
+        name: "time_based",
+        payload: "'; WAITFOR DELAY '00:00:05' --",
+        riskLevel: "medium",
+      },
+      {
+        name: "error_based",
+        payload: "' AND (SELECT COUNT(*) FROM nodes) > 0 --",
+        riskLevel: "medium",
+      },
+      {
+        name: "nested_injection",
+        payload:
+          "' OR (SELECT SUBSTRING((SELECT password FROM users), 1, 1)) = 'a",
+        riskLevel: "low",
+      },
     ];
   }
 
@@ -336,32 +543,71 @@ export class SecurityTestGenerator {
    */
   static generatePathTraversalTests(): Array<SecurityTest> {
     return [
-      { name: 'basic_traversal', payload: '../../../etc/passwd', riskLevel: 'high' },
-      { name: 'windows_traversal', payload: '..\\..\\..\\windows\\system32\\config\\sam', riskLevel: 'high' },
-      { name: 'url_encoded', payload: '%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd', riskLevel: 'medium' },
-      { name: 'double_encoded', payload: '%252e%252e%252f%252e%252e%252f%252e%252e%252fetc%252fpasswd', riskLevel: 'medium' },
-      { name: 'unicode_encoded', payload: '..%c0%af..%c0%af..%c0%afetc%c0%afpasswd', riskLevel: 'low' },
+      {
+        name: "basic_traversal",
+        payload: "../../../etc/passwd",
+        riskLevel: "high",
+      },
+      {
+        name: "windows_traversal",
+        payload: "..\\..\\..\\windows\\system32\\config\\sam",
+        riskLevel: "high",
+      },
+      {
+        name: "url_encoded",
+        payload: "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+        riskLevel: "medium",
+      },
+      {
+        name: "double_encoded",
+        payload: "%252e%252e%252f%252e%252e%252f%252e%252e%252fetc%252fpasswd",
+        riskLevel: "medium",
+      },
+      {
+        name: "unicode_encoded",
+        payload: "..%c0%af..%c0%af..%c0%afetc%c0%afpasswd",
+        riskLevel: "low",
+      },
     ];
   }
 
   /**
    * Execute security tests
    */
-  static async executeSecurityTests(tests: SecurityTest[], testType: string): Promise<SecurityTestResult[]> {
+  static async executeSecurityTests(
+    tests: SecurityTest[],
+    testType: string,
+  ): Promise<SecurityTestResult[]> {
     const results: SecurityTestResult[] = [];
-    
+
     for (const test of tests) {
       try {
         // Test in different fields
         const testCases = [
-          { field: 'title', payload: { title: test.payload, content: 'test', file_type: 'md' } },
-          { field: 'content', payload: { title: 'Test', content: test.payload, file_type: 'md' } },
-          { field: 'tags', payload: { title: 'Test', content: 'test', tags: [test.payload], file_type: 'md' } },
+          {
+            field: "title",
+            payload: { title: test.payload, content: "test", file_type: "md" },
+          },
+          {
+            field: "content",
+            payload: { title: "Test", content: test.payload, file_type: "md" },
+          },
+          {
+            field: "tags",
+            payload: {
+              title: "Test",
+              content: "test",
+              tags: [test.payload],
+              file_type: "md",
+            },
+          },
         ];
 
         for (const testCase of testCases) {
-          const response = await ApiHelpers.createNode(testCase.payload as CreateNodePayload);
-          
+          const response = await ApiHelpers.createNode(
+            testCase.payload as CreateNodePayload,
+          );
+
           const result: SecurityTestResult = {
             testName: `${testType}_${test.name}_${testCase.field}`,
             testType,
@@ -370,9 +616,11 @@ export class SecurityTestGenerator {
             riskLevel: test.riskLevel,
             responseStatus: response.status,
             blocked: response.status >= 400,
-            responseContainsPayload: JSON.stringify(response.body).includes(test.payload),
+            responseContainsPayload: JSON.stringify(response.body).includes(
+              test.payload,
+            ),
           };
-          
+
           results.push(result);
 
           // Cleanup if successful
@@ -380,7 +628,10 @@ export class SecurityTestGenerator {
             try {
               await ApiHelpers.deleteNode(response.body.id);
             } catch (cleanupError) {
-              console.warn(`Security test cleanup failed for ${response.body.id}:`, cleanupError);
+              console.warn(
+                `Security test cleanup failed for ${response.body.id}:`,
+                cleanupError,
+              );
             }
           }
         }
@@ -389,7 +640,7 @@ export class SecurityTestGenerator {
           testName: `${testType}_${test.name}_error`,
           testType,
           payload: test.payload,
-          field: 'unknown',
+          field: "unknown",
           riskLevel: test.riskLevel,
           responseStatus: 500,
           blocked: true,
@@ -408,31 +659,41 @@ export class TestReportGenerator {
    * Generate comprehensive test coverage report
    */
   static async generateComprehensiveReport(): Promise<ComprehensiveTestReport> {
-    console.log('🔍 Generating comprehensive test coverage report...');
-    
+    console.log("🔍 Generating comprehensive test coverage report...");
+
     // API Coverage
     const apiCoverage = ApiCoverageTracker.getCoverageReport();
-    
+
     // Boundary Tests
-    console.log('Running boundary value tests...');
-    const boundaryTests = BoundaryValueTests.generateNodeCreationBoundaryTests();
-    const boundaryResults = await BoundaryValueTests.executeBoundaryTests(boundaryTests.slice(0, 20)); // Limit for performance
-    
+    console.log("Running boundary value tests...");
+    const boundaryTests =
+      BoundaryValueTests.generateNodeCreationBoundaryTests();
+    const boundaryResults = await BoundaryValueTests.executeBoundaryTests(
+      boundaryTests.slice(0, 20),
+    ); // Limit for performance
+
     // Type Mismatch Tests
-    console.log('Running type mismatch tests...');
+    console.log("Running type mismatch tests...");
     const typeMismatchTests = InputValidationTests.generateTypeMismatchTests();
-    const typeMismatchResults = await InputValidationTests.executeTypeMismatchTests(typeMismatchTests);
-    
+    const typeMismatchResults =
+      await InputValidationTests.executeTypeMismatchTests(typeMismatchTests);
+
     // Security Tests
-    console.log('Running security tests...');
+    console.log("Running security tests...");
     const xssTests = SecurityTestGenerator.generateXssTests();
     const sqlTests = SecurityTestGenerator.generateSqlInjectionTests();
     const pathTests = SecurityTestGenerator.generatePathTraversalTests();
-    
+
     const securityResults = [
-      ...(await SecurityTestGenerator.executeSecurityTests(xssTests, 'xss')),
-      ...(await SecurityTestGenerator.executeSecurityTests(sqlTests, 'sql_injection')),
-      ...(await SecurityTestGenerator.executeSecurityTests(pathTests, 'path_traversal')),
+      ...(await SecurityTestGenerator.executeSecurityTests(xssTests, "xss")),
+      ...(await SecurityTestGenerator.executeSecurityTests(
+        sqlTests,
+        "sql_injection",
+      )),
+      ...(await SecurityTestGenerator.executeSecurityTests(
+        pathTests,
+        "path_traversal",
+      )),
     ];
 
     const report: ComprehensiveTestReport = {
@@ -440,26 +701,28 @@ export class TestReportGenerator {
       apiCoverage,
       boundaryTestResults: {
         total: boundaryResults.length,
-        passed: boundaryResults.filter(r => r.passed).length,
-        failed: boundaryResults.filter(r => !r.passed).length,
+        passed: boundaryResults.filter((r) => r.passed).length,
+        failed: boundaryResults.filter((r) => !r.passed).length,
         details: boundaryResults,
       },
       typeMismatchResults: {
         total: typeMismatchResults.length,
-        passed: typeMismatchResults.filter(r => r.passed).length,
-        failed: typeMismatchResults.filter(r => !r.passed).length,
+        passed: typeMismatchResults.filter((r) => r.passed).length,
+        failed: typeMismatchResults.filter((r) => !r.passed).length,
         details: typeMismatchResults,
       },
       securityTestResults: {
         total: securityResults.length,
-        blocked: securityResults.filter(r => r.blocked).length,
-        unblocked: securityResults.filter(r => !r.blocked).length,
-        highRisk: securityResults.filter(r => r.riskLevel === 'high' && !r.blocked).length,
+        blocked: securityResults.filter((r) => r.blocked).length,
+        unblocked: securityResults.filter((r) => !r.blocked).length,
+        highRisk: securityResults.filter(
+          (r) => r.riskLevel === "high" && !r.blocked,
+        ).length,
         details: securityResults,
       },
     };
 
-    console.log('✅ Comprehensive test report generated');
+    console.log("✅ Comprehensive test report generated");
     return report;
   }
 
@@ -467,24 +730,36 @@ export class TestReportGenerator {
    * Print summary report
    */
   static printReportSummary(report: ComprehensiveTestReport): void {
-    console.log('\n📊 TEST COVERAGE REPORT SUMMARY');
-    console.log('================================');
-    
-    console.log(`\n🔗 API Coverage: ${report.apiCoverage.coveragePercentage.toFixed(1)}%`);
-    console.log(`   Covered: ${report.apiCoverage.coveredEndpoints.length}/${report.apiCoverage.totalEndpoints} endpoints`);
-    
-    console.log(`\n🔢 Boundary Tests: ${report.boundaryTestResults.passed}/${report.boundaryTestResults.total} passed`);
-    
-    console.log(`\n🔤 Type Mismatch Tests: ${report.typeMismatchResults.passed}/${report.typeMismatchResults.total} passed`);
-    
-    console.log(`\n🔒 Security Tests: ${report.securityTestResults.blocked}/${report.securityTestResults.total} blocked`);
+    console.log("\n📊 TEST COVERAGE REPORT SUMMARY");
+    console.log("================================");
+
+    console.log(
+      `\n🔗 API Coverage: ${report.apiCoverage.coveragePercentage.toFixed(1)}%`,
+    );
+    console.log(
+      `   Covered: ${report.apiCoverage.coveredEndpoints.length}/${report.apiCoverage.totalEndpoints} endpoints`,
+    );
+
+    console.log(
+      `\n🔢 Boundary Tests: ${report.boundaryTestResults.passed}/${report.boundaryTestResults.total} passed`,
+    );
+
+    console.log(
+      `\n🔤 Type Mismatch Tests: ${report.typeMismatchResults.passed}/${report.typeMismatchResults.total} passed`,
+    );
+
+    console.log(
+      `\n🔒 Security Tests: ${report.securityTestResults.blocked}/${report.securityTestResults.total} blocked`,
+    );
     if (report.securityTestResults.highRisk > 0) {
-      console.log(`   ⚠️  ${report.securityTestResults.highRisk} high-risk payloads were not blocked!`);
+      console.log(
+        `   ⚠️  ${report.securityTestResults.highRisk} high-risk payloads were not blocked!`,
+      );
     }
 
     if (report.apiCoverage.uncoveredEndpoints.length > 0) {
-      console.log('\n❌ Uncovered Endpoints:');
-      report.apiCoverage.uncoveredEndpoints.forEach(endpoint => {
+      console.log("\n❌ Uncovered Endpoints:");
+      report.apiCoverage.uncoveredEndpoints.forEach((endpoint) => {
         console.log(`   - ${endpoint}`);
       });
     }
@@ -529,7 +804,7 @@ export interface BoundaryTestResult {
 export interface InvalidJsonTest {
   name: string;
   json: string;
-  expectedError: 'parse' | 'validation';
+  expectedError: "parse" | "validation";
 }
 
 export interface TypeMismatchTest {
@@ -552,7 +827,7 @@ export interface TypeMismatchResult {
 export interface SecurityTest {
   name: string;
   payload: string;
-  riskLevel: 'high' | 'medium' | 'low';
+  riskLevel: "high" | "medium" | "low";
 }
 
 export interface SecurityTestResult {
@@ -560,7 +835,7 @@ export interface SecurityTestResult {
   testType: string;
   payload: string;
   field: string;
-  riskLevel: 'high' | 'medium' | 'low';
+  riskLevel: "high" | "medium" | "low";
   responseStatus: number;
   blocked: boolean;
   responseContainsPayload: boolean;
