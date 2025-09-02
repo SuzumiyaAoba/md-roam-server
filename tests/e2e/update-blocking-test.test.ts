@@ -31,8 +31,8 @@ describe('Update Blocking Prevention E2E Tests', () => {
       expect(updateResponse.body.status).toBe('success');
       expect(updateResponse.body.title).toBe('Updated Blocking Test Node');
       
-      // Response should indicate database sync was skipped
-      expect(updateResponse.body.note).toContain('Database sync skipped');
+      // Response should indicate database sync was skipped and content preserved
+      expect(updateResponse.body.note).toContain('use POST /sync to update database');
 
       // Immediately try to retrieve the file content (should be updated)
       const contentResponse = await ApiHelpers.getNodeContent(nodeId);

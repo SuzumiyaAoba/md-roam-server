@@ -661,43 +661,61 @@
               
               ;; Use current values if not provided
               (unless new-title (setq new-title (nth 1 node)))
-              (unless new-content (setq new-content ""))
               
               ;; Security check
               (unless (string-prefix-p org-roam-directory (expand-file-name file-path))
                 (error "File path outside of org-roam directory"))
               
-              ;; Update file
-              (cond 
-               ((string= file-extension "md")
-                (write-region 
-                 (concat "---\nid: " node-id "\ntitle: " new-title 
-                         (when new-category (format "\ncategory: %s" new-category))
-                         "\n---\n\n" new-content)
-                 nil file-path))
-               ((string= file-extension "org")
-                (write-region 
-                 (concat ":PROPERTIES:\n:ID: " node-id "\n:END:\n#+title: " new-title 
-                         (when new-category (format "\n#+category: %s" new-category))
-                         "\n\n" new-content)
-                 nil file-path))
-               (t (error "Unsupported file type")))
+              ;; Read existing file content and metadata to preserve data
+              (let ((existing-content "")
+                    (existing-metadata nil))
+                (when (file-exists-p file-path)
+                  (with-temp-buffer
+                    (insert-file-contents file-path)
+                    (let* ((content (buffer-string))
+                           (parsed (md-roam-server--parse-file-content content file-extension)))
+                      (setq existing-metadata (car parsed))
+                      (setq existing-content (cdr parsed)))))
+                
+                ;; Use existing content if no new content provided
+                (unless new-content 
+                  (setq new-content existing-content))
+                
+                ;; Preserve existing metadata and merge with new category
+                (let ((final-metadata existing-metadata)
+                      (final-content new-content))
+                  
+                  ;; Update file with preserved content
+                  (cond 
+                   ((string= file-extension "md")
+                    (md-roam-server--write-md-file file-path node-id new-title new-category final-metadata final-content))
+                   ((string= file-extension "org")
+                    (md-roam-server--write-org-file file-path node-id new-title new-category final-metadata final-content))
+                   (t (error "Unsupported file type")))
+                  
+                  ;; Extract metadata for response
+                  (let ((tags (or (md-roam-server--extract-metadata-field final-metadata "tags") []))
+                        (aliases (or (md-roam-server--extract-metadata-field final-metadata "roam_aliases" "aliases") []))
+                        (refs (or (md-roam-server--extract-metadata-field final-metadata "roam_refs" "refs") []))
+                        (category (or new-category (md-roam-server--extract-metadata-field final-metadata "category"))))
+                    
+                    ;; Skip database sync to prevent blocking - rely on background sync or manual /sync
+                    
+                    ;; Return response with preserved metadata
+                    (md-roam-server--create-success-response
+                     "Node updated with content preserved"
+                     `((id . ,node-id)
+                       (title . ,new-title)
+                       (file . ,(file-relative-name file-path org-roam-directory))
+                       (file_type . ,(if (string= file-extension "md") "md" "org"))
+                       (path . ,file-path)
+                       (category . ,category)
+                       (tags . ,tags)
+                       (aliases . ,aliases)
+                       (refs . ,refs)
+                       (content_preserved . t)
+                       (note . "Content and metadata preserved during update - use POST /sync to update database"))))))))))
               
-              ;; Skip database sync to prevent blocking - rely on background sync or manual /sync
-              
-              ;; Return response
-              (md-roam-server--create-success-response
-               "Node updated"
-               `((id . ,node-id)
-                 (title . ,new-title)
-                 (file . ,(file-relative-name file-path org-roam-directory))
-                 (file_type . ,(if (string= file-extension "md") "md" "org"))
-                 (path . ,file-path)
-                 (category . ,new-category)
-                 (tags . [])
-                 (aliases . [])
-                 (refs . [])
-                 (note . "Database sync skipped to avoid blocking - use POST /sync to update database")))))))
     (error
      (md-roam-server--create-error-response 
       (format "Error updating node: %s" (error-message-string err))
@@ -825,6 +843,90 @@
       (md-roam-server--create-error-response "Node DELETE endpoint not found"))))
    (t
     (md-roam-server--create-error-response "Method not allowed for nodes endpoint"))))
+
+;;; Helper Functions for Update Operations
+
+(defun md-roam-server--write-md-file (file-path node-id title category metadata content)
+  "Write markdown FILE-PATH with NODE-ID, TITLE, CATEGORY, METADATA, and CONTENT."
+  (let ((yaml-header "---\n")
+        (yaml-footer "---\n\n"))
+    
+    ;; Build YAML front matter
+    (setq yaml-header (concat yaml-header (format "id: %s\n" node-id)))
+    (setq yaml-header (concat yaml-header (format "title: %s\n" title)))
+    
+    ;; Add category if provided
+    (when category
+      (setq yaml-header (concat yaml-header (format "category: %s\n" category))))
+    
+    ;; Extract and preserve existing metadata
+    (when (vectorp metadata)
+      (dotimes (i (length metadata))
+        (let ((item (aref metadata i)))
+          (when (listp item)
+            (dolist (pair item)
+              (let ((key (car pair))
+                    (value (cdr pair)))
+                (unless (member key '("id" "title" "category"))
+                  (setq yaml-header (concat yaml-header (format "%s: %s\n" key value))))))))))
+    
+    ;; Write complete file
+    (write-region (concat yaml-header yaml-footer content) nil file-path)))
+
+(defun md-roam-server--write-org-file (file-path node-id title category metadata content)
+  "Write org FILE-PATH with NODE-ID, TITLE, CATEGORY, METADATA, and CONTENT."
+  (let ((org-header (format ":PROPERTIES:\n:ID: %s\n:END:\n#+title: %s\n" node-id title)))
+    
+    ;; Add category if provided
+    (when category
+      (setq org-header (concat org-header (format "#+category: %s\n" category))))
+    
+    ;; Extract and preserve existing metadata (simplified for org mode)
+    (when (vectorp metadata)
+      (dotimes (i (length metadata))
+        (let ((item (aref metadata i)))
+          (when (listp item)
+            (dolist (pair item)
+              (let ((key (car pair))
+                    (value (cdr pair)))
+                (unless (member key '("ID" "id" "title" "category"))
+                  (cond
+                   ((string-match-p "^[A-Z]+$" key)
+                    ;; Property drawer format
+                    (setq org-header (concat org-header (format ":%s: %s\n" key value))))
+                   (t
+                    ;; Keyword format
+                    (setq org-header (concat org-header (format "#+%s: %s\n" key value))))))))))))
+    
+    ;; Write complete file
+    (write-region (concat org-header "\n" content) nil file-path)))
+
+(defun md-roam-server--extract-metadata-field (metadata field-name &optional alt-field-name)
+  "Extract FIELD-NAME from METADATA vector, with optional ALT-FIELD-NAME fallback."
+  (when (vectorp metadata)
+    (let ((result nil))
+      (dotimes (i (length metadata))
+        (let ((item (aref metadata i)))
+          (when (listp item)
+            (dolist (pair item)
+              (let ((key (car pair))
+                    (value (cdr pair)))
+                (when (or (string= key field-name)
+                          (and alt-field-name (string= key alt-field-name)))
+                  (setq result value)))))))
+      
+      ;; Handle array-like values (tags, aliases, refs)
+      (when result
+        (cond
+         ((string-match "^\\[\\(.*\\)\\]$" result)
+          ;; Parse array format like "[tag1, tag2]"
+          (let ((array-content (match-string 1 result)))
+            (when (and array-content (> (length array-content) 0))
+              (vconcat (mapcar 'string-trim 
+                              (split-string array-content "," t "\\s-*\"?\\s-*"))))))
+         (t
+          ;; Return as single value or string
+          result))))))
 
 (provide 'md-roam-server-nodes)
 ;;; md-roam-server-nodes.el ends here

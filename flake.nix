@@ -77,6 +77,7 @@
           ht
           request
           md-roam
+          async
           simple-httpd
           websocket
           org-roam-ui
