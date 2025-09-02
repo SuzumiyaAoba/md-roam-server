@@ -32,10 +32,10 @@ The development environment includes:
 
 ## Core Architecture
 
-This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono for optimal functionality:
+This is a **unified API architecture** with TypeScript/Hono as the single entry point, proxying to Emacs Lisp backend:
 
-- **Emacs Server (Port 8080)**: Handles GET requests, search, and org-roam operations
-- **Hono API Server (Port 3001)**: Handles all POST/PUT/DELETE requests for data safety and consistency
+- **Hono API Server (Port 3001)**: Single unified API endpoint for ALL operations (GET/POST/PUT/DELETE)
+- **Emacs Server (Port 8080)**: Backend service for org-roam operations (not directly accessed by clients)
 
 ### Architecture Components
 
@@ -57,10 +57,15 @@ This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono 
 - `docker-compose.yml` - Container orchestration with volume mounting
 - `Makefile` - Development workflow automation
 
-**Hono API Components:**
-- `src/server.ts` - Main Hono API server entry point
-- `src/api/nodes.ts` - Node CRUD operations (POST/PUT/DELETE)
-- `src/utils/emacs-client.ts` - Communication with Emacs server
+**Hono API Components (Unified API Server):**
+- `src/server.ts` - Main unified API server entry point with complete routing
+- `src/api/nodes.ts` - Complete node CRUD operations and GET endpoints
+- `src/api/search.ts` - Search and query operations proxy
+- `src/api/files.ts` - File operations proxy
+- `src/api/stats.ts` - Statistics and configuration proxy
+- `src/api/ui.ts` - UI operations proxy
+- `src/api/tags.ts` - Tags operations proxy
+- `src/utils/emacs-client.ts` - Emacs server communication client
 - `src/utils/response.ts` - Standardized API response helpers
 - `src/types/index.ts` - TypeScript type definitions
 - `src/config/index.ts` - Environment configuration
@@ -68,7 +73,9 @@ This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono 
 - `biome.json` - Code formatting and linting configuration
 
 **Key Design Patterns:**
-- Modular architecture with focused, single-responsibility modules
+- **Unified API Gateway**: Single Hono server proxies all requests to appropriate backend services
+- **Complete API Coverage**: All Emacs server endpoints accessible through typed TypeScript API
+- **Legacy Compatibility**: Supports both `/api/` prefixed and direct endpoint access
 - Emacs network processes with 0.0.0.0 binding for Docker compatibility
 - Standardized JSON response format with success/error status, timestamps, and consistent field naming
 - Path parameter extraction system for RESTful routes (e.g., `/nodes/:id`, `/tags/:tag/nodes`)
@@ -95,14 +102,15 @@ This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono 
 - Unified format for both Markdown (YAML front matter) and Org mode (properties drawer)
 - File type detection returning "md", "org", or "unknown"
 
-**Complete CRUD Operations (Migrated to Hono API Server):**
+**Complete CRUD Operations (Unified Hono API Server):**
 - Node creation with file format selection (`POST /api/nodes`) - supports both .md and .org
 - Full metadata support for Markdown files (tags, aliases, refs, category)
 - Basic metadata support for Org files (category, simplified tags/aliases/refs)
 - Node updates with file rewriting (`PUT /api/nodes/:id`)
 - Safe node deletion with security validation (`DELETE /api/nodes/:id`)
 - Tag and category management endpoints (`POST /api/nodes/:id/tags`, `DELETE /api/nodes/:id/tags/:tag`)
-- Complete metadata and content management via Hono API server
+- **All GET operations**: Node retrieval, search, backlinks, links, aliases, refs, parsing
+- **Complete API proxy**: All Emacs server functionality accessible through single API endpoint
 
 **org-roam Core Features:**
 - Bidirectional link discovery (`/nodes/:id/backlinks`, `/nodes/:id/links`)
@@ -163,12 +171,13 @@ make api-check         # Run full check (format + lint)
 make health            # Check both servers health
 ```
 
-**API Testing:**
+**Unified API Testing:**
 ```bash
 # Health check
 curl http://localhost:3001/health
 
-# Node operations (Hono API - port 3001)
+# All operations through unified Hono API server (port 3001)
+# Node CRUD operations
 curl -X POST http://localhost:3001/api/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Node", "content": "Test content"}'
@@ -179,10 +188,23 @@ curl -X PUT http://localhost:3001/api/nodes/NODE_ID \
 
 curl -X DELETE http://localhost:3001/api/nodes/NODE_ID
 
-# Node retrieval (Emacs server - port 8080) 
-curl http://localhost:8080/nodes
-curl http://localhost:8080/nodes/NODE_ID
-curl http://localhost:8080/nodes/NODE_ID/content
+# Node retrieval (all via unified API)
+curl http://localhost:3001/api/nodes
+curl http://localhost:3001/api/nodes/NODE_ID
+curl http://localhost:3001/api/nodes/NODE_ID/content
+curl http://localhost:3001/api/nodes/NODE_ID/backlinks
+curl http://localhost:3001/api/nodes/NODE_ID/links
+
+# Search and discovery
+curl http://localhost:3001/api/search/query
+curl http://localhost:3001/api/tags
+curl http://localhost:3001/api/stats
+curl http://localhost:3001/api/files
+
+# Legacy endpoint compatibility
+curl http://localhost:3001/nodes
+curl http://localhost:3001/tags  
+curl http://localhost:3001/stats
 ```
 
 ### Native Nix Development

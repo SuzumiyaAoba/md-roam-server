@@ -444,4 +444,130 @@ nodes.get("/:id/content", async (c) => {
   }
 });
 
+// Additional GET endpoints for complete node operations
+nodes.get("/:id/backlinks", async (c) => {
+  try {
+    const nodeId = c.req.param("id");
+    const result = await emacsClient.get(`/nodes/${nodeId}/backlinks`);
+
+    if (result.status === "error") {
+      return notFoundResponse(c, "Node");
+    }
+
+    return successResponse(
+      c,
+      "Node backlinks retrieved successfully",
+      result.data || result,
+    );
+  } catch (error) {
+    console.error("Error retrieving node backlinks:", error);
+    return errorResponse(
+      c,
+      "Failed to retrieve node backlinks",
+      error instanceof Error ? error.message : "Emacs server unavailable",
+      503,
+    );
+  }
+});
+
+nodes.get("/:id/links", async (c) => {
+  try {
+    const nodeId = c.req.param("id");
+    const result = await emacsClient.get(`/nodes/${nodeId}/links`);
+
+    if (result.status === "error") {
+      return notFoundResponse(c, "Node");
+    }
+
+    return successResponse(
+      c,
+      "Node links retrieved successfully",
+      result.data || result,
+    );
+  } catch (error) {
+    console.error("Error retrieving node links:", error);
+    return errorResponse(
+      c,
+      "Failed to retrieve node links",
+      error instanceof Error ? error.message : "Emacs server unavailable",
+      503,
+    );
+  }
+});
+
+nodes.get("/:id/aliases", async (c) => {
+  try {
+    const nodeId = c.req.param("id");
+    const result = await emacsClient.get(`/nodes/${nodeId}/aliases`);
+
+    if (result.status === "error") {
+      return notFoundResponse(c, "Node");
+    }
+
+    return successResponse(
+      c,
+      "Node aliases retrieved successfully",
+      result.data || result,
+    );
+  } catch (error) {
+    console.error("Error retrieving node aliases:", error);
+    return errorResponse(
+      c,
+      "Failed to retrieve node aliases",
+      error instanceof Error ? error.message : "Emacs server unavailable",
+      503,
+    );
+  }
+});
+
+nodes.get("/:id/refs", async (c) => {
+  try {
+    const nodeId = c.req.param("id");
+    const result = await emacsClient.get(`/nodes/${nodeId}/refs`);
+
+    if (result.status === "error") {
+      return notFoundResponse(c, "Node");
+    }
+
+    return successResponse(
+      c,
+      "Node refs retrieved successfully",
+      result.data || result,
+    );
+  } catch (error) {
+    console.error("Error retrieving node refs:", error);
+    return errorResponse(
+      c,
+      "Failed to retrieve node refs",
+      error instanceof Error ? error.message : "Emacs server unavailable",
+      503,
+    );
+  }
+});
+
+nodes.get("/:id/parse", async (c) => {
+  try {
+    const nodeId = c.req.param("id");
+    const result = await emacsClient.get(`/nodes/${nodeId}/parse`);
+
+    if (result.status === "error") {
+      return notFoundResponse(c, "Node");
+    }
+
+    return successResponse(
+      c,
+      "Node parsed successfully",
+      result.data || result,
+    );
+  } catch (error) {
+    console.error("Error parsing node:", error);
+    return errorResponse(
+      c,
+      "Failed to parse node",
+      error instanceof Error ? error.message : "Emacs server unavailable",
+      503,
+    );
+  }
+});
+
 export default nodes;
