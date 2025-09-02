@@ -35,7 +35,7 @@ The development environment includes:
 This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono for optimal functionality:
 
 - **Emacs Server (Port 8080)**: Handles GET requests, search, and org-roam operations
-- **Hono API Server (Port 3001)**: Handles POST/PUT/DELETE requests for data safety
+- **Hono API Server (Port 3001)**: Handles all POST/PUT/DELETE requests for data safety and consistency
 
 ### Architecture Components
 
@@ -95,13 +95,14 @@ This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono 
 - Unified format for both Markdown (YAML front matter) and Org mode (properties drawer)
 - File type detection returning "md", "org", or "unknown"
 
-**Complete CRUD Operations:**
-- Node creation with file format selection (`POST /nodes`) - supports both .md and .org
+**Complete CRUD Operations (Migrated to Hono API Server):**
+- Node creation with file format selection (`POST /api/nodes`) - supports both .md and .org
 - Full metadata support for Markdown files (tags, aliases, refs, category)
 - Basic metadata support for Org files (category, simplified tags/aliases/refs)
-- Node updates with file rewriting (`PUT /nodes/:id`)
-- Safe node deletion with security validation (`DELETE /nodes/:id`)
-- Complete metadata and content management
+- Node updates with file rewriting (`PUT /api/nodes/:id`)
+- Safe node deletion with security validation (`DELETE /api/nodes/:id`)
+- Tag and category management endpoints (`POST /api/nodes/:id/tags`, `DELETE /api/nodes/:id/tags/:tag`)
+- Complete metadata and content management via Hono API server
 
 **org-roam Core Features:**
 - Bidirectional link discovery (`/nodes/:id/backlinks`, `/nodes/:id/links`)
