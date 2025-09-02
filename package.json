@@ -1,0 +1,33 @@
+{
+  "name": "md-roam-server",
+  "version": "1.0.0",
+  "description": "MD-Roam Server with Hono API",
+  "main": "src/server.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "build": "bun build src/server.ts --outdir ./dist",
+    "start": "bun dist/server.js",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "prepare": "husky",
+    "api:dev": "bun --watch src/server.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.2",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.1",
+    "hono": "^4.9.5"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  }
+}

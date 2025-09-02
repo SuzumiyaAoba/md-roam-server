@@ -24,15 +24,20 @@ nix develop
 ```
 
 The development environment includes:
-- Emacs with org-roam, md-roam, and web-server packages
-- SQLite for org-roam database operations  
-- curl and jq for API testing
-- Standard development tools (git, ripgrep, fd)
-- org-roam-ui web assets for graph visualization
+- **Emacs Server**: org-roam, md-roam, and web-server packages with SQLite
+- **Hono API Server**: Bun runtime with TypeScript, Hono framework, and Biome tooling
+- **Development Tools**: curl and jq for API testing, git, ripgrep, fd
+- **Code Quality**: Biome (formatting/linting), husky (git hooks), lint-staged
+- **Graph Visualization**: org-roam-ui web assets
 
 ## Core Architecture
 
-This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md-roam functionality. The architecture consists of:
+This is a **dual-server architecture** combining Emacs Lisp and TypeScript/Hono for optimal functionality:
+
+- **Emacs Server (Port 8080)**: Handles GET requests, search, and org-roam operations
+- **Hono API Server (Port 3001)**: Handles POST/PUT/DELETE requests for data safety
+
+### Architecture Components
 
 **Main Components (Modular Architecture):**
 - `elisp/md-roam-server.el` - Main server entry point and network process management
@@ -51,6 +56,16 @@ This is an HTTP REST API server built in Emacs Lisp that exposes org-roam and md
 - `Dockerfile.simple` - Single-stage development build
 - `docker-compose.yml` - Container orchestration with volume mounting
 - `Makefile` - Development workflow automation
+
+**Hono API Components:**
+- `src/server.ts` - Main Hono API server entry point
+- `src/api/nodes.ts` - Node CRUD operations (POST/PUT/DELETE)
+- `src/utils/emacs-client.ts` - Communication with Emacs server
+- `src/utils/response.ts` - Standardized API response helpers
+- `src/types/index.ts` - TypeScript type definitions
+- `src/config/index.ts` - Environment configuration
+- `package.json` - Bun/Node.js dependencies and scripts
+- `biome.json` - Code formatting and linting configuration
 
 **Key Design Patterns:**
 - Modular architecture with focused, single-responsibility modules
@@ -126,6 +141,47 @@ make shell           # Open shell in running container
 ```bash
 curl http://localhost:8080/stats
 curl http://localhost:8080/nodes
+curl http://localhost:3001/health
+```
+
+### Hono API Development
+
+**Start Hono API Server:**
+```bash
+make api-dev            # Start API server in development mode
+bun dev                # Direct command (equivalent)
+```
+
+**API Development Commands:**
+```bash
+make api-build         # Build API server for production
+make api-start         # Start production build
+make api-lint          # Lint TypeScript code
+make api-format        # Format code with Biome
+make api-check         # Run full check (format + lint)
+make health            # Check both servers health
+```
+
+**API Testing:**
+```bash
+# Health check
+curl http://localhost:3001/health
+
+# Node operations (Hono API - port 3001)
+curl -X POST http://localhost:3001/api/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test Node", "content": "Test content"}'
+
+curl -X PUT http://localhost:3001/api/nodes/NODE_ID \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Updated Title"}'
+
+curl -X DELETE http://localhost:3001/api/nodes/NODE_ID
+
+# Node retrieval (Emacs server - port 8080) 
+curl http://localhost:8080/nodes
+curl http://localhost:8080/nodes/NODE_ID
+curl http://localhost:8080/nodes/NODE_ID/content
 ```
 
 ### Native Nix Development

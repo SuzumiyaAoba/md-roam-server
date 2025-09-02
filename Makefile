@@ -98,7 +98,8 @@ status:
 
 health:
 	@echo "🏥 Testing API health..."
-	@curl -s http://localhost:8080/stats | jq '.status' || echo "❌ API not accessible"
+	@curl -s http://localhost:8080/stats | jq '.status' || echo "❌ Emacs API not accessible"
+	@curl -s http://localhost:3001/health | jq '.status' || echo "❌ Hono API not accessible"
 	@echo "🌐 Testing UI accessibility..."
 	@curl -s -o /dev/null -w "%{http_code}" http://localhost:35901 | grep -q "200" && echo "✅ UI accessible" || echo "❌ UI not accessible"
 
@@ -193,6 +194,31 @@ e2e-clean:
 	@echo "🧹 Cleaning E2E test environment..."
 	@cd tests && rm -rf node_modules coverage .vitest
 	@echo "✅ E2E test cleanup completed"
+
+# API Development Commands
+api-dev:
+	@echo "🚀 Starting Hono API server in development mode..."
+	bun dev
+
+api-build:
+	@echo "🏗️ Building Hono API server..."
+	bun build
+
+api-start:
+	@echo "🚀 Starting Hono API server in production mode..."
+	bun start
+
+api-lint:
+	@echo "🔍 Linting API code..."
+	bun lint
+
+api-format:
+	@echo "✨ Formatting API code..."
+	bun format
+
+api-check:
+	@echo "🔧 Running full API check..."
+	bun check
 
 # Quick development cycle
 dev-cycle: stop build dev logs
