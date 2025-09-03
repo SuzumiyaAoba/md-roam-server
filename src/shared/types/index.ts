@@ -16,7 +16,7 @@ export type {
   TagInfo,
   TagNameParam,
   UpdateNodeRequest,
-} from "../schemas";
+} from "../lib/schemas";
 
 // Legacy type aliases for backward compatibility
 export type ApiResponse<T = unknown> = {

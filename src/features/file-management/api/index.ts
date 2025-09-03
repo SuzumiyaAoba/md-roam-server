@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { EmacsClient } from "@/utils/emacs-client";
-import { errorResponse, successResponse } from "@/utils/response";
+import { EmacsClient } from "@/shared/api/emacs-client";
+import { errorResponse, successResponse } from "@/shared/lib/response";
 
-const files = new Hono();
+const fileRouter = new Hono();
 const emacsClient = new EmacsClient();
 
 // GET /files - Get all files
-files.get("/", async (c) => {
+fileRouter.get("/", async (c) => {
   try {
     const result = await emacsClient.getFiles();
     return successResponse(
@@ -25,4 +25,4 @@ files.get("/", async (c) => {
   }
 });
 
-export default files;
+export { fileRouter };

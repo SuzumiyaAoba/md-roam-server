@@ -34,7 +34,7 @@ import {
   EmacsSyncResponseSchema,
   type EmacsTagsResponse,
   EmacsTagsResponseSchema,
-} from "@/schemas/emacs-response";
+} from "@/shared/lib/schemas/emacs-response";
 
 const EMACS_SERVER_URL =
   process.env["EMACS_SERVER_URL"] || "http://localhost:8080";

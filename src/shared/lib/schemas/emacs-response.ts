@@ -16,7 +16,6 @@ export const EmacsResponseSchema = z.object({
   data: z.unknown().optional(),
 });
 
-// Specific response schemas for different endpoints
 export const EmacsNodesResponseSchema = EmacsResponseSchema.extend({
   data: z.array(NodeSchema).optional(),
 });

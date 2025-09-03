@@ -1,20 +1,20 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import { EmacsClient } from "@/shared/api/emacs-client";
+import { errorResponse, successResponse } from "@/shared/lib/response";
 import {
   EmacsAliasedNodesResponseSchema,
   EmacsCitationNodesResponseSchema,
   EmacsReferencedNodesResponseSchema,
   EmacsTaggedNodesResponseSchema,
-} from "@/schemas/emacs-response";
-import { EmacsClient } from "@/utils/emacs-client";
-import { errorResponse, successResponse } from "@/utils/response";
+} from "@/shared/lib/schemas/emacs-response";
 
-const search = new Hono();
+const searchRouter = new Hono();
 const emacsClient = new EmacsClient();
 
 // GET /search/:query - Search nodes
-search.get(
+searchRouter.get(
   "/:query",
   zValidator(
     "param",
@@ -45,7 +45,7 @@ search.get(
 );
 
 // GET / - Get all tags (when mounted at /tags)
-search.get("/", async (c) => {
+searchRouter.get("/", async (c) => {
   try {
     const result = await emacsClient.getTags();
     return successResponse(
@@ -65,7 +65,7 @@ search.get("/", async (c) => {
 });
 
 // GET /tags/:tag/nodes - Get nodes by tag
-search.get(
+searchRouter.get(
   "/tags/:tag/nodes",
   zValidator(
     "param",
@@ -98,7 +98,7 @@ search.get(
 );
 
 // GET /aliases/:alias/nodes - Get nodes by alias
-search.get(
+searchRouter.get(
   "/aliases/:alias/nodes",
   zValidator(
     "param",
@@ -131,7 +131,7 @@ search.get(
 );
 
 // GET /refs/:ref/nodes - Get nodes by reference
-search.get(
+searchRouter.get(
   "/refs/:ref/nodes",
   zValidator(
     "param",
@@ -164,7 +164,7 @@ search.get(
 );
 
 // GET /citations/:citation/nodes - Get nodes by citation
-search.get(
+searchRouter.get(
   "/citations/:citation/nodes",
   zValidator(
     "param",
@@ -196,4 +196,4 @@ search.get(
   },
 );
 
-export default search;
+export { searchRouter };

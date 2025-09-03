@@ -1,23 +1,23 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import {
-  CreateNodeRequestSchema,
-  NodeIdParamSchema,
-  UpdateNodeRequestSchema,
-} from "@/schemas";
-import { EmacsClient } from "@/utils/emacs-client";
+import { EmacsClient } from "@/shared/api/emacs-client";
 import {
   errorResponse,
   notFoundResponse,
   successResponse,
-} from "@/utils/response";
+} from "@/shared/lib/response";
+import {
+  CreateNodeRequestSchema,
+  NodeIdParamSchema,
+  UpdateNodeRequestSchema,
+} from "@/shared/lib/schemas";
 
-const nodes = new Hono();
+const nodeRouter = new Hono();
 const emacsClient = new EmacsClient();
 
 // POST /nodes - Create new node
-nodes.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
+nodeRouter.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
   try {
     const nodeData = c.req.valid("json");
 
@@ -51,7 +51,7 @@ nodes.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
 });
 
 // PUT /nodes/:id - Update node
-nodes.put(
+nodeRouter.put(
   "/:id",
   zValidator("param", NodeIdParamSchema),
   zValidator("json", UpdateNodeRequestSchema),
@@ -93,7 +93,7 @@ nodes.put(
 );
 
 // DELETE /nodes/:id - Delete node
-nodes.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
+nodeRouter.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
 
@@ -129,7 +129,7 @@ nodes.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
 });
 
 // POST /nodes/:id/tags - Add tag to node
-nodes.post(
+nodeRouter.post(
   "/:id/tags",
   zValidator("param", NodeIdParamSchema),
   zValidator(
@@ -173,7 +173,7 @@ nodes.post(
 );
 
 // DELETE /nodes/:id/tags/:tag - Remove tag from node
-nodes.delete(
+nodeRouter.delete(
   "/:id/tags/:tag",
   zValidator(
     "param",
@@ -218,7 +218,7 @@ nodes.delete(
 );
 
 // POST /nodes/:id/categories - Add category to node
-nodes.post(
+nodeRouter.post(
   "/:id/categories",
   zValidator("param", NodeIdParamSchema),
   zValidator(
@@ -262,7 +262,7 @@ nodes.post(
 );
 
 // DELETE /nodes/:id/categories/:category - Remove category from node
-nodes.delete(
+nodeRouter.delete(
   "/:id/categories/:category",
   zValidator(
     "param",
@@ -307,7 +307,7 @@ nodes.delete(
 );
 
 // GET requests are delegated to Emacs server
-nodes.get("/", async (c) => {
+nodeRouter.get("/", async (c) => {
   try {
     const result = await emacsClient.getNodes();
     return successResponse(
@@ -326,7 +326,7 @@ nodes.get("/", async (c) => {
   }
 });
 
-nodes.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
+nodeRouter.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
     const result = await emacsClient.getNode(nodeId);
@@ -351,33 +351,37 @@ nodes.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
   }
 });
 
-nodes.get("/:id/content", zValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNodeContent(nodeId);
+nodeRouter.get(
+  "/:id/content",
+  zValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      const { id: nodeId } = c.req.valid("param");
+      const result = await emacsClient.getNodeContent(nodeId);
 
-    if (result.status === "error") {
-      return notFoundResponse(c, "Node");
+      if (result.status === "error") {
+        return notFoundResponse(c, "Node");
+      }
+
+      return successResponse(
+        c,
+        "Node content retrieved successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error retrieving node content:", error);
+      return errorResponse(
+        c,
+        "Failed to retrieve node content",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
+      );
     }
-
-    return successResponse(
-      c,
-      "Node content retrieved successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error retrieving node content:", error);
-    return errorResponse(
-      c,
-      "Failed to retrieve node content",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
+  },
+);
 
 // Additional GET endpoints for complete node operations
-nodes.get(
+nodeRouter.get(
   "/:id/backlinks",
   zValidator("param", NodeIdParamSchema),
   async (c) => {
@@ -406,104 +410,120 @@ nodes.get(
   },
 );
 
-nodes.get("/:id/links", zValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNodeLinks(nodeId);
+nodeRouter.get(
+  "/:id/links",
+  zValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      const { id: nodeId } = c.req.valid("param");
+      const result = await emacsClient.getNodeLinks(nodeId);
 
-    if (result.status === "error") {
-      return notFoundResponse(c, "Node");
+      if (result.status === "error") {
+        return notFoundResponse(c, "Node");
+      }
+
+      return successResponse(
+        c,
+        "Node links retrieved successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error retrieving node links:", error);
+      return errorResponse(
+        c,
+        "Failed to retrieve node links",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
+      );
     }
+  },
+);
 
-    return successResponse(
-      c,
-      "Node links retrieved successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error retrieving node links:", error);
-    return errorResponse(
-      c,
-      "Failed to retrieve node links",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
+nodeRouter.get(
+  "/:id/aliases",
+  zValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      const { id: nodeId } = c.req.valid("param");
+      const result = await emacsClient.getNodeAliases(nodeId);
 
-nodes.get("/:id/aliases", zValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNodeAliases(nodeId);
+      if (result.status === "error") {
+        return notFoundResponse(c, "Node");
+      }
 
-    if (result.status === "error") {
-      return notFoundResponse(c, "Node");
+      return successResponse(
+        c,
+        "Node aliases retrieved successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error retrieving node aliases:", error);
+      return errorResponse(
+        c,
+        "Failed to retrieve node aliases",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
+      );
     }
+  },
+);
 
-    return successResponse(
-      c,
-      "Node aliases retrieved successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error retrieving node aliases:", error);
-    return errorResponse(
-      c,
-      "Failed to retrieve node aliases",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
+nodeRouter.get(
+  "/:id/refs",
+  zValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      const { id: nodeId } = c.req.valid("param");
+      const result = await emacsClient.getNodeRefs(nodeId);
 
-nodes.get("/:id/refs", zValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNodeRefs(nodeId);
+      if (result.status === "error") {
+        return notFoundResponse(c, "Node");
+      }
 
-    if (result.status === "error") {
-      return notFoundResponse(c, "Node");
+      return successResponse(
+        c,
+        "Node refs retrieved successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error retrieving node refs:", error);
+      return errorResponse(
+        c,
+        "Failed to retrieve node refs",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
+      );
     }
+  },
+);
 
-    return successResponse(
-      c,
-      "Node refs retrieved successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error retrieving node refs:", error);
-    return errorResponse(
-      c,
-      "Failed to retrieve node refs",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
+nodeRouter.get(
+  "/:id/parse",
+  zValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      const { id: nodeId } = c.req.valid("param");
+      const result = await emacsClient.parseNode(nodeId);
 
-nodes.get("/:id/parse", zValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.parseNode(nodeId);
+      if (result.status === "error") {
+        return notFoundResponse(c, "Node");
+      }
 
-    if (result.status === "error") {
-      return notFoundResponse(c, "Node");
+      return successResponse(
+        c,
+        "Node parsed successfully",
+        result.data || result,
+      );
+    } catch (error) {
+      console.error("Error parsing node:", error);
+      return errorResponse(
+        c,
+        "Failed to parse node",
+        error instanceof Error ? error.message : "Emacs server unavailable",
+        503,
+      );
     }
+  },
+);
 
-    return successResponse(
-      c,
-      "Node parsed successfully",
-      result.data || result,
-    );
-  } catch (error) {
-    console.error("Error parsing node:", error);
-    return errorResponse(
-      c,
-      "Failed to parse node",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
-    );
-  }
-});
-
-export default nodes;
+export { nodeRouter };

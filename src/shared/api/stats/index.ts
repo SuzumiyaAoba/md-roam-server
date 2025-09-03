@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { EmacsClient } from "@/utils/emacs-client";
-import { errorResponse, successResponse } from "@/utils/response";
+import { EmacsClient } from "@/shared/api/emacs-client";
+import { errorResponse, successResponse } from "@/shared/lib/response";
 
-const stats = new Hono();
+const statsRouter = new Hono();
 const emacsClient = new EmacsClient();
 
 // GET /stats - Get server statistics
-stats.get("/", async (c) => {
+statsRouter.get("/stats", async (c) => {
   try {
     const result = await emacsClient.getStats();
     return successResponse(
@@ -26,7 +26,7 @@ stats.get("/", async (c) => {
 });
 
 // GET /config - Get server configuration
-stats.get("/config", async (c) => {
+statsRouter.get("/config", async (c) => {
   try {
     const result = await emacsClient.getConfig();
     return successResponse(
@@ -46,7 +46,7 @@ stats.get("/config", async (c) => {
 });
 
 // POST /sync - Sync database
-stats.post("/sync", async (c) => {
+statsRouter.post("/sync", async (c) => {
   try {
     const result = await emacsClient.syncDatabase();
     return successResponse(c, "Database sync completed", result.data || result);
@@ -61,4 +61,4 @@ stats.post("/sync", async (c) => {
   }
 });
 
-export default stats;
+export { statsRouter };

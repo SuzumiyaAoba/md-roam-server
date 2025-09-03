@@ -1,13 +1,13 @@
 import { Hono } from "hono";
-import { EmacsTaggedNodesResponseSchema } from "@/schemas/emacs-response";
-import { EmacsClient } from "@/utils/emacs-client";
-import { errorResponse, successResponse } from "@/utils/response";
+import { EmacsClient } from "@/shared/api/emacs-client";
+import { errorResponse, successResponse } from "@/shared/lib/response";
+import { EmacsTaggedNodesResponseSchema } from "@/shared/lib/schemas/emacs-response";
 
-const tags = new Hono();
+const tagRouter = new Hono();
 const emacsClient = new EmacsClient();
 
 // GET / - Get all tags
-tags.get("/", async (c) => {
+tagRouter.get("/", async (c) => {
   try {
     const result = await emacsClient.getTags();
     return successResponse(
@@ -27,7 +27,7 @@ tags.get("/", async (c) => {
 });
 
 // GET /:tag/nodes - Get nodes by tag
-tags.get("/:tag/nodes", async (c) => {
+tagRouter.get("/:tag/nodes", async (c) => {
   try {
     const tag = c.req.param("tag");
     const result = await emacsClient.get(
@@ -50,4 +50,4 @@ tags.get("/:tag/nodes", async (c) => {
   }
 });
 
-export default tags;
+export { tagRouter };
