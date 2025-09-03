@@ -1,8 +1,8 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { EmacsClient } from "../utils/emacs-client";
-import { errorResponse, successResponse } from "../utils/response";
+import { EmacsClient } from "@/utils/emacs-client";
+import { errorResponse, successResponse } from "@/utils/response";
 
 const search = new Hono();
 const emacsClient = new EmacsClient();

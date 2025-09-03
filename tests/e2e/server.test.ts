@@ -23,15 +23,11 @@ describe("Server API E2E Tests", () => {
         const serverInfo = response.body.data as ServerInfo;
         expect(serverInfo).toHaveProperty("version");
         expect(serverInfo).toHaveProperty("server_port");
-        expect(serverInfo).toHaveProperty("ui_port");
-        expect(serverInfo).toHaveProperty("ui_enabled");
         expect(serverInfo).toHaveProperty("org_roam_directory");
         expect(serverInfo).toHaveProperty("endpoints");
 
         expect(typeof serverInfo.version).toBe("string");
         expect(typeof serverInfo.server_port).toBe("number");
-        expect(typeof serverInfo.ui_port).toBe("number");
-        expect(typeof serverInfo.ui_enabled).toBe("boolean");
         expect(typeof serverInfo.org_roam_directory).toBe("string");
         expect(Array.isArray(serverInfo.endpoints)).toBe(true);
       }

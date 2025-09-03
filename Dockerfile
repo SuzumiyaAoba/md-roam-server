@@ -16,9 +16,6 @@ COPY elisp/ ./elisp/
 COPY start-server.el openapi.yml ./
 COPY docker/ ./docker/
 
-# Build org-roam-ui web assets
-RUN nix build .#org-roam-ui-web -o org-roam-ui-web
-
 # Final runtime image
 FROM nixos/nix:latest
 
@@ -60,12 +57,12 @@ COPY --chown=1000:1000 docker/start-docker.sh /app/docker/
 # Make scripts executable
 RUN chmod +x /app/docker/start-docker.sh
 
-# Expose API and UI ports
-EXPOSE 8080 35901
+# Expose API port
+EXPOSE 8080
 
 # Add labels for metadata
 LABEL maintainer="md-roam-server" \
-      description="REST API server for org-roam with org-roam-ui integration" \
+      description="REST API server for org-roam" \
       version="2.0.0" \
       org.opencontainers.image.title="md-roam-server" \
       org.opencontainers.image.description="Emacs Lisp HTTP server for org-roam functionality" \

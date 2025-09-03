@@ -46,7 +46,6 @@ The server provides a comprehensive REST API with the following categories of en
 - `GET /citations` - List all citations with usage counts
 - `GET /stats` - Get comprehensive database statistics
 - `GET /config` - Get server configuration and settings
-- `GET /ui` - Get org-roam-ui server status and configuration
 
 ### Database Management
 - `POST /sync` - Synchronize org-roam database
@@ -858,9 +857,7 @@ Returns current server configuration settings.
   "timestamp": "2024-01-01 12:00:00",
   "config_file": "/Users/user/.config/md-roam-server/config.yml",
   "server": {
-    "port": 8080,
-    "ui_port": 35901,
-    "ui_enabled": true
+    "port": 8080
   },
   "org_roam": {
     "directory": "/Users/user/org-roam/",
@@ -869,9 +866,7 @@ Returns current server configuration settings.
   },
   "config_source": {
     "server": {
-      "port": 8080,
-      "ui-port": 35901,
-      "ui-enabled": true
+      "port": 8080
     },
     "org-roam": {
       "directory": "~/org-roam"
@@ -1064,7 +1059,6 @@ project/
 ### Test Environment
 
 - **Server Port**: 8080 (same as development)
-- **UI Port**: 35901 (same as development)
 - **Data Directory**: `./tmp/org-roam` (isolated from your data)
 - **Configuration**: `tests/config/test-config.yml`
 

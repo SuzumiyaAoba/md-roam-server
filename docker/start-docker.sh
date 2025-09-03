@@ -32,7 +32,6 @@ echo "⚙️  Container configuration:"
 echo "   - Data directory: /data/org-roam"
 echo "   - Config file: ~/.config/md-roam-server/config.yml"
 echo "   - API port: 8080"
-echo "   - UI port: 35901"
 
 # Function to handle shutdown gracefully
 shutdown_handler() {

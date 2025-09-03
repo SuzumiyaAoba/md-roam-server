@@ -634,19 +634,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConfigResponse'
 
-  /ui:
-    get:
-      summary: Get org-roam-ui status
-      description: Get org-roam-ui server status and configuration
-      tags:
-        - Visual Interface
-      responses:
-        '200':
-          description: UI status retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UIStatusResponse'
+
 
   # Database Management
   /sync:
@@ -706,12 +694,7 @@ components:
             server_port:
               type: integer
               example: 8080
-            ui_port:
-              type: integer
-              example: 35901
-            ui_enabled:
-              type: boolean
-              example: true
+
             org_roam_directory:
               type: string
               example: "/Users/user/org-roam/"
@@ -719,7 +702,7 @@ components:
               type: array
               items:
                 type: string
-              example: ["/files", "/nodes", "/search", "/tags", "/stats", "/config", "/ui", "/sync"]
+              example: ["/files", "/nodes", "/search", "/tags", "/stats", "/config", "/sync"]
 
     # Node Schema
     Node:
@@ -968,12 +951,7 @@ components:
                 port:
                   type: integer
                   example: 8080
-                ui_port:
-                  type: integer
-                  example: 35901
-                ui_enabled:
-                  type: boolean
-                  example: true
+
             org_roam:
               type: object
               properties:
@@ -990,38 +968,7 @@ components:
               type: object
               description: Raw configuration from YAML file
 
-    UIStatusResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            ui_enabled:
-              type: boolean
-              example: true
-            ui_port:
-              type: integer
-              example: 35901
-            ui_url:
-              type: string
-              example: "http://localhost:35901"
-            ui_running:
-              type: boolean
-              example: true
-            configuration:
-              type: object
-              properties:
-                sync_theme:
-                  type: boolean
-                  example: true
-                follow:
-                  type: boolean
-                  example: true
-                update_on_save:
-                  type: boolean
-                  example: true
-                open_on_start:
-                  type: boolean
-                  example: false
+
 
     SyncResponse:
       allOf:

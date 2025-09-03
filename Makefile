@@ -100,8 +100,6 @@ health:
 	@echo "🏥 Testing API health..."
 	@curl -s http://localhost:8080/stats | jq '.status' || echo "❌ Emacs API not accessible"
 	@curl -s http://localhost:3001/health | jq '.status' || echo "❌ Hono API not accessible"
-	@echo "🌐 Testing UI accessibility..."
-	@curl -s -o /dev/null -w "%{http_code}" http://localhost:35901 | grep -q "200" && echo "✅ UI accessible" || echo "❌ UI not accessible"
 
 shell:
 	@echo "🐚 Opening shell in md-roam-server container..."
@@ -126,10 +124,6 @@ test-clean: ## Clean up test artifacts
 	@rm -rf tmp/
 	@rm -rf tests/tmp/
 	@echo "✅ Test artifacts cleaned up"
-
-test-ui:
-	@echo "🧪 Testing org-roam-ui accessibility..."
-	@curl -s -o /dev/null -w "UI Status: %{http_code}\n" http://localhost:35901
 
 # Cleanup commands
 clean:

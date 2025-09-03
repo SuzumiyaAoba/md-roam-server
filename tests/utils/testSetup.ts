@@ -3,7 +3,6 @@ import { join } from "node:path";
 // Global test configuration
 export const TEST_CONFIG = {
   SERVER_URL: process.env.TEST_SERVER_URL || "http://localhost:8080",
-  UI_URL: process.env.TEST_UI_URL || "http://localhost:35901",
   TIMEOUT: 90000, // Increased timeout to match vitest config
   STARTUP_DELAY: 3000, // Wait time for server to fully start
   TEST_ORG_ROAM_DIR: join(process.cwd(), "..", "tmp", "org-roam"), // Test org-roam directory

@@ -271,7 +271,6 @@ npm run test:all           # All tests with verbose output
 
 ```bash
 TEST_SERVER_URL=http://localhost:8080  # API server endpoint
-TEST_UI_URL=http://localhost:35901     # UI server endpoint
 ```
 
 ### Timeouts and Thresholds

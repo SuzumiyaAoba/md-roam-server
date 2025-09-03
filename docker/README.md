@@ -1,77 +1,102 @@
-# Docker Compose での起動方法
+# md-roam-server Docker セットアップ
 
-## 基本的な起動方法
+このディレクトリには、md-roam-server を Docker で実行するための設定ファイルが含まれています。
+
+## 構成
+
+- `docker-compose.yml` - メインの Docker Compose 設定
+- `Dockerfile` - マルチステージビルド用の Dockerfile
+- `Dockerfile.simple` - シンプルなシングルステージビルド用の Dockerfile
+- `config.yml` - コンテナ用の設定ファイル
+- `start-docker.sh` - コンテナ内での起動スクリプト
+- `start.sh` - カスタムポートでの起動スクリプト
+- `env.example` - 環境変数の設定例
+
+## クイックスタート
+
+### 基本的な起動
 
 ```bash
-# デフォルトポートで起動
-docker-compose up -d
+# デフォルト設定で起動
+docker compose up -d
 
-# デフォルトポート:
-# - REST API: 8080
-# - org-roam-ui: 35901
+# ログを確認
+docker compose logs -f
+
+# 停止
+docker compose down
 ```
 
-## カスタムポートでの起動
-
-環境変数を使用してポート番号を指定できます：
+### カスタムポートでの起動
 
 ```bash
-# REST APIを9000ポート、org-roam-uiを36000ポートで起動
-REST_API_PORT=9000 ORG_ROAM_UI_PORT=36000 docker-compose up -d
+# REST APIを9000ポート、org-roamを36000ポートで起動
+./docker/start.sh -r 9000
 
-# または、.envファイルを作成して設定
-echo "REST_API_PORT=9000" > .env
-echo "ORG_ROAM_UI_PORT=36000" >> .env
-docker-compose up -d
-```
-
-## 利用可能な環境変数
-
-| 環境変数 | デフォルト値 | 説明 |
-|---------|-------------|------|
-| `REST_API_PORT` | 8080 | REST APIのポート番号 |
-| `ORG_ROAM_UI_PORT` | 35901 | org-roam-uiのポート番号 |
-| `TRAEFIK_PORT` | 80 | Traefikのポート番号（productionプロファイル使用時） |
-| `TRAEFIK_DASHBOARD_PORT` | 8081 | Traefikダッシュボードのポート番号（productionプロファイル使用時） |
-| `PROMETHEUS_PORT` | 9090 | Prometheusのポート番号（monitoringプロファイル使用時） |
-
-## プロファイル付きでの起動
-
-```bash
-# 本番環境用（Traefik付き）
-docker-compose --profile production up -d
-
-# 監視付きで起動
-docker-compose --profile monitoring up -d
-
-# 両方のプロファイルを有効化
-docker-compose --profile production --profile monitoring up -d
-```
-
-## 使用例
-
-```bash
-# 開発環境用（カスタムポート）
-REST_API_PORT=3000 ORG_ROAM_UI_PORT=3001 docker-compose up -d
-
-# 本番環境用（カスタムポート）
-REST_API_PORT=80 ORG_ROAM_UI_PORT=443 TRAEFIK_PORT=8080 TRAEFIK_DASHBOARD_PORT=8081 docker-compose --profile production up -d
-```
-
-## 便利な起動スクリプト
-
-`start.sh`スクリプトを使用すると、より簡単にカスタムポートで起動できます：
-
-```bash
-# 基本的なカスタムポート起動
-./docker/start.sh -r 9000 -u 36000
+# カスタム設定ファイルで起動
+./docker/start.sh --config /path/to/config.yml
 
 # 本番環境用
-./docker/start.sh -r 80 -u 443 --production
+./docker/start.sh -r 80 --production
 
 # 監視付き
 ./docker/start.sh --monitoring -p 9091
+```
 
-# ヘルプを表示
-./docker/start.sh --help
+## 環境変数
+
+| 変数名 | デフォルト値 | 説明 |
+|--------|--------------|------|
+| `REST_API_PORT` | 8080 | REST APIのポート番号 |
+| `MD_ROAM_CONFIG_FILE` | | カスタム設定ファイルのパス |
+
+## 設定ファイル
+
+`config.yml` で以下の設定が可能です：
+
+```yaml
+server:
+  port: 8080                    # REST APIポート
+
+org-roam:
+  directory: /data/org-roam     # org-roamデータディレクトリ
+```
+
+## データ永続化
+
+コンテナのデータは以下のボリュームで永続化されます：
+
+- `org-roam-data` - org-roam のノートファイル
+- `config-data` - 設定ファイル
+
+## トラブルシューティング
+
+### ポートが既に使用されている場合
+
+```bash
+# 使用中のポートを確認
+lsof -i :8080
+
+# プロセスを停止
+pkill -f "md-roam-server"
+```
+
+### ログの確認
+
+```bash
+# コンテナのログを確認
+docker compose logs -f md-roam-server
+
+# 特定の時間以降のログ
+docker compose logs --since="2024-01-01T00:00:00" md-roam-server
+```
+
+### コンテナ内での操作
+
+```bash
+# コンテナ内でシェルを開く
+docker compose exec md-roam-server bash
+
+# 設定ファイルを確認
+docker compose exec md-roam-server cat ~/.config/md-roam-server/config.yml
 ```

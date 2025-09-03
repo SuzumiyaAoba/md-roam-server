@@ -17,9 +17,6 @@ COPY docker/ ./docker/
 RUN nix-env -iA nixpkgs.bash nixpkgs.curl nixpkgs.coreutils && \
     nix develop --command echo "Nix environment cached"
 
-# Build org-roam-ui web assets
-RUN nix build .#org-roam-ui-web -o org-roam-ui-web
-
 # Set up directories
 RUN mkdir -p /data/org-roam /root/.config/md-roam-server
 
@@ -29,12 +26,12 @@ RUN cp /app/docker/config.yml /root/.config/md-roam-server/config.yml
 # Make scripts executable
 RUN chmod +x /app/docker/start-docker.sh
 
-# Expose API and UI ports
-EXPOSE 8080 35901
+# Expose API port
+EXPOSE 8080
 
 # Add labels for metadata
 LABEL maintainer="md-roam-server" \
-      description="REST API server for org-roam with org-roam-ui integration" \
+      description="REST API server for org-roam" \
       version="2.0.0"
 
 # Health check

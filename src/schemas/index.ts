@@ -166,8 +166,6 @@ export const LinksResponseSchema = SuccessResponseSchema(
 export const ServerInfoSchema = z.object({
   version: z.string(),
   server_port: z.number(),
-  ui_port: z.number(),
-  ui_enabled: z.boolean(),
   org_roam_directory: z.string(),
   endpoints: z.array(z.string()),
 });

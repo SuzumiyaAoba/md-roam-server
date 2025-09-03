@@ -4,12 +4,11 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
 import type { ZodError } from "zod";
-import filesRoutes from "./api/files";
-import nodesRoutes from "./api/nodes";
-import searchRoutes from "./api/search";
-import statsRoutes from "./api/stats";
-import tagsRoutes from "./api/tags";
-import uiRoutes from "./api/ui";
+import filesRoutes from "@/api/files";
+import nodesRoutes from "@/api/nodes";
+import searchRoutes from "@/api/search";
+import statsRoutes from "@/api/stats";
+import tagsRoutes from "@/api/tags";
 
 const app = new Hono();
 
@@ -49,7 +48,7 @@ app.use(prettyJSON());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", "http://localhost:35901"],
+    origin: ["http://localhost:3000"],
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "PUT", "DELETE"],
   }),
@@ -70,7 +69,6 @@ app.route("/api/nodes", nodesRoutes);
 app.route("/api/search", searchRoutes);
 app.route("/api/files", filesRoutes);
 app.route("/api/stats", statsRoutes);
-app.route("/api/ui", uiRoutes);
 app.route("/api/tags", tagsRoutes);
 
 // Legacy compatibility routes (direct proxy without /api prefix)
@@ -78,7 +76,6 @@ app.route("/nodes", nodesRoutes);
 app.route("/search", searchRoutes);
 app.route("/files", filesRoutes);
 app.route("/tags", tagsRoutes);
-app.route("/ui", uiRoutes);
 
 // Stats routes with multiple paths
 app.route("/stats", statsRoutes);
@@ -97,19 +94,9 @@ app.get("/", (c) => {
       search: "/api/search",
       files: "/api/files",
       stats: "/api/stats",
-      ui: "/api/ui",
       tags: "/api/tags",
     },
-    legacy_endpoints: {
-      nodes: "/nodes",
-      search: "/search",
-      files: "/files",
-      stats: "/stats",
-      ui: "/ui",
-      tags: "/tags",
-      config: "/config",
-      sync: "/sync",
-    },
+    documentation: "/docs",
   });
 });
 

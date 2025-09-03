@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { EmacsClient } from "../utils/emacs-client";
-import { errorResponse, successResponse } from "../utils/response";
+import { EmacsClient } from "@/utils/emacs-client";
+import { errorResponse, successResponse } from "@/utils/response";
 
 const files = new Hono();
 const emacsClient = new EmacsClient();

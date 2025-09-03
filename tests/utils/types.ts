@@ -131,8 +131,6 @@ export interface LinksResponse extends SuccessResponse {
 export interface ServerInfo {
   version: string;
   server_port: number;
-  ui_port: number;
-  ui_enabled: boolean;
   org_roam_directory: string;
   endpoints: string[];
 }
@@ -153,7 +151,6 @@ export interface TestScenario {
 // Configuration Types
 export interface TestConfig {
   SERVER_URL: string;
-  UI_URL: string;
   TIMEOUT: number;
   STARTUP_DELAY: number;
 }

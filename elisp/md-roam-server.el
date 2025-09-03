@@ -9,7 +9,6 @@
 (require 'md-roam-server-core)
 (require 'md-roam-server-http)
 (require 'md-roam-server-routes)
-(require 'md-roam-server-ui)
 
 ;;; Server Management
 
@@ -38,15 +37,7 @@
            :log (lambda (server client msg)
                   (message "md-roam-server connection: %s" msg))))
     
-    ;; Start org-roam-ui if enabled
-    (when md-roam-server-ui-enabled
-      (md-roam-server-start-ui))
-    
-    (message "md-roam server started on port %d%s" 
-             server-port
-             (if md-roam-server-ui-enabled 
-                 (format " (UI on port %d)" md-roam-server-ui-port)
-               ""))))
+    (message "md-roam server started on port %d" server-port)))
 
 (defun md-roam-server-restart ()
   "Restart the md-roam HTTP server."
@@ -59,11 +50,7 @@
   "Show md-roam server status."
   (interactive)
   (if md-roam-server-process
-      (message "md-roam server running on port %d%s" 
-               md-roam-server-port
-               (if md-roam-server-ui-enabled 
-                   (format " (UI on port %d)" md-roam-server-ui-port)
-                 ""))
+      (message "md-roam server running on port %d" md-roam-server-port)
     (message "md-roam server is not running")))
 
 ;;; Module Information
@@ -74,7 +61,6 @@
     ("md-roam-server-files" . "File operations endpoints")
     ("md-roam-server-nodes" . "Node CRUD operations")
     ("md-roam-server-search" . "Search and metadata endpoints")
-    ("md-roam-server-ui" . "org-roam-ui integration")
     ("md-roam-server-routes" . "Main routing logic"))
   "List of md-roam-server modules and their descriptions.")
 

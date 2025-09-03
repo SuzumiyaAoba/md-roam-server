@@ -10,7 +10,6 @@
 (require 'md-roam-server-files)
 (require 'md-roam-server-nodes)
 (require 'md-roam-server-search)
-(require 'md-roam-server-ui)
 
 ;;; Main Routing Function
 
@@ -26,10 +25,8 @@
                  "md-roam HTTP server is running"
                  `((version . "2.0.0")
                    (server_port . ,md-roam-server-port)
-                   (ui_port . ,md-roam-server-ui-port)
-                   (ui_enabled . ,md-roam-server-ui-enabled)
                    (org_roam_directory . ,org-roam-directory)
-                   (endpoints . ["/files" "/nodes" "/search" "/tags" "/stats" "/config" "/ui" "/sync"]))))
+                   (endpoints . ["/files" "/nodes" "/search" "/tags" "/stats" "/config" "/sync"]))))
                
                ;; File operations
                ((string-prefix-p "/files" path)
@@ -46,10 +43,9 @@
                     (string= path "/config"))
                 (md-roam-server-handle-search method path json-data))
                
-               ;; UI and database operations
-               ((or (string= path "/ui")
-                    (string= path "/sync"))
-                (md-roam-server-handle-ui method path json-data))
+               ;; Database operations
+               ((string= path "/sync")
+                (md-roam-server-handle-search method path json-data))
                
                ;; CORS preflight
                ((string= method "OPTIONS")

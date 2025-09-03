@@ -28,7 +28,6 @@ The development environment includes:
 - **Hono API Server**: Bun runtime with TypeScript, Hono framework, and Biome tooling
 - **Development Tools**: curl and jq for API testing, git, ripgrep, fd
 - **Code Quality**: Biome (formatting/linting), husky (git hooks), lint-staged
-- **Graph Visualization**: org-roam-ui web assets
 
 ## Core Architecture
 
@@ -47,9 +46,8 @@ This is a **unified API architecture** with TypeScript/Hono as the single entry 
 - `elisp/md-roam-server-nodes.el` - Node operations (CRUD, relationships, content)
 - `elisp/md-roam-server-search.el` - Search, statistics, and metadata aggregation
 - `elisp/md-roam-server-files.el` - File operations and content management
-- `elisp/md-roam-server-ui.el` - org-roam-ui integration and graph interface
 - `start-server.el` - Simple startup script for daemon mode
-- `flake.nix` - Nix development environment with custom org-roam-ui asset management
+- `flake.nix` - Nix development environment
 
 **Docker Components:**
 - `Dockerfile` - Multi-stage production build with Nix environment
@@ -119,7 +117,7 @@ This is a **unified API architecture** with TypeScript/Hono as the single entry 
 - Complete graph traversal capabilities
 
 **Critical Debugging Patterns:**
-- **Port Conflicts**: Always check for existing processes on 8080/35901 before starting server
+- **Port Conflicts**: Always check for existing processes on 8080 before starting server
 - **Database Sync**: Use `POST /sync` endpoint or `org-roam-db-sync` to refresh database after external file changes
 - **ID Duplication**: Server has built-in detection and cleanup for node ID duplication issues
 - **File Encoding**: All file operations use UTF-8 with proper Japanese/Unicode support
@@ -323,7 +321,6 @@ make reset              # Reset all data (destructive)
 
 **Network Configuration:**
 - Host binding set to "0.0.0.0" for Docker container networking
-- Dual server setup: REST API (8080) and org-roam-ui (35901)
 - Network process management with proper cleanup
 
 **Node ID Handling:**
@@ -408,5 +405,5 @@ cd tests && npm run test:quick    # Fast run (bail on first failure)
 - Container uses root user to avoid permission complexities
 - Volume mounting for org-roam directory: `/data/org-roam`
 - Volume mounting for config: `/root/.config/md-roam-server`
-- Health checks monitor both API and UI endpoints
+- Health checks monitor API endpoints
 - Container startup script handles configuration file creation

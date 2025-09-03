@@ -8,7 +8,6 @@ HTTP REST API server for org-roam and md-roam functionality.
 - Support for both Markdown (.md) and Org (.org) files
 - Bidirectional link discovery
 - Advanced search and metadata management
-- Integrated org-roam-ui visualization
 - Docker and native Nix support
 
 ## Quick Start
@@ -20,7 +19,6 @@ make dev
 
 Access:
 - API: http://localhost:8080
-- UI: http://localhost:35901
 
 ### Native
 ```bash
@@ -35,8 +33,6 @@ Default config: `~/.config/md-roam-server/config.yml`
 ```yaml
 server:
   port: 8080
-  ui-port: 35901
-  ui-enabled: true
 
 org-roam:
   directory: ~/org-roam

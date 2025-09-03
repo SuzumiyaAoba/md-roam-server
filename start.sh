@@ -54,12 +54,6 @@ if lsof -ti:8080 > /dev/null 2>&1; then
     sleep 1
 fi
 
-if lsof -ti:35901 > /dev/null 2>&1; then
-    echo "Port 35901 is already in use. Killing processes..."
-    lsof -ti:35901 | xargs kill || true
-    sleep 1
-fi
-
 echo "Starting md-roam server in daemon mode..."
 
 # Get script directory
@@ -75,7 +69,6 @@ sleep 3
 if curl -s http://localhost:8080/stats > /dev/null; then
     echo "✅ md-roam server started successfully!"
     echo "📡 REST API: http://localhost:8080"
-    echo "🌐 Graph UI: http://localhost:35901"
     echo ""
     echo "To stop the server:"
     echo "  ./stop.sh"

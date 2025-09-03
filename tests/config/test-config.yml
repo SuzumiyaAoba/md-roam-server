@@ -3,8 +3,6 @@
 
 server:
   port: 8080                    # REST API port
-  ui-port: 35901                # org-roam-ui web interface port
-  ui-enabled: true              # Enable org-roam-ui integration
 
 org-roam:
   directory: ./tmp/org-roam     # Test data directory within project

@@ -6,7 +6,6 @@ services:
     container_name: md-roam-server
     ports:
       - "${REST_API_PORT:-8080}:8080"   # REST API
-      - "${ORG_ROAM_UI_PORT:-35901}:35901" # org-roam-ui
     volumes:
       - org-roam-data:/data/org-roam
       - config-data:/root/.config/md-roam-server
@@ -32,8 +31,6 @@ services:
       - "traefik.http.routers.md-roam-api.rule=Host(`md-roam-api.localhost`)"
       - "traefik.http.routers.md-roam-api.entrypoints=web"
       - "traefik.http.services.md-roam-api.loadbalancer.server.port=8080"
-      - "traefik.http.routers.md-roam-ui.rule=Host(`md-roam-ui.localhost`)"
-      - "traefik.http.services.md-roam-ui.loadbalancer.server.port=35901"
 
   # Optional: Add reverse proxy for production
   traefik:
@@ -45,49 +42,20 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
     ports:
-      - "${TRAEFIK_PORT:-80}:80"
-      - "${TRAEFIK_DASHBOARD_PORT:-8081}:8080" # Traefik dashboard
+      - "80:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - md-roam-network
-    profiles:
-      - production
-
-  # Optional: Add monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    networks:
-      - md-roam-network
-    profiles:
-      - monitoring
+    depends_on:
+      - md-roam-server
 
 volumes:
   org-roam-data:
     driver: local
-    labels:
-      - "md-roam.data.type=org-roam"
   config-data:
-    driver: local
-    labels:
-      - "md-roam.data.type=config"
-  prometheus-data:
     driver: local
 
 networks:
   md-roam-network:
     driver: bridge
-    labels:
-      - "md-roam.network=main"

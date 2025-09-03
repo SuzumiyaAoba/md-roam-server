@@ -326,9 +326,7 @@
         (md-roam-server--create-success-response
          "Configuration retrieved successfully"
          `((config_file . ,md-roam-server-config-file)
-           (server . ((port . ,md-roam-server-port)
-                     (ui_port . ,md-roam-server-ui-port)
-                     (ui_enabled . ,md-roam-server-ui-enabled)))
+           (server . ((port . ,md-roam-server-port)))
            (org_roam . ((directory . ,org-roam-directory)
                        (db_location . ,(or org-roam-db-location "default"))
                        (db_exists . ,(condition-case nil 

@@ -5,13 +5,13 @@ import {
   CreateNodeRequestSchema,
   NodeIdParamSchema,
   UpdateNodeRequestSchema,
-} from "../schemas";
-import { EmacsClient } from "../utils/emacs-client";
+} from "@/schemas";
+import { EmacsClient } from "@/utils/emacs-client";
 import {
   errorResponse,
   notFoundResponse,
   successResponse,
-} from "../utils/response";
+} from "@/utils/response";
 
 const nodes = new Hono();
 const emacsClient = new EmacsClient();
