@@ -5,7 +5,7 @@
  */
 
 const EMACS_SERVER_URL =
-  process.env["EMACS_SERVER_URL"] || "http://localhost:8080";
+  process.env.EMACS_SERVER_URL || "http://localhost:8080";
 
 export class EmacsClient {
   private baseUrl: string;
