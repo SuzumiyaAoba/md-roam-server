@@ -5,7 +5,7 @@
  */
 
 const EMACS_SERVER_URL =
-  process.env.EMACS_SERVER_URL || "http://localhost:8080";
+  process.env["EMACS_SERVER_URL"] || "http://localhost:8080";
 
 export class EmacsClient {
   private baseUrl: string;
@@ -107,7 +107,7 @@ export class EmacsClient {
   async checkHealth(): Promise<boolean> {
     try {
       const response = await this.get("/stats");
-      return response.status === "success";
+      return (response as { status: string }).status === "success";
     } catch {
       return false;
     }

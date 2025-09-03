@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { ApiResponse } from "@/types";
 import { EmacsClient } from "@/utils/emacs-client";
 import { errorResponse, successResponse } from "@/utils/response";
 
@@ -20,9 +21,9 @@ search.get(
     try {
       const { query } = c.req.valid("param");
 
-      const result = await emacsClient.get(
+      const result = (await emacsClient.get(
         `/search/${encodeURIComponent(query)}`,
-      );
+      )) as ApiResponse;
       return successResponse(
         c,
         "Search completed successfully",
@@ -43,7 +44,7 @@ search.get(
 // GET / - Get all tags (when mounted at /tags)
 search.get("/", async (c) => {
   try {
-    const result = await emacsClient.get("/tags");
+    const result = (await emacsClient.get("/tags")) as ApiResponse;
     return successResponse(
       c,
       "Tags retrieved successfully",
@@ -72,9 +73,9 @@ search.get(
   async (c) => {
     try {
       const { tag } = c.req.valid("param");
-      const result = await emacsClient.get(
+      const result = (await emacsClient.get(
         `/tags/${encodeURIComponent(tag)}/nodes`,
-      );
+      )) as ApiResponse;
       return successResponse(
         c,
         "Tagged nodes retrieved successfully",
@@ -104,9 +105,9 @@ search.get(
   async (c) => {
     try {
       const { alias } = c.req.valid("param");
-      const result = await emacsClient.get(
+      const result = (await emacsClient.get(
         `/aliases/${encodeURIComponent(alias)}/nodes`,
-      );
+      )) as ApiResponse;
       return successResponse(
         c,
         "Aliased nodes retrieved successfully",
@@ -136,9 +137,9 @@ search.get(
   async (c) => {
     try {
       const { ref } = c.req.valid("param");
-      const result = await emacsClient.get(
+      const result = (await emacsClient.get(
         `/refs/${encodeURIComponent(ref)}/nodes`,
-      );
+      )) as ApiResponse;
       return successResponse(
         c,
         "Referenced nodes retrieved successfully",
@@ -168,9 +169,9 @@ search.get(
   async (c) => {
     try {
       const { citation } = c.req.valid("param");
-      const result = await emacsClient.get(
+      const result = (await emacsClient.get(
         `/citations/${encodeURIComponent(citation)}/nodes`,
-      );
+      )) as ApiResponse;
       return successResponse(
         c,
         "Citation nodes retrieved successfully",

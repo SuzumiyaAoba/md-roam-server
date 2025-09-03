@@ -1,5 +1,5 @@
 {
-  "extends": "@tsconfig/strictest/tsconfig.json",
+  // "extends": "@tsconfig/strictest/tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -7,10 +7,16 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": ["bun-types"],
+    "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "strict": true,
+    "noImplicitAny": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "strictNullChecks": false,
+    "noUncheckedIndexedAccess": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

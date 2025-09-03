@@ -6,6 +6,7 @@ import {
   NodeIdParamSchema,
   UpdateNodeRequestSchema,
 } from "@/schemas";
+import type { ApiResponse } from "@/types";
 import { EmacsClient } from "@/utils/emacs-client";
 import {
   errorResponse,
@@ -22,7 +23,7 @@ nodes.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
     const nodeData = c.req.valid("json");
 
     // Delegate node creation to Emacs server
-    const result = await emacsClient.createNode(nodeData);
+    const result = (await emacsClient.createNode(nodeData)) as ApiResponse;
 
     if (result.status === "error") {
       return errorResponse(
@@ -61,7 +62,10 @@ nodes.put(
       const updateData = c.req.valid("json");
 
       // Delegate node update to Emacs server
-      const result = await emacsClient.updateNode(nodeId, updateData);
+      const result = (await emacsClient.updateNode(
+        nodeId,
+        updateData,
+      )) as ApiResponse;
 
       if (result.status === "error") {
         if (result.error_type === "not_found") {
@@ -98,7 +102,7 @@ nodes.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
     const { id: nodeId } = c.req.valid("param");
 
     // Delegate node deletion to Emacs server
-    const result = await emacsClient.deleteNode(nodeId);
+    const result = (await emacsClient.deleteNode(nodeId)) as ApiResponse;
 
     if (result.status === "error") {
       if (result.error_type === "not_found") {
@@ -144,7 +148,10 @@ nodes.post(
       const { tag } = c.req.valid("json");
 
       // Delegate tag addition to Emacs server
-      const result = await emacsClient.addTagToNode(nodeId, tag);
+      const result = (await emacsClient.addTagToNode(
+        nodeId,
+        tag,
+      )) as ApiResponse;
 
       if (result.status === "error") {
         return errorResponse(
@@ -186,10 +193,10 @@ nodes.delete(
       const { id: nodeId, tag } = c.req.valid("param");
 
       // Delegate tag removal to Emacs server
-      const result = await emacsClient.removeTagFromNode(
+      const result = (await emacsClient.removeTagFromNode(
         nodeId,
         decodeURIComponent(tag),
-      );
+      )) as ApiResponse;
 
       if (result.status === "error") {
         return errorResponse(
@@ -233,7 +240,10 @@ nodes.post(
       const { category } = c.req.valid("json");
 
       // Delegate category addition to Emacs server
-      const result = await emacsClient.addCategoryToNode(nodeId, category);
+      const result = (await emacsClient.addCategoryToNode(
+        nodeId,
+        category,
+      )) as ApiResponse;
 
       if (result.status === "error") {
         return errorResponse(
@@ -275,10 +285,10 @@ nodes.delete(
       const { id: nodeId, category } = c.req.valid("param");
 
       // Delegate category removal to Emacs server
-      const result = await emacsClient.removeCategoryFromNode(
+      const result = (await emacsClient.removeCategoryFromNode(
         nodeId,
         decodeURIComponent(category),
-      );
+      )) as ApiResponse;
 
       if (result.status === "error") {
         return errorResponse(
@@ -309,7 +319,7 @@ nodes.delete(
 // GET requests are delegated to Emacs server
 nodes.get("/", async (c) => {
   try {
-    const result = await emacsClient.getNodes();
+    const result = (await emacsClient.getNodes()) as ApiResponse;
     return successResponse(
       c,
       "Nodes retrieved successfully",
@@ -329,7 +339,7 @@ nodes.get("/", async (c) => {
 nodes.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNode(nodeId);
+    const result = (await emacsClient.getNode(nodeId)) as ApiResponse;
 
     if (result.status === "error") {
       return notFoundResponse(c, "Node");
@@ -354,7 +364,7 @@ nodes.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
 nodes.get("/:id/content", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNodeContent(nodeId);
+    const result = (await emacsClient.getNodeContent(nodeId)) as ApiResponse;
 
     if (result.status === "error") {
       return notFoundResponse(c, "Node");
@@ -383,7 +393,9 @@ nodes.get(
   async (c) => {
     try {
       const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.get(`/nodes/${nodeId}/backlinks`);
+      const result = (await emacsClient.get(
+        `/nodes/${nodeId}/backlinks`,
+      )) as ApiResponse;
 
       if (result.status === "error") {
         return notFoundResponse(c, "Node");
@@ -409,7 +421,9 @@ nodes.get(
 nodes.get("/:id/links", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.get(`/nodes/${nodeId}/links`);
+    const result = (await emacsClient.get(
+      `/nodes/${nodeId}/links`,
+    )) as ApiResponse;
 
     if (result.status === "error") {
       return notFoundResponse(c, "Node");
@@ -434,7 +448,9 @@ nodes.get("/:id/links", zValidator("param", NodeIdParamSchema), async (c) => {
 nodes.get("/:id/aliases", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.get(`/nodes/${nodeId}/aliases`);
+    const result = (await emacsClient.get(
+      `/nodes/${nodeId}/aliases`,
+    )) as ApiResponse;
 
     if (result.status === "error") {
       return notFoundResponse(c, "Node");
@@ -459,7 +475,9 @@ nodes.get("/:id/aliases", zValidator("param", NodeIdParamSchema), async (c) => {
 nodes.get("/:id/refs", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.get(`/nodes/${nodeId}/refs`);
+    const result = (await emacsClient.get(
+      `/nodes/${nodeId}/refs`,
+    )) as ApiResponse;
 
     if (result.status === "error") {
       return notFoundResponse(c, "Node");
@@ -484,7 +502,9 @@ nodes.get("/:id/refs", zValidator("param", NodeIdParamSchema), async (c) => {
 nodes.get("/:id/parse", zValidator("param", NodeIdParamSchema), async (c) => {
   try {
     const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.get(`/nodes/${nodeId}/parse`);
+    const result = (await emacsClient.get(
+      `/nodes/${nodeId}/parse`,
+    )) as ApiResponse;
 
     if (result.status === "error") {
       return notFoundResponse(c, "Node");

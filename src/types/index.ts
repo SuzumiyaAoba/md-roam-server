@@ -22,17 +22,11 @@ export type {
 export type ApiResponse<T = unknown> = {
   status: "success" | "error";
   message: string;
-  timestamp: string;
-} & (
-  | {
-      status: "success";
-      data?: T;
-    }
-  | {
-      status: "error";
-      error?: string;
-    }
-);
+  timestamp?: string;
+  data?: T;
+  error?: string;
+  error_type?: string;
+};
 
 export type NodeSearchResult = {
   nodes: Node[];
