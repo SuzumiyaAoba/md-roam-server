@@ -56,24 +56,26 @@ This is a **unified API architecture** with TypeScript/Hono as the single entry 
 - `Makefile` - Development workflow automation
 
 **Hono API Components (Unified API Server):**
-- `src/server.ts` - Main unified API server entry point with complete routing
-- `src/api/nodes.ts` - Complete node CRUD operations and GET endpoints
-- `src/api/search.ts` - Search and query operations proxy
+- `src/server.ts` - Main unified API server entry point with complete routing and error handling
+- `src/schemas/index.ts` - Zod validation schemas and type inference for all API endpoints
+- `src/api/nodes.ts` - Complete node CRUD operations with Zod validation
+- `src/api/search.ts` - Search and query operations with parameter validation
 - `src/api/files.ts` - File operations proxy
 - `src/api/stats.ts` - Statistics and configuration proxy
-- `src/api/ui.ts` - UI operations proxy
 - `src/api/tags.ts` - Tags operations proxy
 - `src/utils/emacs-client.ts` - Emacs server communication client
 - `src/utils/response.ts` - Standardized API response helpers
-- `src/types/index.ts` - TypeScript type definitions
-- `src/config/index.ts` - Environment configuration
+- `src/types/index.ts` - TypeScript type re-exports for backward compatibility
+- `src/config/index.ts` - Environment configuration with strict typing
 - `package.json` - Bun/Node.js dependencies and scripts
 - `biome.json` - Code formatting and linting configuration
 
 **Key Design Patterns:**
 - **Unified API Gateway**: Single Hono server proxies all requests to appropriate backend services
-- **Complete API Coverage**: All Emacs server endpoints accessible through typed TypeScript API
+- **Runtime Validation**: Zod schemas provide type-safe validation for all API requests and responses
+- **Type Safety**: Complete TypeScript strict mode compliance with inferred types from Zod schemas
 - **Legacy Compatibility**: Supports both `/api/` prefixed and direct endpoint access
+- **Pre-commit Quality Gates**: Automatic TypeScript type checking, linting, and formatting
 - Emacs network processes with 0.0.0.0 binding for Docker compatibility
 - Standardized JSON response format with success/error status, timestamps, and consistent field naming
 - Path parameter extraction system for RESTful routes (e.g., `/nodes/:id`, `/tags/:tag/nodes`)
@@ -155,18 +157,25 @@ curl http://localhost:3001/health
 
 **Start Hono API Server:**
 ```bash
-make api-dev            # Start API server in development mode
-bun dev                # Direct command (equivalent)
+bun dev                # Start API server in development mode with hot reload
+bun run dev            # Equivalent command
 ```
 
-**API Development Commands:**
+**Code Quality Commands:**
 ```bash
-make api-build         # Build API server for production
-make api-start         # Start production build
-make api-lint          # Lint TypeScript code
-make api-format        # Format code with Biome
-make api-check         # Run full check (format + lint)
-make health            # Check both servers health
+bun run build         # Build API server for production
+bun run start          # Start production build
+bun run lint           # Lint TypeScript code
+bun run format         # Format code with Biome
+bun run check          # Run full check (format + lint)
+bun run typecheck      # TypeScript type checking (runs in pre-commit)
+```
+
+**Quality Gates:**
+```bash
+# Pre-commit hook automatically runs:
+# 1. bun run typecheck  - TypeScript type checking
+# 2. bun lint-staged    - Format and lint staged files
 ```
 
 **Unified API Testing:**
@@ -348,11 +357,13 @@ make reset              # Reset all data (destructive)
 - Complete database schema utilization (nodes, links, tags, aliases, refs, citations)
 
 **Error Handling:**
-- Comprehensive `condition-case` error handling for all file operations
+- **Zod Validation Errors**: Structured validation error responses with field-level details
+- **Global Error Handler**: Catches all errors and returns consistent JSON responses
+- Comprehensive `condition-case` error handling for all file operations (Emacs side)
 - Consistent error response format across all endpoints
 - Graceful handling of missing nodes, files, and database issues
 - Safe directory creation and validation before file operations
-- Proper HTTP status codes: 200 (success), 201 (created), 400 (client error), 500 (server error)
+- Proper HTTP status codes: 200 (success), 201 (created), 400 (validation error), 404 (not found), 500 (server error)
 - Port conflict resolution (kill existing processes on 8080)
 
 **E2E Testing Framework:**
@@ -407,3 +418,34 @@ cd tests && npm run test:quick    # Fast run (bail on first failure)
 - Volume mounting for config: `/root/.config/md-roam-server`
 - Health checks monitor API endpoints
 - Container startup script handles configuration file creation
+
+## Code Quality and Development Practices
+
+**TypeScript Configuration:**
+- Uses `@tsconfig/strictest` for maximum type safety
+- Path aliases configured (`@/*` maps to `src/*`)
+- Strict mode enabled with `noEmit` for type-only compilation
+
+**Validation and Type Safety:**
+- **Zod Integration**: Runtime validation for all API endpoints
+- **Type Inference**: TypeScript types automatically derived from Zod schemas
+- **Request Validation**: All POST/PUT requests validated with `zValidator` middleware
+- **Parameter Validation**: Path parameters (e.g., `:id`, `:tag`) validated with Zod schemas
+
+**Pre-commit Quality Gates:**
+- **TypeScript Type Check**: `tsc --noEmit` ensures no type errors
+- **Code Formatting**: Biome automatically formats staged files
+- **Linting**: Biome catches potential issues and enforces style
+- **Husky Integration**: Quality checks run automatically on `git commit`
+
+**Development Workflow:**
+1. Make changes to TypeScript files
+2. Run `bun dev` for hot-reload development
+3. Commit triggers automatic type checking and formatting
+4. All validation errors must be fixed before commit succeeds
+
+**Schema-First Development:**
+- Define Zod schemas in `src/schemas/index.ts`
+- API routes automatically get type safety and validation
+- Response types inferred from schemas
+- Consistent error handling across all endpoints
