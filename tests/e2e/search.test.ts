@@ -54,7 +54,7 @@ describe("Search API E2E Tests", () => {
       expect(results.length).toBeGreaterThan(0);
 
       // Should find the markdown test node
-      const foundNode = results.find((result: any) =>
+      const foundNode = results.find((result: Record<string, unknown>) =>
         result.title.includes("Markdown Search Test"),
       );
       expect(foundNode).toBeDefined();
@@ -72,7 +72,7 @@ describe("Search API E2E Tests", () => {
 
       // Search may or may not find results - that's acceptable
       if (results.length > 0) {
-        results.forEach((result: any) => {
+        results.forEach((result: Record<string, unknown>) => {
           expect(result).toHaveProperty("id");
           expect(result).toHaveProperty("title");
         });
@@ -88,7 +88,7 @@ describe("Search API E2E Tests", () => {
 
       // International search may return empty results - that's acceptable
       if (results.length > 0) {
-        results.forEach((result: any) => {
+        results.forEach((result: Record<string, unknown>) => {
           expect(result).toHaveProperty("id");
           expect(result).toHaveProperty("title");
         });
@@ -139,7 +139,7 @@ describe("Search API E2E Tests", () => {
       if (results.length > 0) {
         // Should include results from different file types
         const fileTypes = new Set(
-          results.map((result: any) => result.file.split(".").pop()),
+          results.map((result: Record<string, unknown>) => result.file.split(".").pop()),
         );
         expect(fileTypes.size).toBeGreaterThan(0);
       }
@@ -163,7 +163,7 @@ describe("Search API E2E Tests", () => {
       const results = response.body.results;
 
       if (results.length > 0) {
-        results.forEach((result: any) => {
+        results.forEach((result: Record<string, unknown>) => {
           expect(result).toHaveProperty("id");
           expect(result).toHaveProperty("title");
           expect(result).toHaveProperty("file");

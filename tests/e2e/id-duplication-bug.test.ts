@@ -18,7 +18,7 @@ describe("ID Duplication Bug Investigation", () => {
     // Step 2: Get initial node list to establish baseline
     const initialList = await ApiHelpers.getAllNodes();
     console.log("Initial node count:", initialList.body.data?.length || 0);
-    const initialIds = initialList.body.data?.map((n: any) => n.id) || [];
+    const initialIds = initialList.body.data?.map((n: Record<string, unknown>) => n.id) || [];
     console.log("Initial node IDs:", initialIds);
 
     // Step 3: Update the node
@@ -45,7 +45,7 @@ describe("ID Duplication Bug Investigation", () => {
     );
 
     const afterUpdateIds =
-      afterUpdateList.body.data?.map((n: any) => n.id) || [];
+      afterUpdateList.body.data?.map((n: Record<string, unknown>) => n.id) || [];
     console.log("After update node IDs:", afterUpdateIds);
 
     // Check if the same ID appears multiple times
@@ -64,7 +64,7 @@ describe("ID Duplication Bug Investigation", () => {
       duplicatedIds.forEach(([id, count]) => {
         console.error(`ID ${id} appears ${count} times`);
         const nodesWithSameId = afterUpdateList.body.data?.filter(
-          (n: any) => n.id === id,
+          (n: Record<string, unknown>) => n.id === id,
         );
         console.error(`Nodes with ID ${id}:`, nodesWithSameId);
       });
@@ -74,7 +74,7 @@ describe("ID Duplication Bug Investigation", () => {
 
     // Step 5: Verify the original node still exists and wasn't duplicated
     const updatedNodes =
-      afterUpdateList.body.data?.filter((n: any) => n.id === initialNode.id) ||
+      afterUpdateList.body.data?.filter((n: Record<string, unknown>) => n.id === initialNode.id) ||
       [];
     console.log(
       `Nodes with original ID ${initialNode.id}:`,
@@ -135,7 +135,7 @@ describe("ID Duplication Bug Investigation", () => {
       // Check for duplicates after each update
       const nodeList = await ApiHelpers.getAllNodes();
       const nodesWithSameId =
-        nodeList.body.data?.filter((n: any) => n.id === testNode.id) || [];
+        nodeList.body.data?.filter((n: Record<string, unknown>) => n.id === testNode.id) || [];
 
       if (nodesWithSameId.length > 1) {
         console.error(`BUG DETECTED: ID duplication after update ${i}!`);
@@ -151,7 +151,7 @@ describe("ID Duplication Bug Investigation", () => {
     // Final verification
     const finalList = await ApiHelpers.getAllNodes();
     const finalNodesWithId =
-      finalList.body.data?.filter((n: any) => n.id === testNode.id) || [];
+      finalList.body.data?.filter((n: Record<string, unknown>) => n.id === testNode.id) || [];
 
     expect(finalNodesWithId.length).toBe(1);
     expect(finalNodesWithId[0].title).toBe(
@@ -209,7 +209,7 @@ describe("ID Duplication Bug Investigation", () => {
     // Check for ID duplication after concurrent updates
     const nodeList = await ApiHelpers.getAllNodes();
     const nodesWithSameId =
-      nodeList.body.data?.filter((n: any) => n.id === testNode.id) || [];
+      nodeList.body.data?.filter((n: Record<string, unknown>) => n.id === testNode.id) || [];
 
     if (nodesWithSameId.length > 1) {
       console.error("BUG DETECTED: ID duplication after concurrent updates!");
@@ -255,7 +255,7 @@ describe("ID Duplication Bug Investigation", () => {
       (response) => response.body.data?.length || 0,
     );
     const allNodeIds = rapidCalls.map(
-      (response) => response.body.data?.map((n: any) => n.id) || [],
+      (response) => response.body.data?.map((n: Record<string, unknown>) => n.id) || [],
     );
 
     console.log("Node counts from rapid calls:", allNodeCounts);

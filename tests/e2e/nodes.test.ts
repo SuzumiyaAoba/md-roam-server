@@ -289,7 +289,7 @@ describe("Nodes API E2E Tests", () => {
       expect(Array.isArray(afterCreateResponse.body.data)).toBe(true);
 
       const foundNode = afterCreateResponse.body.data.find(
-        (node: any) => node.id === testNode.id,
+        (node: Record<string, unknown>) => node.id === testNode.id,
       );
       if (!foundNode) {
         console.error("BUG DETECTED: File exists but not returned by API");
@@ -327,7 +327,7 @@ describe("Nodes API E2E Tests", () => {
         expect(Array.isArray(response.body.data)).toBe(true);
 
         const foundNode = response.body.data.find(
-          (node: any) => node.id === testNode.id,
+          (node: Record<string, unknown>) => node.id === testNode.id,
         );
         if (!foundNode) {
           console.error(
@@ -365,10 +365,10 @@ describe("Nodes API E2E Tests", () => {
       expect(Array.isArray(response.body.data)).toBe(true);
 
       const foundMdNode = response.body.data.find(
-        (node: any) => node.id === mdNode.id,
+        (node: Record<string, unknown>) => node.id === mdNode.id,
       );
       const foundOrgNode = response.body.data.find(
-        (node: any) => node.id === orgNode.id,
+        (node: Record<string, unknown>) => node.id === orgNode.id,
       );
 
       if (!foundMdNode) {
@@ -435,7 +435,7 @@ describe("Nodes API E2E Tests", () => {
       expect(response.body.data.length).toBeGreaterThanOrEqual(3);
 
       // Verify node structure
-      response.body.data.forEach((node: any) => {
+      response.body.data.forEach((node: Record<string, unknown>) => {
         expect(node).toHaveProperty("id");
         expect(node).toHaveProperty("title");
         expect(node).toHaveProperty("file");
@@ -460,7 +460,7 @@ describe("Nodes API E2E Tests", () => {
       // Find our created nodes in the response
       const foundNodes = createdNodes.map((createdNode) => {
         const foundNode = allNodes.find(
-          (node: any) => node.id === createdNode.id,
+          (node: Record<string, unknown>) => node.id === createdNode.id,
         );
         return { created: createdNode, found: foundNode };
       });
@@ -483,14 +483,14 @@ describe("Nodes API E2E Tests", () => {
       const allNodes = response.body.data;
 
       // Find our test nodes
-      const testNodes = allNodes.filter((node: any) =>
+      const testNodes = allNodes.filter((node: Record<string, unknown>) =>
         node.title.startsWith("Node List Test"),
       );
 
       expect(testNodes.length).toBeGreaterThanOrEqual(3);
 
       // Check file extensions match file types
-      testNodes.forEach((node: any) => {
+      testNodes.forEach((node: Record<string, unknown>) => {
         if (node.file_type === "md") {
           expect(node.file).toMatch(/\.md$/);
         } else if (node.file_type === "org") {
@@ -521,9 +521,9 @@ describe("Nodes API E2E Tests", () => {
       expect(nodes2.length).toBe(nodes3.length);
 
       // Should contain same node IDs (order may vary)
-      const ids1 = nodes1.map((n: any) => n.id).sort();
-      const ids2 = nodes2.map((n: any) => n.id).sort();
-      const ids3 = nodes3.map((n: any) => n.id).sort();
+      const ids1 = nodes1.map((n: Record<string, unknown>) => n.id).sort();
+      const ids2 = nodes2.map((n: Record<string, unknown>) => n.id).sort();
+      const ids3 = nodes3.map((n: Record<string, unknown>) => n.id).sort();
 
       expect(ids1).toEqual(ids2);
       expect(ids2).toEqual(ids3);
@@ -547,7 +547,7 @@ describe("Nodes API E2E Tests", () => {
       expect(response.status).toBe(200);
       const allNodes = response.body.data;
 
-      allNodes.forEach((node: any) => {
+      allNodes.forEach((node: Record<string, unknown>) => {
         expect(node.path).toBeTruthy();
         expect(typeof node.path).toBe("string");
         expect(node.path.length).toBeGreaterThan(0);
@@ -564,21 +564,21 @@ describe("Nodes API E2E Tests", () => {
       const allNodes = response.body.data;
 
       const markdownNodes = allNodes.filter(
-        (node: any) => node.file_type === "md",
+        (node: Record<string, unknown>) => node.file_type === "md",
       );
-      const orgNodes = allNodes.filter((node: any) => node.file_type === "org");
+      const orgNodes = allNodes.filter((node: Record<string, unknown>) => node.file_type === "org");
 
       // Should have both types from our test data
       expect(markdownNodes.length).toBeGreaterThan(0);
       expect(orgNodes.length).toBeGreaterThan(0);
 
       // Each type should have proper structure
-      markdownNodes.forEach((node: any) => {
+      markdownNodes.forEach((node: Record<string, unknown>) => {
         expect(node.file).toMatch(/\.md$/);
         expect(node.file_type).toBe("md");
       });
 
-      orgNodes.forEach((node: any) => {
+      orgNodes.forEach((node: Record<string, unknown>) => {
         expect(node.file).toMatch(/\.org$/);
         expect(node.file_type).toBe("org");
       });
@@ -615,7 +615,7 @@ describe("Nodes API E2E Tests", () => {
       expect(afterUpdateResponse.body.data.length).toBe(initialCount + 1);
 
       const updatedNode = afterUpdateResponse.body.data.find(
-        (node: any) => node.id === newNode.id,
+        (node: Record<string, unknown>) => node.id === newNode.id,
       );
       expect(updatedNode).toBeDefined();
       expect(updatedNode.title).toBe("Updated CRUD Test Node");
@@ -630,7 +630,7 @@ describe("Nodes API E2E Tests", () => {
 
       // Verify node is no longer in list
       const deletedNodeCheck = afterDeleteResponse.body.data.find(
-        (node: any) => node.id === newNode.id,
+        (node: Record<string, unknown>) => node.id === newNode.id,
       );
       expect(deletedNodeCheck).toBeUndefined();
     });
@@ -689,7 +689,7 @@ describe("Nodes API E2E Tests", () => {
 
       if (afterCreateResponse.body.data !== null) {
         expect(Array.isArray(afterCreateResponse.body.data)).toBe(true);
-        afterCreateResponse.body.data.forEach((node: any) => {
+        afterCreateResponse.body.data.forEach((node: Record<string, unknown>) => {
           expect(node).toHaveProperty("id");
           expect(node).toHaveProperty("title");
           expect(node).toHaveProperty("file");

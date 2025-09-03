@@ -72,7 +72,7 @@ export const TEST_NODES: {
     {
       title: "Invalid file type",
       content: "Note with invalid file type",
-      file_type: "invalid" as any,
+      file_type: "invalid" as unknown,
     },
   ],
 };
@@ -104,7 +104,7 @@ export const TEST_UPDATES: {
       title: "", // Empty title
     },
     {
-      file_type: "invalid" as any,
+      file_type: "invalid" as unknown,
     },
   ],
 };

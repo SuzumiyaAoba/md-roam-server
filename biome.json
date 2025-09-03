@@ -1,9 +1,16 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "files": {
+    "ignoreUnknown": false,
+    "includes": ["src/**", "tests/**"]
+  },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "complexity": {
+        "noStaticOnlyClass": "off"
+      }
     }
   },
   "formatter": {

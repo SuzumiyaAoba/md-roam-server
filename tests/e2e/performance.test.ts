@@ -354,7 +354,7 @@ describe("Performance E2E Tests", () => {
       ];
 
       const startTime = Date.now();
-      const responses: any[] = [];
+      const responses: unknown[] = [];
 
       // Process operations in batches to reduce server load
       for (let i = 0; i < operations.length; i += batchSize) {
@@ -483,7 +483,7 @@ describe("Performance E2E Tests", () => {
     it("should maintain performance under sustained load", async () => {
       const loadTestDuration = 3000; // Reduced from 10 to 3 seconds
       const operationInterval = 500; // Increased from 100ms to 500ms for less stress
-      const operations: Promise<any>[] = [];
+      const operations: Promise<unknown>[] = [];
 
       const startTime = Date.now();
       let operationCount = 0;
@@ -511,7 +511,7 @@ describe("Performance E2E Tests", () => {
       );
 
       // Wait for all operations to complete with batching to reduce server stress
-      const responses: any[] = [];
+      const responses: unknown[] = [];
       const batchSize = 3; // Process in smaller batches
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);

@@ -12,7 +12,7 @@ export function successResponse<T>(
     timestamp: new Date().toISOString(),
     data,
   };
-  return c.json(response, status as any);
+  return c.json(response, status as Parameters<typeof c.json>[1]);
 }
 
 export function errorResponse(
@@ -27,7 +27,7 @@ export function errorResponse(
     timestamp: new Date().toISOString(),
     error,
   };
-  return c.json(response, status as any);
+  return c.json(response, status as Parameters<typeof c.json>[1]);
 }
 
 export function notFoundResponse(c: Context, resource = "Resource"): Response {

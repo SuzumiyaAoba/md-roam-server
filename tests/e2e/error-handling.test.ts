@@ -7,7 +7,7 @@ describe("Error Handling and Edge Cases E2E Tests", () => {
       const response = await ApiHelpers.createNode({
         content: "Content without title",
         file_type: "md",
-      } as any);
+      } as Record<string, unknown>);
 
       ApiHelpers.expectErrorResponse(response, 400);
       expect(response.body.message).toContain("title");
@@ -27,7 +27,7 @@ describe("Error Handling and Edge Cases E2E Tests", () => {
       const response = await ApiHelpers.createNode({
         title: "Invalid File Type Test",
         content: "Testing invalid file type",
-        file_type: "invalid" as any,
+        file_type: "invalid" as "md",
       });
 
       ApiHelpers.expectErrorResponse(response, 400);
@@ -235,7 +235,7 @@ describe("Error Handling and Edge Cases E2E Tests", () => {
     });
 
     it("should handle rapid sequential requests", async () => {
-      const nodes: any[] = [];
+      const nodes: unknown[] = [];
 
       for (let i = 0; i < 5; i++) {
         const response = await ApiHelpers.createNode({

@@ -273,7 +273,7 @@ export class TestStateVerification {
 
     const testNodes =
       allNodes.body.data?.filter(
-        (node: any) =>
+        (node: Record<string, unknown>) =>
           node.title?.includes("[") ||
           node.tags?.some((tag: string) => tag.startsWith("test-")) ||
           node.category === "test-isolation",
@@ -283,7 +283,7 @@ export class TestStateVerification {
       isClean: testNodes.length === 0,
       testNodesFound: testNodes.length,
       totalNodes: stats.body.data?.total_nodes || 0,
-      testNodeDetails: testNodes.map((node: any) => ({
+      testNodeDetails: testNodes.map((node: Record<string, unknown>) => ({
         id: node.id,
         title: node.title,
         tags: node.tags || [],

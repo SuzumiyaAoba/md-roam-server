@@ -161,36 +161,36 @@ export class NodesApiClient {
 }
 
 export class SearchApiClient {
-  async query(searchQuery: string): Promise<ApiResponse<any>> {
+  async query(searchQuery: string): Promise<ApiResponse<unknown>> {
     const response = await ApiHelpers.searchNodes(searchQuery);
     return new ApiResponse(response);
   }
 }
 
 export class ServerApiClient {
-  async healthCheck(): Promise<ApiResponse<any>> {
+  async healthCheck(): Promise<ApiResponse<unknown>> {
     const response = await ApiHelpers.healthCheck();
     return new ApiResponse(response);
   }
 
-  async getStats(): Promise<ApiResponse<any>> {
+  async getStats(): Promise<ApiResponse<unknown>> {
     const response = await ApiHelpers.getStats();
     return new ApiResponse(response);
   }
 
-  async sync(): Promise<ApiResponse<any>> {
+  async sync(): Promise<ApiResponse<unknown>> {
     const response = await ApiHelpers.syncDatabase();
     return new ApiResponse(response);
   }
 }
 
 export class FilesApiClient {
-  async list(): Promise<ApiResponse<any>> {
+  async list(): Promise<ApiResponse<unknown>> {
     const response = await ApiHelpers.getFiles();
     return new ApiResponse(response);
   }
 
-  async listRaw(): Promise<ApiResponse<any>> {
+  async listRaw(): Promise<ApiResponse<unknown>> {
     const response = await ApiHelpers.getRawFiles();
     return new ApiResponse(response);
   }
@@ -198,7 +198,7 @@ export class FilesApiClient {
 
 // Enhanced API Response Wrapper
 export class ApiResponse<T> {
-  constructor(private response: any) {}
+  constructor(private response: Record<string, unknown>) {}
 
   get status(): number {
     return this.response.status;
@@ -208,7 +208,7 @@ export class ApiResponse<T> {
     return this.response.body;
   }
 
-  get headers(): Record<string, any> {
+  get headers(): Record<string, unknown> {
     return this.response.headers || {};
   }
 
@@ -277,7 +277,7 @@ export class NodeAssertions {
   /**
    * Comprehensive node validation
    */
-  static assertValidNode(node: any, expectedData?: Partial<NodeData>): void {
+  static assertValidNode(node: unknown, expectedData?: Partial<NodeData>): void {
     // Basic structure
     expect(node).toBeTypeOf("object");
     expect(node).toHaveProperty("id");
@@ -320,24 +320,24 @@ export class NodeAssertions {
   /**
    * Assert node metadata is properly structured
    */
-  static assertValidMetadata(node: any): void {
+  static assertValidMetadata(node: Record<string, unknown>): void {
     if (node.tags) {
       expect(Array.isArray(node.tags)).toBe(true);
-      node.tags.forEach((tag: any) => {
+      node.tags.forEach((tag: Record<string, unknown>) => {
         expect(typeof tag).toBe("string");
       });
     }
 
     if (node.aliases) {
       expect(Array.isArray(node.aliases)).toBe(true);
-      node.aliases.forEach((alias: any) => {
+      node.aliases.forEach((alias: Record<string, unknown>) => {
         expect(typeof alias).toBe("string");
       });
     }
 
     if (node.refs) {
       expect(Array.isArray(node.refs)).toBe(true);
-      node.refs.forEach((ref: any) => {
+      node.refs.forEach((ref: Record<string, unknown>) => {
         expect(typeof ref).toBe("string");
       });
     }
@@ -350,7 +350,7 @@ export class NodeAssertions {
   /**
    * Assert Japanese content is handled properly
    */
-  static assertJapaneseContentSupport(node: any): void {
+  static assertJapaneseContentSupport(node: Record<string, unknown>): void {
     if (node.title?.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/)) {
       // Contains Japanese characters
       expect(node.title.length).toBeGreaterThan(0);
@@ -491,7 +491,7 @@ export class TestScenarios {
    */
   static async executePerformanceScenario(
     name: string,
-    operation: () => Promise<any>,
+    operation: () => Promise<unknown>,
     maxTimeMs: number,
     iterations = 1,
   ): Promise<PerformanceScenarioResult> {

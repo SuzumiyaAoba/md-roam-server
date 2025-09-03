@@ -231,7 +231,7 @@ export class CiCdIntegration {
    */
   private static async evaluateQualityGates(
     testResults: TestExecutionSummary,
-    reports: { coverage?: any; analytics?: any },
+    reports: { coverage?: unknown; analytics?: unknown },
   ): Promise<QualityGateResult> {
     const result: QualityGateResult = {
       passed: true,
@@ -360,7 +360,7 @@ export class CiCdIntegration {
    */
   private static async sendTestResultNotifications(
     testResults: TestExecutionSummary,
-    reports: { coverage?: any; analytics?: any },
+    reports: { coverage?: unknown; analytics?: unknown },
   ): Promise<void> {
     if (
       !CiCdIntegration.config?.notifications.enabled ||
@@ -392,7 +392,7 @@ export class CiCdIntegration {
    */
   private static formatTestResultMessage(
     testResults: TestExecutionSummary,
-    reports: { coverage?: any; analytics?: any },
+    reports: { coverage?: unknown; analytics?: unknown },
     isSuccess: boolean,
   ): string {
     const emoji = isSuccess ? "✅" : "❌";
@@ -677,7 +677,7 @@ export class TestOrchestrator {
         failCount: 1,
         skipCount: 0,
         duration,
-        errors: [errorResult.error!],
+        errors: errorResult.error ? [errorResult.error] : [],
       });
 
       return errorResult;
@@ -888,8 +888,8 @@ export interface PostTestResult {
   steps: CiStep[];
   duration: number;
   reports: {
-    coverage?: any;
-    analytics?: any;
+    coverage?: unknown;
+    analytics?: unknown;
   };
   error?: string;
 }
@@ -904,7 +904,7 @@ export interface CiStep {
 export interface QualityGateResult {
   passed: boolean;
   failures: string[];
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 export interface TestExecutionSummary {

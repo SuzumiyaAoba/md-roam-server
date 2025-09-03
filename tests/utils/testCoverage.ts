@@ -234,7 +234,7 @@ export class BoundaryValueTests {
         payload: {
           title: "Test Title",
           content: "Test content",
-          file_type: fileTypeTest.value as any,
+          file_type: fileTypeTest.value as unknown,
         },
         expectedValid: fileTypeTest.expectedValid,
       });
@@ -416,7 +416,7 @@ export class InputValidationTests {
           content: "Valid content",
           file_type: "md",
           [test.field]: test.value,
-        } as any;
+        } as unknown;
 
         const response = await ApiHelpers.createNode(payload);
         const actualValid = response.status >= 200 && response.status < 300;
@@ -817,14 +817,14 @@ export interface InvalidJsonTest {
 export interface TypeMismatchTest {
   name: string;
   field: string;
-  value: any;
+  value: unknown;
   expectedValid: boolean;
 }
 
 export interface TypeMismatchResult {
   testName: string;
   field: string;
-  value: any;
+  value: unknown;
   expectedValid: boolean;
   actualValid: boolean;
   passed: boolean;

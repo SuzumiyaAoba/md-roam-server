@@ -30,7 +30,7 @@ import { TestServerManager } from "../utils/testSetup";
 
 describe("System Stability & Quality Enhancement", () => {
   let serverManager: TestServerManager;
-  let _testMonitorSession: any;
+  let _testMonitorSession: unknown;
 
   beforeAll(async () => {
     // Initialize all quality systems
@@ -188,7 +188,7 @@ describe("System Stability & Quality Enhancement", () => {
       ]);
 
       // Track nodes for cleanup
-      testNodes.forEach((node) => RobustCleanup.trackNode(node.id));
+      testNodes.forEach((node) => { RobustCleanup.trackNode(node.id); });
 
       // Verify nodes exist
       for (const node of testNodes) {
@@ -415,7 +415,7 @@ describe("System Stability & Quality Enhancement", () => {
         .shouldHaveStatus(200)
         .shouldHaveData()
         .shouldContainInBody(nodeData.title)
-        .shouldContainInBody(nodeData.content!);
+        .shouldContainInBody(nodeData.content ?? "");
 
       const measurement = TestPerformanceMonitor.endMeasurement(timer);
       TestMonitor.recordTestResult("system_stability", "fluent_api", {

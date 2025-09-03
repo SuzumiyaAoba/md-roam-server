@@ -5,7 +5,7 @@
  */
 
 const EMACS_SERVER_URL =
-  process.env["EMACS_SERVER_URL"] || "http://localhost:8080";
+  process.env.EMACS_SERVER_URL || "http://localhost:8080";
 
 export class EmacsClient {
   private baseUrl: string;
@@ -14,7 +14,7 @@ export class EmacsClient {
     this.baseUrl = baseUrl;
   }
 
-  async get(path: string): Promise<any> {
+  async get(path: string): Promise<unknown> {
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: "GET",
@@ -36,7 +36,7 @@ export class EmacsClient {
     }
   }
 
-  async post(path: string, data: any): Promise<any> {
+  async post(path: string, data: unknown): Promise<unknown> {
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: "POST",
@@ -59,7 +59,7 @@ export class EmacsClient {
     }
   }
 
-  async put(path: string, data: any): Promise<any> {
+  async put(path: string, data: unknown): Promise<unknown> {
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: "PUT",
@@ -82,7 +82,7 @@ export class EmacsClient {
     }
   }
 
-  async delete(path: string): Promise<any> {
+  async delete(path: string): Promise<unknown> {
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: "DELETE",
@@ -135,11 +135,11 @@ export class EmacsClient {
   }
 
   // Node mutation methods (delegated to Emacs)
-  async createNode(data: any) {
+  async createNode(data: unknown) {
     return this.post("/nodes", data);
   }
 
-  async updateNode(id: string, data: any) {
+  async updateNode(id: string, data: unknown) {
     return this.put(`/nodes/${id}`, data);
   }
 

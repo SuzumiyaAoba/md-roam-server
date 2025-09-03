@@ -43,7 +43,7 @@ describe("Files API E2E Tests", () => {
 
       // Validate FileInfo structure
       if (files && Array.isArray(files) && files.length > 0) {
-        files.forEach((file: any) => {
+        files.forEach((file: Record<string, unknown>) => {
           expect(file).toHaveProperty("id");
           expect(file).toHaveProperty("file");
           expect(file).toHaveProperty("title");
@@ -74,11 +74,11 @@ describe("Files API E2E Tests", () => {
 
       const markdownFiles =
         files && Array.isArray(files)
-          ? files.filter((file: any) => file.file?.endsWith(".md"))
+          ? files.filter((file: Record<string, unknown>) => file.file?.endsWith(".md"))
           : [];
       const orgFiles =
         files && Array.isArray(files)
-          ? files.filter((file: any) => file.file?.endsWith(".org"))
+          ? files.filter((file: Record<string, unknown>) => file.file?.endsWith(".org"))
           : [];
 
       expect(markdownFiles.length).toBeGreaterThan(0);
@@ -94,15 +94,15 @@ describe("Files API E2E Tests", () => {
       // Find our test files by title
       const markdownTestFile =
         files && Array.isArray(files)
-          ? files.find((file: any) => file.title === "Markdown File Test")
+          ? files.find((file: Record<string, unknown>) => file.title === "Markdown File Test")
           : null;
       const orgTestFile =
         files && Array.isArray(files)
-          ? files.find((file: any) => file.title === "Org File Test")
+          ? files.find((file: Record<string, unknown>) => file.title === "Org File Test")
           : null;
       const internationalTestFile =
         files && Array.isArray(files)
-          ? files.find((file: any) => file.title === "International File Test")
+          ? files.find((file: Record<string, unknown>) => file.title === "International File Test")
           : null;
 
       expect(markdownTestFile).toBeDefined();
@@ -122,7 +122,7 @@ describe("Files API E2E Tests", () => {
       const files = response.body.files;
 
       if (files && Array.isArray(files)) {
-        files.forEach((file: any) => {
+        files.forEach((file: Record<string, unknown>) => {
           // Only validate timestamp if mtime property exists
           if (file.mtime && typeof file.mtime === "string") {
             const mtimeDate = new Date(file.mtime);
@@ -154,7 +154,7 @@ describe("Files API E2E Tests", () => {
         expect(rawFiles.length).toBeGreaterThanOrEqual(0);
 
         // Validate RawFile structure if files exist
-        rawFiles.forEach((file: any) => {
+        rawFiles.forEach((file: Record<string, unknown>) => {
           expect(file).toHaveProperty("file");
           if (file.path !== undefined) {
             expect(typeof file.path).toBe("string");
@@ -183,10 +183,10 @@ describe("Files API E2E Tests", () => {
       // Only test file existence if rawFiles is not null/undefined
       if (rawFiles && Array.isArray(rawFiles) && rawFiles.length > 0) {
         // Should have both .md and .org files if any files exist
-        const markdownFiles = rawFiles.filter((file: any) =>
+        const markdownFiles = rawFiles.filter((file: Record<string, unknown>) =>
           file.file?.endsWith(".md"),
         );
-        const orgFiles = rawFiles.filter((file: any) =>
+        const orgFiles = rawFiles.filter((file: Record<string, unknown>) =>
           file.file?.endsWith(".org"),
         );
 
@@ -256,9 +256,9 @@ describe("Files API E2E Tests", () => {
         Array.isArray(files) &&
         Array.isArray(rawFiles)
       ) {
-        files.forEach((file: any) => {
+        files.forEach((file: Record<string, unknown>) => {
           const matchingRawFile = rawFiles.find(
-            (raw: any) => raw.file === file.file,
+            (raw: Record<string, unknown>) => raw.file === file.file,
           );
 
           if (matchingRawFile && file.size && matchingRawFile.size) {
@@ -275,7 +275,7 @@ describe("Files API E2E Tests", () => {
       const files = response.body.files;
 
       if (files && Array.isArray(files)) {
-        files.forEach((file: any) => {
+        files.forEach((file: Record<string, unknown>) => {
           // Only validate size if the property exists
           if (file.size !== undefined && typeof file.size === "number") {
             expect(file.size).toBeGreaterThan(0);
@@ -294,7 +294,7 @@ describe("Files API E2E Tests", () => {
       const files = response.body.files;
 
       if (files && Array.isArray(files)) {
-        files.forEach((file: any) => {
+        files.forEach((file: Record<string, unknown>) => {
           // Only validate path if the property exists
           if (file.path !== undefined && typeof file.path === "string") {
             expect(file.path).toBeTruthy();
@@ -323,9 +323,9 @@ describe("Files API E2E Tests", () => {
         rawFiles &&
         Array.isArray(rawFiles)
       ) {
-        files.forEach((file: any) => {
+        files.forEach((file: Record<string, unknown>) => {
           const matchingRawFile = rawFiles.find(
-            (raw: any) => raw.file === file.file,
+            (raw: Record<string, unknown>) => raw.file === file.file,
           );
 
           if (matchingRawFile && file.path && matchingRawFile.path) {

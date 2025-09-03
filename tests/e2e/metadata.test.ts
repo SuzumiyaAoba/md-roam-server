@@ -58,7 +58,7 @@ describe("Metadata API E2E Tests", () => {
 
       // Tags may be empty, which is acceptable
       if (tags.length > 0) {
-        tags.forEach((tag: any) => {
+        tags.forEach((tag: Record<string, unknown>) => {
           expect(tag).toHaveProperty("tag");
           expect(tag).toHaveProperty("node_ids");
         });
@@ -73,7 +73,7 @@ describe("Metadata API E2E Tests", () => {
       const tags = tagsResponse.tags;
 
       if (tags && Array.isArray(tags) && tags.length > 0) {
-        const tagNames = tags.map((tag: any) => tag.tag);
+        const tagNames = tags.map((tag: Record<string, unknown>) => tag.tag);
 
         // Check if our test tags exist (they may not if no test data was created)
         const expectedTags = [
@@ -100,7 +100,7 @@ describe("Metadata API E2E Tests", () => {
       const tags = tagsResponse.tags;
 
       if (tags && Array.isArray(tags) && tags.length > 0) {
-        tags.forEach((tagInfo: any) => {
+        tags.forEach((tagInfo: Record<string, unknown>) => {
           expect(tagInfo).toHaveProperty("tag");
           expect(tagInfo).toHaveProperty("node_ids");
 
@@ -119,7 +119,7 @@ describe("Metadata API E2E Tests", () => {
       const tags = tagsResponse.tags;
 
       if (tags && Array.isArray(tags) && tags.length > 0) {
-        const metadataTag = tags.find((tag: any) => tag.tag === "metadata");
+        const metadataTag = tags.find((tag: Record<string, unknown>) => tag.tag === "metadata");
         if (metadataTag) {
           expect(metadataTag).toBeDefined();
           expect(metadataTag.node_ids.length).toBeGreaterThanOrEqual(0);
@@ -135,7 +135,7 @@ describe("Metadata API E2E Tests", () => {
       const tags = tagsResponse.tags;
 
       if (tags && Array.isArray(tags) && tags.length > 0) {
-        const tagNames = tags.map((tag: any) => tag.tag);
+        const tagNames = tags.map((tag: Record<string, unknown>) => tag.tag);
 
         // International tags may or may not exist
         const internationalTags = tagNames.filter(
@@ -166,7 +166,7 @@ describe("Metadata API E2E Tests", () => {
           // Should include our test nodes with metadata tag
           expect(data.data.length).toBeGreaterThanOrEqual(3);
 
-          data.data.forEach((node: any) => {
+          data.data.forEach((node: Record<string, unknown>) => {
             expect(node).toHaveProperty("id");
             expect(node).toHaveProperty("title");
             expect(node).toHaveProperty("file");
@@ -196,7 +196,7 @@ describe("Metadata API E2E Tests", () => {
           if (data.data && Array.isArray(data.data)) {
             // Should include our test aliases
             const aliasNames = data.data.map(
-              (alias: any) => alias.alias || alias.name || alias,
+              (alias: Record<string, unknown>) => alias.alias || alias.name || alias,
             );
             expect(
               aliasNames.some(
@@ -229,7 +229,7 @@ describe("Metadata API E2E Tests", () => {
           if (data.data && Array.isArray(data.data)) {
             // Should include our test refs
             const refUrls = data.data.map(
-              (ref: any) => ref.ref || ref.url || ref,
+              (ref: Record<string, unknown>) => ref.ref || ref.url || ref,
             );
             expect(
               refUrls.some((url: string) => url.includes("example.com")),

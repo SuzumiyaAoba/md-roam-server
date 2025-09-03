@@ -103,7 +103,7 @@ describe("Japanese and Unicode Content E2E Tests", () => {
       expect(response.body.results.length).toBeGreaterThan(0);
 
       const foundNode = response.body.results.find(
-        (result: any) => result.id === testNode.id,
+        (result: Record<string, unknown>) => result.id === testNode.id,
       );
       expect(foundNode).toBeDefined();
     });
@@ -169,7 +169,7 @@ describe("Japanese and Unicode Content E2E Tests", () => {
       expect(response.status).toBe(200);
 
       if (response.body.results.length > 0) {
-        const foundNode = response.body.results.find((result: any) =>
+        const foundNode = response.body.results.find((result: Record<string, unknown>) =>
           result.title.includes("📝"),
         );
         expect(foundNode).toBeDefined();
@@ -251,7 +251,7 @@ describe("Japanese and Unicode Content E2E Tests", () => {
       const results = await Promise.allSettled(concurrentRequests);
       const responses = results
         .filter((result) => result.status === "fulfilled")
-        .map((result) => (result as PromiseFulfilledResult<any>).value);
+        .map((result) => (result as PromiseFulfilledResult<unknown>).value);
 
       // Expect at least 2 out of 3 to succeed (better reliability)
       expect(responses.length).toBeGreaterThanOrEqual(2);

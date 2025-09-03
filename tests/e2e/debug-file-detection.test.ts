@@ -24,7 +24,7 @@ describe.skip("Debug File Detection Issues", () => {
     // Step 3: Check if our node is in the response
     if (response.body.data && Array.isArray(response.body.data)) {
       const foundNode = response.body.data.find(
-        (node: any) => node.id === testNode.id,
+        (node: Record<string, unknown>) => node.id === testNode.id,
       );
       console.log("Node found in response:", foundNode ? "YES" : "NO");
       if (!foundNode) {
@@ -32,7 +32,7 @@ describe.skip("Debug File Detection Issues", () => {
         console.error("Expected node ID:", testNode.id);
         console.error(
           "All returned node IDs:",
-          response.body.data.map((n: any) => n.id),
+          response.body.data.map((n: Record<string, unknown>) => n.id),
         );
       }
     } else {
@@ -56,7 +56,7 @@ describe.skip("Debug File Detection Issues", () => {
 
     if (secondResponse.body.data && Array.isArray(secondResponse.body.data)) {
       const foundNodeSecond = secondResponse.body.data.find(
-        (node: any) => node.id === testNode.id,
+        (node: Record<string, unknown>) => node.id === testNode.id,
       );
       console.log(
         "Node found in second attempt:",
@@ -112,7 +112,7 @@ describe.skip("Debug File Detection Issues", () => {
         (n) =>
           response.body.data &&
           Array.isArray(response.body.data) &&
-          response.body.data.find((apiNode: any) => apiNode.id === n.id),
+          response.body.data.find((apiNode: Record<string, unknown>) => apiNode.id === n.id),
       ).length;
 
       console.log(
@@ -126,7 +126,7 @@ describe.skip("Debug File Detection Issues", () => {
       (n) =>
         finalResponse.body.data &&
         Array.isArray(finalResponse.body.data) &&
-        finalResponse.body.data.find((apiNode: any) => apiNode.id === n.id),
+        finalResponse.body.data.find((apiNode: Record<string, unknown>) => apiNode.id === n.id),
     ).length;
 
     console.log(

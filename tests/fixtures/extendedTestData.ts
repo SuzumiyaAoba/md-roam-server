@@ -296,9 +296,9 @@ export const EXTENDED_TEST_UPDATES: {
   // Invalid updates
   invalid: [
     { title: "" },
-    { file_type: "invalid" as any },
-    { tags: "not-an-array" as any },
-    { aliases: 123 as any },
+    { file_type: "invalid" as unknown },
+    { tags: "not-an-array" as unknown },
+    { aliases: 123 as unknown },
   ],
 };
 
