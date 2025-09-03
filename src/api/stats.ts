@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import type { ApiResponse } from "@/types";
 import { EmacsClient } from "@/utils/emacs-client";
 import { errorResponse, successResponse } from "@/utils/response";
 
@@ -9,7 +8,7 @@ const emacsClient = new EmacsClient();
 // GET /stats - Get server statistics
 stats.get("/", async (c) => {
   try {
-    const result = (await emacsClient.get("/stats")) as ApiResponse;
+    const result = await emacsClient.getStats();
     return successResponse(
       c,
       "Statistics retrieved successfully",
@@ -29,7 +28,7 @@ stats.get("/", async (c) => {
 // GET /config - Get server configuration
 stats.get("/config", async (c) => {
   try {
-    const result = (await emacsClient.get("/config")) as ApiResponse;
+    const result = await emacsClient.getConfig();
     return successResponse(
       c,
       "Configuration retrieved successfully",
@@ -49,7 +48,7 @@ stats.get("/config", async (c) => {
 // POST /sync - Sync database
 stats.post("/sync", async (c) => {
   try {
-    const result = (await emacsClient.post("/sync", {})) as ApiResponse;
+    const result = await emacsClient.syncDatabase();
     return successResponse(c, "Database sync completed", result.data || result);
   } catch (error) {
     console.error("Error syncing database:", error);

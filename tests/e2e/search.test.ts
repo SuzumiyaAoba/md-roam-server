@@ -139,7 +139,9 @@ describe("Search API E2E Tests", () => {
       if (results.length > 0) {
         // Should include results from different file types
         const fileTypes = new Set(
-          results.map((result: Record<string, unknown>) => result.file.split(".").pop()),
+          results.map((result: Record<string, unknown>) =>
+            result.file.split(".").pop(),
+          ),
         );
         expect(fileTypes.size).toBeGreaterThan(0);
       }

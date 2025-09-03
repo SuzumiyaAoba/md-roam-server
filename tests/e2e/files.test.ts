@@ -74,11 +74,15 @@ describe("Files API E2E Tests", () => {
 
       const markdownFiles =
         files && Array.isArray(files)
-          ? files.filter((file: Record<string, unknown>) => file.file?.endsWith(".md"))
+          ? files.filter((file: Record<string, unknown>) =>
+              file.file?.endsWith(".md"),
+            )
           : [];
       const orgFiles =
         files && Array.isArray(files)
-          ? files.filter((file: Record<string, unknown>) => file.file?.endsWith(".org"))
+          ? files.filter((file: Record<string, unknown>) =>
+              file.file?.endsWith(".org"),
+            )
           : [];
 
       expect(markdownFiles.length).toBeGreaterThan(0);
@@ -94,15 +98,23 @@ describe("Files API E2E Tests", () => {
       // Find our test files by title
       const markdownTestFile =
         files && Array.isArray(files)
-          ? files.find((file: Record<string, unknown>) => file.title === "Markdown File Test")
+          ? files.find(
+              (file: Record<string, unknown>) =>
+                file.title === "Markdown File Test",
+            )
           : null;
       const orgTestFile =
         files && Array.isArray(files)
-          ? files.find((file: Record<string, unknown>) => file.title === "Org File Test")
+          ? files.find(
+              (file: Record<string, unknown>) => file.title === "Org File Test",
+            )
           : null;
       const internationalTestFile =
         files && Array.isArray(files)
-          ? files.find((file: Record<string, unknown>) => file.title === "International File Test")
+          ? files.find(
+              (file: Record<string, unknown>) =>
+                file.title === "International File Test",
+            )
           : null;
 
       expect(markdownTestFile).toBeDefined();

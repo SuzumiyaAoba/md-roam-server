@@ -119,7 +119,9 @@ describe("Metadata API E2E Tests", () => {
       const tags = tagsResponse.tags;
 
       if (tags && Array.isArray(tags) && tags.length > 0) {
-        const metadataTag = tags.find((tag: Record<string, unknown>) => tag.tag === "metadata");
+        const metadataTag = tags.find(
+          (tag: Record<string, unknown>) => tag.tag === "metadata",
+        );
         if (metadataTag) {
           expect(metadataTag).toBeDefined();
           expect(metadataTag.node_ids.length).toBeGreaterThanOrEqual(0);
@@ -196,7 +198,8 @@ describe("Metadata API E2E Tests", () => {
           if (data.data && Array.isArray(data.data)) {
             // Should include our test aliases
             const aliasNames = data.data.map(
-              (alias: Record<string, unknown>) => alias.alias || alias.name || alias,
+              (alias: Record<string, unknown>) =>
+                alias.alias || alias.name || alias,
             );
             expect(
               aliasNames.some(

@@ -277,7 +277,10 @@ export class NodeAssertions {
   /**
    * Comprehensive node validation
    */
-  static assertValidNode(node: unknown, expectedData?: Partial<NodeData>): void {
+  static assertValidNode(
+    node: unknown,
+    expectedData?: Partial<NodeData>,
+  ): void {
     // Basic structure
     expect(node).toBeTypeOf("object");
     expect(node).toHaveProperty("id");

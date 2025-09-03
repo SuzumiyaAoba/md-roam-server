@@ -100,9 +100,9 @@ app.get("/", (c) => {
   });
 });
 
-const port = process.env.API_PORT
-  ? Number.parseInt(process.env.API_PORT, 10)
-  : 3001;
+const port = process.env["API_PORT"]
+  ? Number.parseInt(process.env["API_PORT"], 10)
+  : 8080;
 
 console.log(`🚀 MD-Roam Server API starting on port ${port}`);
 

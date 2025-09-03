@@ -169,8 +169,8 @@ describe("Japanese and Unicode Content E2E Tests", () => {
       expect(response.status).toBe(200);
 
       if (response.body.results.length > 0) {
-        const foundNode = response.body.results.find((result: Record<string, unknown>) =>
-          result.title.includes("📝"),
+        const foundNode = response.body.results.find(
+          (result: Record<string, unknown>) => result.title.includes("📝"),
         );
         expect(foundNode).toBeDefined();
       }

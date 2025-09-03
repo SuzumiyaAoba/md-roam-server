@@ -566,7 +566,9 @@ describe("Nodes API E2E Tests", () => {
       const markdownNodes = allNodes.filter(
         (node: Record<string, unknown>) => node.file_type === "md",
       );
-      const orgNodes = allNodes.filter((node: Record<string, unknown>) => node.file_type === "org");
+      const orgNodes = allNodes.filter(
+        (node: Record<string, unknown>) => node.file_type === "org",
+      );
 
       // Should have both types from our test data
       expect(markdownNodes.length).toBeGreaterThan(0);
@@ -689,16 +691,18 @@ describe("Nodes API E2E Tests", () => {
 
       if (afterCreateResponse.body.data !== null) {
         expect(Array.isArray(afterCreateResponse.body.data)).toBe(true);
-        afterCreateResponse.body.data.forEach((node: Record<string, unknown>) => {
-          expect(node).toHaveProperty("id");
-          expect(node).toHaveProperty("title");
-          expect(node).toHaveProperty("file");
-          expect(node).toHaveProperty("file_type");
-          expect(typeof node.id).toBe("string");
-          expect(typeof node.title).toBe("string");
-          expect(typeof node.file).toBe("string");
-          expect(["md", "org"].includes(node.file_type)).toBe(true);
-        });
+        afterCreateResponse.body.data.forEach(
+          (node: Record<string, unknown>) => {
+            expect(node).toHaveProperty("id");
+            expect(node).toHaveProperty("title");
+            expect(node).toHaveProperty("file");
+            expect(node).toHaveProperty("file_type");
+            expect(typeof node.id).toBe("string");
+            expect(typeof node.title).toBe("string");
+            expect(typeof node.file).toBe("string");
+            expect(["md", "org"].includes(node.file_type)).toBe(true);
+          },
+        );
       }
 
       // Clean up and test deletion

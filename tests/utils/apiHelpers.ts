@@ -67,7 +67,9 @@ export async function getAllNodes(): Promise<supertest.Response> {
   return api.get("/nodes").expect("Content-Type", /json/);
 }
 
-export async function getNodeContent(nodeId: string): Promise<supertest.Response> {
+export async function getNodeContent(
+  nodeId: string,
+): Promise<supertest.Response> {
   return api.get(`/nodes/${nodeId}/content`).expect("Content-Type", /json/);
 }
 
@@ -197,9 +199,7 @@ export function trackNode(nodeId: string): void {
 export async function cleanupNodes(): Promise<void> {
   if (createdNodeIds.length === 0) return;
 
-  console.log(
-    `🧹 Cleaning up ${createdNodeIds.length} test nodes...`,
-  );
+  console.log(`🧹 Cleaning up ${createdNodeIds.length} test nodes...`);
 
   const cleanupWithRetry = async (
     nodeId: string,

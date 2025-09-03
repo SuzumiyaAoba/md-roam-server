@@ -13,10 +13,10 @@
       "@/*": ["src/*"]
     },
     "strict": true,
-    "noImplicitAny": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "strictNullChecks": false,
-    "noUncheckedIndexedAccess": false
+    "noImplicitAny": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

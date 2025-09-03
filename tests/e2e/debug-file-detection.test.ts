@@ -112,7 +112,9 @@ describe.skip("Debug File Detection Issues", () => {
         (n) =>
           response.body.data &&
           Array.isArray(response.body.data) &&
-          response.body.data.find((apiNode: Record<string, unknown>) => apiNode.id === n.id),
+          response.body.data.find(
+            (apiNode: Record<string, unknown>) => apiNode.id === n.id,
+          ),
       ).length;
 
       console.log(
@@ -126,7 +128,9 @@ describe.skip("Debug File Detection Issues", () => {
       (n) =>
         finalResponse.body.data &&
         Array.isArray(finalResponse.body.data) &&
-        finalResponse.body.data.find((apiNode: Record<string, unknown>) => apiNode.id === n.id),
+        finalResponse.body.data.find(
+          (apiNode: Record<string, unknown>) => apiNode.id === n.id,
+        ),
     ).length;
 
     console.log(

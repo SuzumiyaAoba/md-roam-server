@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { ApiResponse } from "@/types";
+import { EmacsTaggedNodesResponseSchema } from "@/schemas/emacs-response";
 import { EmacsClient } from "@/utils/emacs-client";
 import { errorResponse, successResponse } from "@/utils/response";
 
@@ -9,7 +9,7 @@ const emacsClient = new EmacsClient();
 // GET / - Get all tags
 tags.get("/", async (c) => {
   try {
-    const result = (await emacsClient.get("/tags")) as ApiResponse;
+    const result = await emacsClient.getTags();
     return successResponse(
       c,
       "Tags retrieved successfully",
@@ -30,9 +30,10 @@ tags.get("/", async (c) => {
 tags.get("/:tag/nodes", async (c) => {
   try {
     const tag = c.req.param("tag");
-    const result = (await emacsClient.get(
+    const result = await emacsClient.get(
       `/tags/${encodeURIComponent(tag)}/nodes`,
-    )) as ApiResponse;
+      EmacsTaggedNodesResponseSchema,
+    );
     return successResponse(
       c,
       "Tagged nodes retrieved successfully",

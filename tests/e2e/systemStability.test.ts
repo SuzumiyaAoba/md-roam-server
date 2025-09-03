@@ -188,7 +188,9 @@ describe("System Stability & Quality Enhancement", () => {
       ]);
 
       // Track nodes for cleanup
-      testNodes.forEach((node) => { RobustCleanup.trackNode(node.id); });
+      testNodes.forEach((node) => {
+        RobustCleanup.trackNode(node.id);
+      });
 
       // Verify nodes exist
       for (const node of testNodes) {

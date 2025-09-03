@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import type { ApiResponse } from "@/types";
 import { EmacsClient } from "@/utils/emacs-client";
 import { errorResponse, successResponse } from "@/utils/response";
 
@@ -9,7 +8,7 @@ const emacsClient = new EmacsClient();
 // GET /files - Get all files
 files.get("/", async (c) => {
   try {
-    const result = (await emacsClient.get("/files")) as ApiResponse;
+    const result = await emacsClient.getFiles();
     return successResponse(
       c,
       "Files retrieved successfully",
