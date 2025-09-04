@@ -1,26 +1,28 @@
 import { Hono } from "hono";
-import { EmacsClient } from "@/shared/api/emacs-client";
+import { NodeFileService } from "@/shared/services/node-file-service";
 import { errorResponse, successResponse } from "@/shared/lib/response";
 
 const statsRouter = new Hono();
-const emacsClient = new EmacsClient();
+const nodeFileService = new NodeFileService(
+  process.env.ORG_ROAM_DIRECTORY || "./tmp/org-roam"
+);
 
 // GET /stats - Get server statistics
 statsRouter.get("/stats", async (c) => {
   try {
-    const result = await emacsClient.getStats();
+    const result = nodeFileService.getStats();
     return successResponse(
       c,
       "Statistics retrieved successfully",
-      result.data || result,
+      result,
     );
   } catch (error) {
     console.error("Error retrieving statistics:", error);
     return errorResponse(
       c,
       "Failed to retrieve statistics",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });
@@ -28,19 +30,24 @@ statsRouter.get("/stats", async (c) => {
 // GET /config - Get server configuration
 statsRouter.get("/config", async (c) => {
   try {
-    const result = await emacsClient.getConfig();
+    const config = {
+      org_roam_directory: process.env.ORG_ROAM_DIRECTORY || "./tmp/org-roam",
+      server_type: "file_service",
+      api_version: "1.0.0",
+      supported_formats: ["md", "org"],
+    };
     return successResponse(
       c,
       "Configuration retrieved successfully",
-      result.data || result,
+      config,
     );
   } catch (error) {
     console.error("Error retrieving configuration:", error);
     return errorResponse(
       c,
       "Failed to retrieve configuration",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });
@@ -48,15 +55,22 @@ statsRouter.get("/config", async (c) => {
 // POST /sync - Sync database
 statsRouter.post("/sync", async (c) => {
   try {
-    const result = await emacsClient.syncDatabase();
-    return successResponse(c, "Database sync completed", result.data || result);
+    // In file-based mode, "sync" means scan all files and return stats
+    const allNodes = nodeFileService.getAllNodes();
+    const stats = nodeFileService.getStats();
+    const result = {
+      message: "File system sync completed",
+      nodes_found: allNodes.length,
+      stats: stats
+    };
+    return successResponse(c, "Database sync completed", result);
   } catch (error) {
     console.error("Error syncing database:", error);
     return errorResponse(
       c,
       "Failed to sync database",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });

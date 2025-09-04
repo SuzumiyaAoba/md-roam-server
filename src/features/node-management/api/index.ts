@@ -1,7 +1,7 @@
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { EmacsClient } from "@/shared/api/emacs-client";
+import { NodeFileService, ValidationError, NotFoundError } from "@/shared/services/node-file-service";
 import {
   errorResponse,
   notFoundResponse,
@@ -12,40 +12,47 @@ import {
   NodeIdParamSchema,
   UpdateNodeRequestSchema,
 } from "@/shared/lib/schemas";
+import { customValidator } from "@/shared/lib/validation";
 
 const nodeRouter = new Hono();
 const emacsClient = new EmacsClient();
 
+// Initialize Node File Service with org-roam directory
+// Use the same path that the test configuration uses
+const orgRoamDir = process.env.ORG_ROAM_DIR || "/Users/suzumiyaaoba/ghq/github.com/SuzumiyaAoba/md-roam-server/tmp/org-roam";
+const nodeFileService = new NodeFileService(orgRoamDir);
+
 // POST /nodes - Create new node
-nodeRouter.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
+nodeRouter.post("/", customValidator("json", CreateNodeRequestSchema), async (c) => {
   try {
-    const nodeData = c.req.valid("json");
+    const nodeData = (c as any).validatedData?.json;
 
-    // Delegate node creation to Emacs server
-    const result = await emacsClient.createNode(nodeData);
-
-    if (result.status === "error") {
-      return errorResponse(
-        c,
-        result.message || "Failed to create node",
-        result.error,
-        400,
-      );
-    }
+    // Create node using file service
+    const createdNode = nodeFileService.createNode(nodeData);
 
     return successResponse(
       c,
-      result.message || "Node created successfully",
-      result.data || result,
+      "Node created successfully",
+      createdNode,
       201,
     );
   } catch (error) {
     console.error("Error creating node:", error);
+    
+    if (error instanceof ValidationError) {
+      return c.json({
+        status: "error",
+        message: error.message,
+        error: error.errors?.join(", ") || error.message,
+        timestamp: new Date().toISOString(),
+      }, 400);
+    }
+    
     return errorResponse(
       c,
       "Failed to create node",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });
@@ -53,77 +60,89 @@ nodeRouter.post("/", zValidator("json", CreateNodeRequestSchema), async (c) => {
 // PUT /nodes/:id - Update node
 nodeRouter.put(
   "/:id",
-  zValidator("param", NodeIdParamSchema),
-  zValidator("json", UpdateNodeRequestSchema),
+  customValidator("param", NodeIdParamSchema),
+  customValidator("json", UpdateNodeRequestSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const updateData = c.req.valid("json");
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const updateData = (c as any).validatedData?.json;
 
-      // Delegate node update to Emacs server
-      const result = await emacsClient.updateNode(nodeId, updateData);
-
-      if (result.status === "error") {
-        if (result.error_type === "not_found") {
-          return notFoundResponse(c, "Node");
-        }
-        return errorResponse(
-          c,
-          result.message || "Failed to update node",
-          result.error,
-          400,
-        );
-      }
+      // Update node using file service
+      const updatedNode = nodeFileService.updateNode(nodeId, updateData);
 
       return successResponse(
         c,
-        result.message || "Node updated successfully",
-        result.data || result,
+        "Node updated successfully",
+        updatedNode,
       );
     } catch (error) {
       console.error("Error updating node:", error);
+      
+      if (error instanceof ValidationError) {
+        return c.json({
+          status: "error",
+          message: error.message,
+          error: error.errors?.join(", ") || error.message,
+          timestamp: new Date().toISOString(),
+        }, 400);
+      }
+      
+      if (error instanceof NotFoundError) {
+        return c.json({
+          status: "error",
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        }, 404);
+      }
+      
       return errorResponse(
         c,
         "Failed to update node",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
 );
 
 // DELETE /nodes/:id - Delete node
-nodeRouter.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
+nodeRouter.delete("/:id", customValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const { id: nodeId } = c.req.valid("param");
+    const { id: nodeId } = (c as any).validatedData?.param;
 
-    // Delegate node deletion to Emacs server
-    const result = await emacsClient.deleteNode(nodeId);
-
-    if (result.status === "error") {
-      if (result.error_type === "not_found") {
-        return notFoundResponse(c, "Node");
-      }
-      return errorResponse(
-        c,
-        result.message || "Failed to delete node",
-        result.error,
-        400,
-      );
-    }
+    // Delete node using file service
+    nodeFileService.deleteNode(nodeId);
 
     return successResponse(
       c,
-      result.message || "Node deleted successfully",
-      result.data || result,
+      "Node deleted successfully",
+      { id: nodeId },
     );
   } catch (error) {
     console.error("Error deleting node:", error);
+    
+    if (error instanceof ValidationError) {
+      return c.json({
+        status: "error",
+        message: error.message,
+        error: error.errors?.join(", ") || error.message,
+        timestamp: new Date().toISOString(),
+      }, 400);
+    }
+    
+    if (error instanceof NotFoundError) {
+      return c.json({
+        status: "error",
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      }, 404);
+    }
+    
     return errorResponse(
       c,
       "Failed to delete node",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });
@@ -131,8 +150,8 @@ nodeRouter.delete("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
 // POST /nodes/:id/tags - Add tag to node
 nodeRouter.post(
   "/:id/tags",
-  zValidator("param", NodeIdParamSchema),
-  zValidator(
+  customValidator("param", NodeIdParamSchema),
+  customValidator(
     "json",
     z.object({
       tag: z.string().min(1, "Tag is required and cannot be empty"),
@@ -140,8 +159,8 @@ nodeRouter.post(
   ),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const { tag } = c.req.valid("json");
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const { tag } = (c as any).validatedData?.json;
 
       // Delegate tag addition to Emacs server
       const result = await emacsClient.addTagToNode(nodeId, tag);
@@ -175,7 +194,7 @@ nodeRouter.post(
 // DELETE /nodes/:id/tags/:tag - Remove tag from node
 nodeRouter.delete(
   "/:id/tags/:tag",
-  zValidator(
+  customValidator(
     "param",
     NodeIdParamSchema.extend({
       tag: z.string().min(1, "Tag is required"),
@@ -183,7 +202,7 @@ nodeRouter.delete(
   ),
   async (c) => {
     try {
-      const { id: nodeId, tag } = c.req.valid("param");
+      const { id: nodeId, tag } = (c as any).validatedData?.param;
 
       // Delegate tag removal to Emacs server
       const result = await emacsClient.removeTagFromNode(
@@ -220,8 +239,8 @@ nodeRouter.delete(
 // POST /nodes/:id/categories - Add category to node
 nodeRouter.post(
   "/:id/categories",
-  zValidator("param", NodeIdParamSchema),
-  zValidator(
+  customValidator("param", NodeIdParamSchema),
+  customValidator(
     "json",
     z.object({
       category: z.string().min(1, "Category is required and cannot be empty"),
@@ -229,8 +248,8 @@ nodeRouter.post(
   ),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const { category } = c.req.valid("json");
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const { category } = (c as any).validatedData?.json;
 
       // Delegate category addition to Emacs server
       const result = await emacsClient.addCategoryToNode(nodeId, category);
@@ -264,7 +283,7 @@ nodeRouter.post(
 // DELETE /nodes/:id/categories/:category - Remove category from node
 nodeRouter.delete(
   "/:id/categories/:category",
-  zValidator(
+  customValidator(
     "param",
     NodeIdParamSchema.extend({
       category: z.string().min(1, "Category is required"),
@@ -272,7 +291,7 @@ nodeRouter.delete(
   ),
   async (c) => {
     try {
-      const { id: nodeId, category } = c.req.valid("param");
+      const { id: nodeId, category } = (c as any).validatedData?.param;
 
       // Delegate category removal to Emacs server
       const result = await emacsClient.removeCategoryFromNode(
@@ -306,75 +325,75 @@ nodeRouter.delete(
   },
 );
 
-// GET requests are delegated to Emacs server
+// GET requests are handled by file service for now
 nodeRouter.get("/", async (c) => {
   try {
-    const result = await emacsClient.getNodes();
+    const nodes = nodeFileService.getAllNodes();
     return successResponse(
       c,
       "Nodes retrieved successfully",
-      result.data || result,
+      nodes,
     );
   } catch (error) {
     console.error("Error retrieving nodes:", error);
     return errorResponse(
       c,
       "Failed to retrieve nodes",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });
 
-nodeRouter.get("/:id", zValidator("param", NodeIdParamSchema), async (c) => {
+nodeRouter.get("/:id", customValidator("param", NodeIdParamSchema), async (c) => {
   try {
-    const { id: nodeId } = c.req.valid("param");
-    const result = await emacsClient.getNode(nodeId);
+    const { id: nodeId } = (c as any).validatedData?.param;
+    const node = nodeFileService.getNode(nodeId);
 
-    if (result.status === "error") {
+    if (!node) {
       return notFoundResponse(c, "Node");
     }
 
     return successResponse(
       c,
       "Node retrieved successfully",
-      result.data || result,
+      node,
     );
   } catch (error) {
     console.error("Error retrieving node:", error);
     return errorResponse(
       c,
       "Failed to retrieve node",
-      error instanceof Error ? error.message : "Emacs server unavailable",
-      503,
+      error instanceof Error ? error.message : "File system error",
+      500,
     );
   }
 });
 
 nodeRouter.get(
   "/:id/content",
-  zValidator("param", NodeIdParamSchema),
+  customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.getNodeContent(nodeId);
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const content = nodeFileService.getNodeContent(nodeId);
 
-      if (result.status === "error") {
+      if (!content) {
         return notFoundResponse(c, "Node");
       }
 
       return successResponse(
         c,
         "Node content retrieved successfully",
-        result.data || result,
+        { content },
       );
     } catch (error) {
       console.error("Error retrieving node content:", error);
       return errorResponse(
         c,
         "Failed to retrieve node content",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
@@ -383,28 +402,24 @@ nodeRouter.get(
 // Additional GET endpoints for complete node operations
 nodeRouter.get(
   "/:id/backlinks",
-  zValidator("param", NodeIdParamSchema),
+  customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.getNodeBacklinks(nodeId);
-
-      if (result.status === "error") {
-        return notFoundResponse(c, "Node");
-      }
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const backlinks = nodeFileService.getNodeBacklinks(nodeId);
 
       return successResponse(
         c,
         "Node backlinks retrieved successfully",
-        result.data || result,
+        backlinks,
       );
     } catch (error) {
       console.error("Error retrieving node backlinks:", error);
       return errorResponse(
         c,
         "Failed to retrieve node backlinks",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
@@ -412,28 +427,24 @@ nodeRouter.get(
 
 nodeRouter.get(
   "/:id/links",
-  zValidator("param", NodeIdParamSchema),
+  customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.getNodeLinks(nodeId);
-
-      if (result.status === "error") {
-        return notFoundResponse(c, "Node");
-      }
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const links = nodeFileService.getNodeLinks(nodeId);
 
       return successResponse(
         c,
         "Node links retrieved successfully",
-        result.data || result,
+        links,
       );
     } catch (error) {
       console.error("Error retrieving node links:", error);
       return errorResponse(
         c,
         "Failed to retrieve node links",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
@@ -441,28 +452,24 @@ nodeRouter.get(
 
 nodeRouter.get(
   "/:id/aliases",
-  zValidator("param", NodeIdParamSchema),
+  customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.getNodeAliases(nodeId);
-
-      if (result.status === "error") {
-        return notFoundResponse(c, "Node");
-      }
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const aliases = nodeFileService.getNodeAliases(nodeId);
 
       return successResponse(
         c,
         "Node aliases retrieved successfully",
-        result.data || result,
+        aliases,
       );
     } catch (error) {
       console.error("Error retrieving node aliases:", error);
       return errorResponse(
         c,
         "Failed to retrieve node aliases",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
@@ -470,28 +477,24 @@ nodeRouter.get(
 
 nodeRouter.get(
   "/:id/refs",
-  zValidator("param", NodeIdParamSchema),
+  customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.getNodeRefs(nodeId);
-
-      if (result.status === "error") {
-        return notFoundResponse(c, "Node");
-      }
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const refs = nodeFileService.getNodeRefs(nodeId);
 
       return successResponse(
         c,
         "Node refs retrieved successfully",
-        result.data || result,
+        refs,
       );
     } catch (error) {
       console.error("Error retrieving node refs:", error);
       return errorResponse(
         c,
         "Failed to retrieve node refs",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
@@ -499,28 +502,28 @@ nodeRouter.get(
 
 nodeRouter.get(
   "/:id/parse",
-  zValidator("param", NodeIdParamSchema),
+  customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
-      const { id: nodeId } = c.req.valid("param");
-      const result = await emacsClient.parseNode(nodeId);
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const parsed = nodeFileService.parseNode(nodeId);
 
-      if (result.status === "error") {
+      if (!parsed) {
         return notFoundResponse(c, "Node");
       }
 
       return successResponse(
         c,
         "Node parsed successfully",
-        result.data || result,
+        parsed,
       );
     } catch (error) {
       console.error("Error parsing node:", error);
       return errorResponse(
         c,
         "Failed to parse node",
-        error instanceof Error ? error.message : "Emacs server unavailable",
-        503,
+        error instanceof Error ? error.message : "File system error",
+        500,
       );
     }
   },
