@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
 
 describe("Org-mode Syntax Comprehensive Test", () => {
-  it.skip("should register org-mode document with comprehensive syntax via POST", async () => {
+  it("should register org-mode document with comprehensive syntax via POST", async () => {
     console.log("=== TESTING ORG-MODE COMPREHENSIVE SYNTAX ===");
 
     // 極小のorg-mode構文テスト
@@ -107,14 +107,14 @@ describe("Org-mode Syntax Comprehensive Test", () => {
 
     // 日本語コンテンツが正しく保存されていることを確認
     expect(retrievedContent).toContain("メインタイトル");
-    expect(retrievedContent).toContain("org-mode構文テストドキュメント");
+    expect(retrievedContent).toContain("これはorg-modeの構文テストドキュメントです。");
 
     console.log("=== ORG-MODE COMPREHENSIVE SYNTAX TEST COMPLETED ===");
 
     // TestCleanupが自動でクリーンアップを実行
   }, 60000); // 60秒のタイムアウト（軽量化により延長）
 
-  it.skip("should handle org-mode specific edge cases", async () => {
+  it("should handle org-mode specific edge cases", async () => {
     console.log("=== TESTING ORG-MODE EDGE CASES ===");
 
     const edgeCaseContent = `* エッジケーステスト

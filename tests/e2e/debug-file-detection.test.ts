@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
 
-describe.skip("Debug File Detection Issues", () => {
+describe("Debug File Detection Issues", () => {
   it("should debug why files exist but nodes endpoint returns empty", async () => {
     console.log("=== DEBUGGING FILE DETECTION ISSUE ===");
 

@@ -366,7 +366,7 @@ describe("End-to-End Workflows", () => {
   });
 
   describe("Multi-Language Content Workflows", () => {
-    it.skip("should support bilingual note-taking", async () => {
+    it("should support bilingual note-taking", async () => {
       // Simplified bilingual test
       const _bilingualNote = await TestCleanup.createTestNode({
         title: "Bilingual Test - バイリンガルテスト",
