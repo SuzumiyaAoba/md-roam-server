@@ -30,12 +30,12 @@ nodeRouter.post("/", customValidator("json", CreateNodeRequestSchema), async (c)
     // Create node using file service
     const createdNode = nodeFileService.createNode(nodeData);
 
-    return successResponse(
-      c,
-      "Node created successfully",
-      createdNode,
-      201,
-    );
+    return c.json({
+      status: "success",
+      message: "Node created successfully",
+      ...createdNode,
+      timestamp: new Date().toISOString(),
+    }, 201);
   } catch (error) {
     console.error("Error creating node:", error);
     
@@ -70,11 +70,13 @@ nodeRouter.put(
       // Update node using file service
       const updatedNode = nodeFileService.updateNode(nodeId, updateData);
 
-      return successResponse(
-        c,
-        "Node updated successfully",
-        updatedNode,
-      );
+      return c.json({
+        status: "success",
+        message: "Node updated successfully",
+        ...updatedNode,
+        note: "File updated successfully. For database operations, use POST /sync to update database.",
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       console.error("Error updating node:", error);
       
@@ -354,11 +356,12 @@ nodeRouter.get("/:id", customValidator("param", NodeIdParamSchema), async (c) =>
       return notFoundResponse(c, "Node");
     }
 
-    return successResponse(
-      c,
-      "Node retrieved successfully",
-      node,
-    );
+    return c.json({
+      status: "success",
+      message: "Node retrieved successfully",
+      ...node,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
     console.error("Error retrieving node:", error);
     return errorResponse(
@@ -382,11 +385,12 @@ nodeRouter.get(
         return notFoundResponse(c, "Node");
       }
 
-      return successResponse(
-        c,
-        "Node content retrieved successfully",
-        { content },
-      );
+      return c.json({
+        status: "success",
+        message: "Node content retrieved successfully",
+        content,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       console.error("Error retrieving node content:", error);
       return errorResponse(

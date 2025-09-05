@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ApiHelpers, TestCleanup } from "@/utils/apiHelpers";
+import { TEST_CONFIG } from "@/utils/testSetup";
 import type { NodeData } from "@/utils/types";
 
 describe("Metadata API E2E Tests", () => {
@@ -156,7 +157,7 @@ describe("Metadata API E2E Tests", () => {
       // If not implemented, this test will help identify the missing functionality
       try {
         const response = await fetch(
-          `${process.env.TEST_SERVER_URL || "http://localhost:8080"}/tags/metadata/nodes`,
+          `${TEST_CONFIG.SERVER_URL}/tags/metadata/nodes`,
         );
 
         if (response.ok) {
@@ -188,7 +189,7 @@ describe("Metadata API E2E Tests", () => {
       try {
         // Check if there's an aliases endpoint
         const response = await fetch(
-          `${process.env.TEST_SERVER_URL || "http://localhost:8080"}/aliases`,
+          `${TEST_CONFIG.SERVER_URL}/aliases`,
         );
 
         if (response.ok) {
@@ -222,7 +223,7 @@ describe("Metadata API E2E Tests", () => {
       try {
         // Check if there's a refs endpoint
         const response = await fetch(
-          `${process.env.TEST_SERVER_URL || "http://localhost:8080"}/refs`,
+          `${TEST_CONFIG.SERVER_URL}/refs`,
         );
 
         if (response.ok) {

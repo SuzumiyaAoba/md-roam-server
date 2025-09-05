@@ -11,11 +11,12 @@ const nodeFileService = new NodeFileService(
 statsRouter.get("/stats", async (c) => {
   try {
     const result = nodeFileService.getStats();
-    return successResponse(
-      c,
-      "Statistics retrieved successfully",
-      result,
-    );
+    return c.json({
+      status: "success",
+      message: "Statistics retrieved successfully",
+      timestamp: new Date().toISOString(),
+      ...result, // Spread the stats directly into the response body
+    });
   } catch (error) {
     console.error("Error retrieving statistics:", error);
     return errorResponse(
@@ -63,7 +64,7 @@ statsRouter.post("/sync", async (c) => {
       nodes_found: allNodes.length,
       stats: stats
     };
-    return successResponse(c, "Database sync completed", result);
+    return successResponse(c, "Database sync completed", result, 201);
   } catch (error) {
     console.error("Error syncing database:", error);
     return errorResponse(

@@ -247,6 +247,21 @@ export class NodeFileService {
       
       writeFileSync(filePath, content, 'utf8');
       
+      // Verify file was created and is readable
+      if (!existsSync(filePath)) {
+        throw new Error(`Failed to create file: ${filePath}`);
+      }
+      
+      // Verify file content was written correctly
+      try {
+        const writtenContent = readFileSync(filePath, 'utf8');
+        if (!writtenContent || !writtenContent.includes(id)) {
+          throw new Error(`File content verification failed for ${filePath}`);
+        }
+      } catch (error) {
+        throw new Error(`File verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
       return {
         id,
         title: sanitizedData.title,
@@ -296,6 +311,16 @@ export class NodeFileService {
       
       writeFileSync(existingFile.path, newContent, 'utf8');
       
+      // Verify file was updated and is readable  
+      try {
+        const updatedContent = readFileSync(existingFile.path, 'utf8');
+        if (!updatedContent || !updatedContent.includes(id)) {
+          throw new Error(`File update verification failed for ${existingFile.path}`);
+        }
+      } catch (error) {
+        throw new Error(`Update verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
       return {
         ...existingFile,
         title: updatedData.title
@@ -337,10 +362,21 @@ export class NodeFileService {
       const filePath = join(this.orgRoamDir, file);
       const content = readFileSync(filePath, 'utf8');
       
-      // Check if file contains this ID
-      const hasId = content.includes(id);
+      // More precise ID matching - look for ID in proper metadata locations
+      let hasId = false;
+      const fileType = file.endsWith('.md') ? 'md' : 'org';
+      
+      if (fileType === 'md') {
+        // Look for id: "ID" in YAML front matter
+        const idMatch = content.match(/^id:\s*"?([^"]+)"?$/m);
+        hasId = idMatch && idMatch[1] === id;
+      } else {
+        // Look for :ID: ID in org properties
+        const idMatch = content.match(/^:ID:\s*(.+)$/m);
+        hasId = idMatch && idMatch[1].trim() === id;
+      }
+      
       if (hasId) {
-        const fileType = file.endsWith('.md') ? 'md' : 'org';
         const title = this.extractTitle(content, fileType);
         
         return {
@@ -396,6 +432,7 @@ export class NodeFileService {
     
     let inFrontMatter = false;
     let contentStart = 0;
+    let currentArrayField: 'tags' | 'aliases' | 'refs' | null = null;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -411,13 +448,40 @@ export class NodeFileService {
       }
       
       if (inFrontMatter) {
+        // Reset current array field if we hit a new field
+        if (!line.startsWith('  -') && !line.startsWith('    -')) {
+          currentArrayField = null;
+        }
+        
         if (line.startsWith('title:')) {
           data.title = line.replace('title:', '').trim().replace(/^"(.*)"$/, '$1');
         } else if (line.startsWith('category:')) {
           data.category = line.replace('category:', '').trim().replace(/^"(.*)"$/, '$1');
+        } else if (line.startsWith('tags:')) {
+          currentArrayField = 'tags';
+          data.tags = [];
+        } else if (line.startsWith('roam_aliases:')) {
+          currentArrayField = 'aliases';
+          data.aliases = [];
+        } else if (line.startsWith('roam_refs:')) {
+          currentArrayField = 'refs';
+          data.refs = [];
+        } else if (line.startsWith('  -') || line.startsWith('    -')) {
+          // Handle array items
+          const value = line.replace(/^\s*-\s*/, '').trim().replace(/^"(.*)"$/, '$1');
+          if (currentArrayField && value) {
+            if (!data[currentArrayField]) {
+              data[currentArrayField] = [];
+            }
+            data[currentArrayField]!.push(value);
+          }
         }
-        // Note: tags, aliases, refs are arrays - would need more complex parsing
       }
+    }
+    
+    // Handle case where there's no closing --- (malformed YAML)
+    if (inFrontMatter && contentStart === 0) {
+      contentStart = lines.length;
     }
     
     if (contentStart < lines.length) {
@@ -432,24 +496,93 @@ export class NodeFileService {
     const data: CreateNodeData = { title: "Untitled", file_type: "org" };
     
     let contentStart = 0;
+    let inProperties = false;
+    data.aliases = [];
+    data.refs = [];
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      
+      if (line === ':PROPERTIES:') {
+        inProperties = true;
+        continue;
+      } else if (line === ':END:') {
+        inProperties = false;
+        continue;
+      }
+      
+      if (inProperties) {
+        // Parse properties block - we don't typically store anything here for our use case
+        // The :ID: property is handled separately
+        continue;
+      }
       
       if (line.startsWith('#+title:')) {
         data.title = line.replace('#+title:', '').trim();
       } else if (line.startsWith('#+category:')) {
         data.category = line.replace('#+category:', '').trim();
       } else if (line.startsWith('#+filetags:')) {
-        data.tags = line.replace('#+filetags:', '').trim().split(/\s+/);
-      } else if (line === '' && i > 0 && !line.startsWith('#') && !line.startsWith(':')) {
-        contentStart = i + 1;
-        break;
+        const tagString = line.replace('#+filetags:', '').trim();
+        data.tags = tagString.split(/\s+/).filter(tag => tag.length > 0);
+      } else if (line.startsWith('#+roam_alias:')) {
+        const alias = line.replace('#+roam_alias:', '').trim();
+        if (alias && !data.aliases!.includes(alias)) {
+          data.aliases!.push(alias);
+        }
+      } else if (line.startsWith('#+roam_refs:')) {
+        const ref = line.replace('#+roam_refs:', '').trim();
+        if (ref && !data.refs!.includes(ref)) {
+          data.refs!.push(ref);
+        }
+      } else if (line === '' && i > 0) {
+        // Look for first empty line after metadata to find content start
+        // But make sure we're past all the metadata lines
+        let foundMetadata = false;
+        for (let j = 0; j < i; j++) {
+          const prevLine = lines[j].trim();
+          if (prevLine.startsWith(':PROPERTIES:') || prevLine.startsWith('#+')) {
+            foundMetadata = true;
+            break;
+          }
+        }
+        if (foundMetadata && contentStart === 0) {
+          contentStart = i + 1;
+          break;
+        }
+      }
+    }
+    
+    // Handle case where content starts immediately after the last metadata line
+    if (contentStart === 0) {
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith(':') || line.startsWith('#') || line === '') {
+          continue;
+        } else {
+          // Found first non-metadata, non-empty line from the end
+          // Search backwards to find where content actually starts
+          for (let j = 0; j <= i; j++) {
+            const checkLine = lines[j].trim();
+            if (!checkLine.startsWith(':') && !checkLine.startsWith('#') && checkLine !== '') {
+              contentStart = j;
+              break;
+            }
+          }
+          break;
+        }
       }
     }
     
     if (contentStart < lines.length) {
       data.content = lines.slice(contentStart).join('\n').trim();
+    }
+    
+    // Clean up empty arrays
+    if (data.aliases && data.aliases.length === 0) {
+      delete data.aliases;
+    }
+    if (data.refs && data.refs.length === 0) {
+      delete data.refs;
     }
     
     return data;
@@ -571,6 +704,10 @@ export class NodeFileService {
     total_nodes: number;
     total_tags: number;
     total_files: number;
+    total_aliases: number;
+    total_refs: number;
+    total_citations: number;
+    total_links: number;
     file_types: { md: number; org: number };
   } {
     const allNodes = this.getAllNodes();
@@ -583,11 +720,38 @@ export class NodeFileService {
       },
       { md: 0, org: 0 }
     );
+
+    // Calculate aliases, refs, citations, and links from all nodes
+    let totalAliases = 0;
+    let totalRefs = 0;
+    let totalCitations = 0;
+    let totalLinks = 0;
+
+    for (const node of allNodes) {
+      try {
+        const content = readFileSync(node.path, "utf8");
+        const { aliases, refs, citations } = this.extractMetadataFromContent(content, node.file_type);
+        totalAliases += aliases.length;
+        totalRefs += refs.length;
+        totalCitations += citations.length;
+        
+        // Count internal links (markdown-style [[link]] or org-mode [[link][description]])
+        const linkMatches = content.match(/\[\[([^\]]+)\]\]/g) || [];
+        totalLinks += linkMatches.length;
+      } catch (error) {
+        // Skip nodes with file read errors
+        console.warn(`Could not read metadata from ${node.path}:`, error);
+      }
+    }
     
     return {
       total_nodes: allNodes.length,
       total_tags: allTags.length,
       total_files: allNodes.length,
+      total_aliases: totalAliases,
+      total_refs: totalRefs,
+      total_citations: totalCitations,
+      total_links: totalLinks,
       file_types: fileTypeCounts
     };
   }
@@ -718,5 +882,41 @@ export class NodeFileService {
     } catch {
       return null;
     }
+  }
+
+  // Get raw file system information (without database metadata)
+  getRawFiles(): { file: string; path?: string; size?: number; mtime?: string }[] {
+    const fs = require('fs');
+    const rawFiles: { file: string; path?: string; size?: number; mtime?: string }[] = [];
+    
+    try {
+      const files = fs.readdirSync(this.orgRoamDir);
+      
+      for (const file of files) {
+        if (!file.endsWith('.md') && !file.endsWith('.org')) continue;
+        
+        try {
+          const filePath = join(this.orgRoamDir, file);
+          const stats = fs.statSync(filePath);
+          
+          rawFiles.push({
+            file,
+            path: filePath,
+            size: stats.size,
+            mtime: stats.mtime.toISOString()
+          });
+        } catch (error) {
+          // If we can't stat the file, at least return basic info
+          rawFiles.push({
+            file
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error reading directory:', error);
+      return [];
+    }
+    
+    return rawFiles;
   }
 }

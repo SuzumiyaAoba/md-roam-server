@@ -470,8 +470,8 @@ describe("Metadata Duplication Bug Investigation", () => {
       expect(titleMatches ? titleMatches.length : 0).toBe(1);
       expect(idMatches ? idMatches.length : 0).toBe(1);
 
-      // Verify title was updated
-      expect(content).toContain("title: Partially Updated Title");
+      // Verify title was updated (handles both quoted and unquoted formats)
+      expect(content).toMatch(/title:\s*"?Partially Updated Title"?/);
       expect(content).toContain("Partially updated content");
     }
 

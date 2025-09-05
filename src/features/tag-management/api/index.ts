@@ -11,11 +11,12 @@ const nodeFileService = new NodeFileService(
 tagRouter.get("/", async (c) => {
   try {
     const result = nodeFileService.getAllTags();
-    return successResponse(
-      c,
-      "Tags retrieved successfully",
-      result,
-    );
+    return c.json({
+      status: "success",
+      message: "Tags retrieved successfully",
+      tags: result,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
     console.error("Error retrieving tags:", error);
     return errorResponse(

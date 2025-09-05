@@ -138,8 +138,9 @@ export function expectNodeResponse(
   expectSuccessResponse(response);
 
   // Extract data from success response structure
-  const responseBody = response.body as { data?: NodeData };
-  const nodeData = responseBody.data as NodeData;
+  // Handle both nested (data field) and flattened response formats
+  const responseBody = response.body as { data?: NodeData } & NodeData;
+  const nodeData = responseBody.data || responseBody;
   
   expect(nodeData).toHaveProperty("id");
   expect(nodeData).toHaveProperty("title");
