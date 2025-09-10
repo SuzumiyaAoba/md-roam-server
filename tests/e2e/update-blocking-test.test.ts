@@ -46,7 +46,7 @@ describe("Update Blocking Prevention E2E Tests", () => {
         "Updated content after blocking test",
       );
       expect(contentResponse.body.content).toMatch(
-        /title:\s*"?Updated Blocking Test Node"?/
+        /title:\s*"?Updated Blocking Test Node"?/,
       );
     }, 30000); // 30 second timeout
 

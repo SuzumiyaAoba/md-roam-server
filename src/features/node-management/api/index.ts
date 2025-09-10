@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { EmacsClient } from "@/shared/api/emacs-client";
-import { NodeFileService, ValidationError, NotFoundError } from "@/shared/services/node-file-service";
 import {
   errorResponse,
   notFoundResponse,
@@ -13,49 +12,67 @@ import {
   UpdateNodeRequestSchema,
 } from "@/shared/lib/schemas";
 import { customValidator } from "@/shared/lib/validation";
+import {
+  NodeFileService,
+  NotFoundError,
+  ValidationError,
+} from "@/shared/services/node-file-service";
 
 const nodeRouter = new Hono();
 const emacsClient = new EmacsClient();
 
 // Initialize Node File Service with org-roam directory
 // Use the same path that the test configuration uses
-const orgRoamDir = process.env.ORG_ROAM_DIR || "/Users/suzumiyaaoba/ghq/github.com/SuzumiyaAoba/md-roam-server/tmp/org-roam";
+const orgRoamDir =
+  process.env["ORG_ROAM_DIR"] ||
+  "/Users/suzumiyaaoba/ghq/github.com/SuzumiyaAoba/md-roam-server/tmp/org-roam";
 const nodeFileService = new NodeFileService(orgRoamDir);
 
 // POST /nodes - Create new node
-nodeRouter.post("/", customValidator("json", CreateNodeRequestSchema), async (c) => {
-  try {
-    const nodeData = (c as any).validatedData?.json;
+nodeRouter.post(
+  "/",
+  customValidator("json", CreateNodeRequestSchema),
+  async (c) => {
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      const nodeData = (c as any).validatedData?.json;
 
-    // Create node using file service
-    const createdNode = nodeFileService.createNode(nodeData);
+      // Create node using file service
+      const createdNode = nodeFileService.createNode(nodeData);
 
-    return c.json({
-      status: "success",
-      message: "Node created successfully",
-      ...createdNode,
-      timestamp: new Date().toISOString(),
-    }, 201);
-  } catch (error) {
-    console.error("Error creating node:", error);
-    
-    if (error instanceof ValidationError) {
-      return c.json({
-        status: "error",
-        message: error.message,
-        error: error.errors?.join(", ") || error.message,
-        timestamp: new Date().toISOString(),
-      }, 400);
+      return c.json(
+        {
+          status: "success",
+          message: "Node created successfully",
+          ...createdNode,
+          timestamp: new Date().toISOString(),
+        },
+        201,
+      );
+    } catch (error) {
+      console.error("Error creating node:", error);
+
+      if (error instanceof ValidationError) {
+        return c.json(
+          {
+            status: "error",
+            message: error.message,
+            error: error.errors?.join(", ") || error.message,
+            timestamp: new Date().toISOString(),
+          },
+          400,
+        );
+      }
+
+      return errorResponse(
+        c,
+        "Failed to create node",
+        error instanceof Error ? error.message : "File system error",
+        500,
+      );
     }
-    
-    return errorResponse(
-      c,
-      "Failed to create node",
-      error instanceof Error ? error.message : "File system error",
-      500,
-    );
-  }
-});
+  },
+);
 
 // PUT /nodes/:id - Update node
 nodeRouter.put(
@@ -64,7 +81,10 @@ nodeRouter.put(
   customValidator("json", UpdateNodeRequestSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
       const updateData = (c as any).validatedData?.json;
 
       // Update node using file service
@@ -79,24 +99,30 @@ nodeRouter.put(
       });
     } catch (error) {
       console.error("Error updating node:", error);
-      
+
       if (error instanceof ValidationError) {
-        return c.json({
-          status: "error",
-          message: error.message,
-          error: error.errors?.join(", ") || error.message,
-          timestamp: new Date().toISOString(),
-        }, 400);
+        return c.json(
+          {
+            status: "error",
+            message: error.message,
+            error: error.errors?.join(", ") || error.message,
+            timestamp: new Date().toISOString(),
+          },
+          400,
+        );
       }
-      
+
       if (error instanceof NotFoundError) {
-        return c.json({
-          status: "error",
-          message: error.message,
-          timestamp: new Date().toISOString(),
-        }, 404);
+        return c.json(
+          {
+            status: "error",
+            message: error.message,
+            timestamp: new Date().toISOString(),
+          },
+          404,
+        );
       }
-      
+
       return errorResponse(
         c,
         "Failed to update node",
@@ -108,46 +134,54 @@ nodeRouter.put(
 );
 
 // DELETE /nodes/:id - Delete node
-nodeRouter.delete("/:id", customValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = (c as any).validatedData?.param;
+nodeRouter.delete(
+  "/:id",
+  customValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
+      const { id: nodeId } = (c as any).validatedData?.param;
 
-    // Delete node using file service
-    nodeFileService.deleteNode(nodeId);
+      // Delete node using file service
+      nodeFileService.deleteNode(nodeId);
 
-    return successResponse(
-      c,
-      "Node deleted successfully",
-      { id: nodeId },
-    );
-  } catch (error) {
-    console.error("Error deleting node:", error);
-    
-    if (error instanceof ValidationError) {
-      return c.json({
-        status: "error",
-        message: error.message,
-        error: error.errors?.join(", ") || error.message,
-        timestamp: new Date().toISOString(),
-      }, 400);
+      return successResponse(c, "Node deleted successfully", { id: nodeId });
+    } catch (error) {
+      console.error("Error deleting node:", error);
+
+      if (error instanceof ValidationError) {
+        return c.json(
+          {
+            status: "error",
+            message: error.message,
+            error: error.errors?.join(", ") || error.message,
+            timestamp: new Date().toISOString(),
+          },
+          400,
+        );
+      }
+
+      if (error instanceof NotFoundError) {
+        return c.json(
+          {
+            status: "error",
+            message: error.message,
+            timestamp: new Date().toISOString(),
+          },
+          404,
+        );
+      }
+
+      return errorResponse(
+        c,
+        "Failed to delete node",
+        error instanceof Error ? error.message : "File system error",
+        500,
+      );
     }
-    
-    if (error instanceof NotFoundError) {
-      return c.json({
-        status: "error",
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      }, 404);
-    }
-    
-    return errorResponse(
-      c,
-      "Failed to delete node",
-      error instanceof Error ? error.message : "File system error",
-      500,
-    );
-  }
-});
+  },
+);
 
 // POST /nodes/:id/tags - Add tag to node
 nodeRouter.post(
@@ -161,7 +195,12 @@ nodeRouter.post(
   ),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { tag } = (c as any).validatedData?.json;
 
       // Delegate tag addition to Emacs server
@@ -204,6 +243,8 @@ nodeRouter.delete(
   ),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId, tag } = (c as any).validatedData?.param;
 
       // Delegate tag removal to Emacs server
@@ -250,7 +291,11 @@ nodeRouter.post(
   ),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { category } = (c as any).validatedData?.json;
 
       // Delegate category addition to Emacs server
@@ -293,6 +338,8 @@ nodeRouter.delete(
   ),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId, category } = (c as any).validatedData?.param;
 
       // Delegate category removal to Emacs server
@@ -331,11 +378,7 @@ nodeRouter.delete(
 nodeRouter.get("/", async (c) => {
   try {
     const nodes = nodeFileService.getAllNodes();
-    return successResponse(
-      c,
-      "Nodes retrieved successfully",
-      nodes,
-    );
+    return successResponse(c, "Nodes retrieved successfully", nodes);
   } catch (error) {
     console.error("Error retrieving nodes:", error);
     return errorResponse(
@@ -347,37 +390,45 @@ nodeRouter.get("/", async (c) => {
   }
 });
 
-nodeRouter.get("/:id", customValidator("param", NodeIdParamSchema), async (c) => {
-  try {
-    const { id: nodeId } = (c as any).validatedData?.param;
-    const node = nodeFileService.getNode(nodeId);
+nodeRouter.get(
+  "/:id",
+  customValidator("param", NodeIdParamSchema),
+  async (c) => {
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
+      const { id: nodeId } = (c as any).validatedData?.param;
+      const node = nodeFileService.getNode(nodeId);
 
-    if (!node) {
-      return notFoundResponse(c, "Node");
+      if (!node) {
+        return notFoundResponse(c, "Node");
+      }
+
+      return c.json({
+        status: "success",
+        message: "Node retrieved successfully",
+        ...node,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error retrieving node:", error);
+      return errorResponse(
+        c,
+        "Failed to retrieve node",
+        error instanceof Error ? error.message : "File system error",
+        500,
+      );
     }
-
-    return c.json({
-      status: "success",
-      message: "Node retrieved successfully",
-      ...node,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Error retrieving node:", error);
-    return errorResponse(
-      c,
-      "Failed to retrieve node",
-      error instanceof Error ? error.message : "File system error",
-      500,
-    );
-  }
-});
+  },
+);
 
 nodeRouter.get(
   "/:id/content",
   customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
       const content = nodeFileService.getNodeContent(nodeId);
 
@@ -409,6 +460,8 @@ nodeRouter.get(
   customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
       const backlinks = nodeFileService.getNodeBacklinks(nodeId);
 
@@ -434,14 +487,12 @@ nodeRouter.get(
   customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
       const links = nodeFileService.getNodeLinks(nodeId);
 
-      return successResponse(
-        c,
-        "Node links retrieved successfully",
-        links,
-      );
+      return successResponse(c, "Node links retrieved successfully", links);
     } catch (error) {
       console.error("Error retrieving node links:", error);
       return errorResponse(
@@ -459,14 +510,12 @@ nodeRouter.get(
   customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
       const aliases = nodeFileService.getNodeAliases(nodeId);
 
-      return successResponse(
-        c,
-        "Node aliases retrieved successfully",
-        aliases,
-      );
+      return successResponse(c, "Node aliases retrieved successfully", aliases);
     } catch (error) {
       console.error("Error retrieving node aliases:", error);
       return errorResponse(
@@ -484,14 +533,12 @@ nodeRouter.get(
   customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
       const refs = nodeFileService.getNodeRefs(nodeId);
 
-      return successResponse(
-        c,
-        "Node refs retrieved successfully",
-        refs,
-      );
+      return successResponse(c, "Node refs retrieved successfully", refs);
     } catch (error) {
       console.error("Error retrieving node refs:", error);
       return errorResponse(
@@ -509,6 +556,8 @@ nodeRouter.get(
   customValidator("param", NodeIdParamSchema),
   async (c) => {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: Required for Hono validation data access
+      // biome-ignore lint/correctness/noUnsafeOptionalChaining: Validated in middleware
       const { id: nodeId } = (c as any).validatedData?.param;
       const parsed = nodeFileService.parseNode(nodeId);
 
@@ -516,11 +565,7 @@ nodeRouter.get(
         return notFoundResponse(c, "Node");
       }
 
-      return successResponse(
-        c,
-        "Node parsed successfully",
-        parsed,
-      );
+      return successResponse(c, "Node parsed successfully", parsed);
     } catch (error) {
       console.error("Error parsing node:", error);
       return errorResponse(

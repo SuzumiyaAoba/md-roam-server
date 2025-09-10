@@ -188,9 +188,7 @@ describe("Metadata API E2E Tests", () => {
     it("should support alias queries (if endpoint exists)", async () => {
       try {
         // Check if there's an aliases endpoint
-        const response = await fetch(
-          `${TEST_CONFIG.SERVER_URL}/aliases`,
-        );
+        const response = await fetch(`${TEST_CONFIG.SERVER_URL}/aliases`);
 
         if (response.ok) {
           const data = await response.json();
@@ -222,9 +220,7 @@ describe("Metadata API E2E Tests", () => {
     it("should support reference queries (if endpoint exists)", async () => {
       try {
         // Check if there's a refs endpoint
-        const response = await fetch(
-          `${TEST_CONFIG.SERVER_URL}/refs`,
-        );
+        const response = await fetch(`${TEST_CONFIG.SERVER_URL}/refs`);
 
         if (response.ok) {
           const data = await response.json();

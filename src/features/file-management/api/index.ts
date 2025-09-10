@@ -1,20 +1,20 @@
 import { Hono } from "hono";
+import { errorResponse } from "@/shared/lib/response";
 import { NodeFileService } from "@/shared/services/node-file-service";
-import { errorResponse, successResponse } from "@/shared/lib/response";
 
 const fileRouter = new Hono();
 const nodeFileService = new NodeFileService(
-  process.env.ORG_ROAM_DIRECTORY || "./tmp/org-roam"
+  process.env["ORG_ROAM_DIRECTORY"] || "./tmp/org-roam",
 );
 
 // GET /files - Get all files with database info
 fileRouter.get("/", async (c) => {
   try {
     const nodes = nodeFileService.getAllNodes();
-    const fs = require('fs');
-    
+    const fs = require("node:fs");
+
     // Enhance nodes with file system stats
-    const filesWithStats = nodes.map(node => {
+    const filesWithStats = nodes.map((node) => {
       try {
         const stats = fs.statSync(node.path);
         return {
@@ -23,19 +23,19 @@ fileRouter.get("/", async (c) => {
           title: node.title,
           path: node.path,
           size: stats.size,
-          mtime: stats.mtime.toISOString()
+          mtime: stats.mtime.toISOString(),
         };
-      } catch (error) {
+      } catch (_error) {
         // Return node without stats if file can't be read
         return {
           id: node.id,
           file: node.file,
           title: node.title,
-          path: node.path
+          path: node.path,
         };
       }
     });
-    
+
     return c.json({
       status: "success",
       message: "Files retrieved successfully",
@@ -60,7 +60,7 @@ fileRouter.get("/raw", async (c) => {
     const result = nodeFileService.getRawFiles();
     return c.json({
       status: "success",
-      message: "Raw files retrieved successfully", 
+      message: "Raw files retrieved successfully",
       files: result,
       timestamp: new Date().toISOString(),
     });

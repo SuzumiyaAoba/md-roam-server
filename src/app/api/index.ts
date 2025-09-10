@@ -16,65 +16,87 @@ const app = new Hono();
 // Global error handler for JSON parsing and other errors
 app.onError((err, c) => {
   console.error("API Error:", err);
-  
+
   if (err instanceof HTTPException) {
     // Check if this is a zod validation error
     if (err.status === 400 && err.message.includes("Validation")) {
-      return c.json({
-        status: "error",
-        message: "Validation failed",
-        error: err.message,
-        timestamp: new Date().toISOString(),
-      }, 400);
+      return c.json(
+        {
+          status: "error",
+          message: "Validation failed",
+          error: err.message,
+          timestamp: new Date().toISOString(),
+        },
+        400,
+      );
     }
-    
-    return c.json({
-      status: "error",
-      message: err.message,
-      timestamp: new Date().toISOString(),
-    }, err.status);
+
+    return c.json(
+      {
+        status: "error",
+        message: err.message,
+        timestamp: new Date().toISOString(),
+      },
+      err.status,
+    );
   }
 
   // Handle JSON parsing errors
-  if (err.message?.includes("Unexpected token") || 
-      err.message?.includes("JSON") || 
-      err.name === "SyntaxError") {
-    return c.json({
-      status: "error",
-      message: "Invalid JSON format",
-      error: "Request body must be valid JSON",
-      timestamp: new Date().toISOString(),
-    }, 400);
+  if (
+    err.message?.includes("Unexpected token") ||
+    err.message?.includes("JSON") ||
+    err.name === "SyntaxError"
+  ) {
+    return c.json(
+      {
+        status: "error",
+        message: "Invalid JSON format",
+        error: "Request body must be valid JSON",
+        timestamp: new Date().toISOString(),
+      },
+      400,
+    );
   }
 
   // Handle content-type errors
-  if (err.message?.includes("Content-Type") || 
-      err.message?.includes("content-type")) {
-    return c.json({
-      status: "error",
-      message: "Invalid content type",
-      error: "Content-Type must be application/json",
-      timestamp: new Date().toISOString(),
-    }, 400);
+  if (
+    err.message?.includes("Content-Type") ||
+    err.message?.includes("content-type")
+  ) {
+    return c.json(
+      {
+        status: "error",
+        message: "Invalid content type",
+        error: "Content-Type must be application/json",
+        timestamp: new Date().toISOString(),
+      },
+      400,
+    );
   }
 
   // Generic server error
-  return c.json({
-    status: "error",
-    message: "Internal server error",
-    error: err.message || "Unknown error",
-    timestamp: new Date().toISOString(),
-  }, 500);
+  return c.json(
+    {
+      status: "error",
+      message: "Internal server error",
+      error: err.message || "Unknown error",
+      timestamp: new Date().toISOString(),
+    },
+    500,
+  );
 });
 
 // Custom 404 handler to ensure JSON response
 app.notFound((c) => {
-  return c.json({
-    status: "error",
-    message: "Not found",
-    error: "The requested resource was not found",
-    timestamp: new Date().toISOString(),
-  }, 404);
+  return c.json(
+    {
+      status: "error",
+      message: "Not found",
+      error: "The requested resource was not found",
+      timestamp: new Date().toISOString(),
+    },
+    404,
+  );
 });
 
 // Health check endpoint

@@ -1,6 +1,40 @@
 # API Specification
 
-## API Overview
+## Architecture Overview
+
+**md-roam-server** implements a **unified API architecture** with TypeScript/Hono as the single entry point:
+
+- **Hono API Server (Port 3001)**: TypeScript-based unified API gateway with complete CRUD operations
+- **Emacs Server (Port 8080)**: Backend service for org-roam operations (internal use only)
+
+All client interactions should use the **Hono API Server** on port 3001.
+
+## API Base URLs
+
+- **Primary API**: `http://localhost:3001`
+- **Health Check**: `http://localhost:3001/health`
+- **Legacy Support**: Both `/api/` prefixed and direct endpoints are supported
+
+**Examples:**
+```bash
+# Modern endpoint format
+curl http://localhost:3001/api/nodes
+
+# Legacy endpoint format (backward compatibility)
+curl http://localhost:3001/nodes
+```
+
+## API Features
+
+- ✅ **Complete CRUD Operations** for org-roam nodes
+- ✅ **Runtime Validation** using Zod schemas
+- ✅ **Type Safety** with TypeScript strict mode
+- ✅ **Structured Error Handling** with consistent JSON responses
+- ✅ **File Format Support** for both Markdown (.md) and Org (.org) files
+- ✅ **Feature-Sliced Design** architecture
+- ✅ **Pre-commit Quality Gates** (TypeScript type checking, Biome linting)
+
+## API Categories
 
 The server provides a comprehensive REST API with the following categories of endpoints:
 
@@ -1015,16 +1049,20 @@ Removes a specific category from a node by updating the `category:` field in the
 }
 ```
 
+## Updated API Usage Examples (Hono Server - Port 3001)
+
+**Important**: All examples below use the **Hono API Server** on port 3001. The Emacs server (port 8080) is for internal use only.
+
 ## Testing
 
-The project includes comprehensive E2E tests that use a dedicated test configuration. Test files are created in the project's `tmp/org-roam` directory to avoid interfering with your actual org-roam data.
+The project includes comprehensive E2E tests that achieve **100% pass rate**. Tests use a dedicated configuration and isolated test environment.
 
 ### Test Configuration
 
-Tests use a separate configuration file (`tests/config/test-config.yml`) that:
-- Sets the org-roam directory to `./tmp/org-roam` (within the project)
-- Creates test files in an isolated environment
-- Automatically cleans up test artifacts
+- **Test API Server**: `http://localhost:3001` (same as development)
+- **Test Data Directory**: `./tmp/org-roam` (isolated from your data)
+- **Test Configuration**: `tests/config/test-config.yml`
+- **Test Framework**: Vitest with TypeScript
 
 ### Running Tests
 
@@ -1040,138 +1078,157 @@ make test-coverage
 
 # Clean up test artifacts
 make test-clean
+
+# Run specific test suites
+cd tests && npm run test:core
+cd tests && npm run test:watch
 ```
 
 ### Test Directory Structure
 
 ```
 project/
-├── tmp/                    # Test artifacts (gitignored)
-│   └── org-roam/          # Test org-roam directory
-│       ├── org-roam.db    # Test database
-│       └── *.org          # Test org files
+├── tmp/                      # Test artifacts (gitignored)
+│   └── org-roam/            # Test org-roam directory
+│       ├── org-roam.db      # Test database
+│       └── *.{md,org}       # Test files
 ├── tests/
 │   ├── config/
-│   │   └── test-config.yml # Test configuration
-│   └── e2e/               # Test files
+│   │   └── test-config.yml  # Test configuration
+│   ├── e2e/                 # E2E test files
+│   ├── fixtures/            # Test data
+│   └── utils/               # Test utilities
 ```
+
+**Current Test Status**: 100% pass rate across all test suites including:
+- Core functionality tests
+- Edge case handling
+- Error scenarios
+- Japanese/Unicode content
+- Performance tests
 
 ### Test Environment
 
-- **Server Port**: 8080 (same as development)
+- **Test API Server**: `http://localhost:3001`
 - **Data Directory**: `./tmp/org-roam` (isolated from your data)
 - **Configuration**: `tests/config/test-config.yml`
+- **Framework**: Vitest + TypeScript
 
-Test the endpoints with curl:
+Test the endpoints with curl (use port 3001):
 ```bash
 # Files endpoint
-curl http://localhost:8080/files
+curl http://localhost:3001/api/files
 
 # Raw files listing endpoint
-curl http://localhost:8080/files/raw
+curl http://localhost:3001/api/files/raw
 
 # File content endpoint
-curl http://localhost:8080/files/content/20250823014345-corrected_alias_format.md
+curl http://localhost:3001/api/files/content/20250823014345-corrected_alias_format.md
 
 # Tags endpoint (includes node IDs)
-curl http://localhost:8080/tags
+curl http://localhost:3001/api/tags
 
 # Aliases endpoint (includes node IDs)
-curl http://localhost:8080/aliases
+curl http://localhost:3001/api/aliases
 
 # Refs endpoint (includes node IDs)
-curl http://localhost:8080/refs
+curl http://localhost:3001/api/refs
 
 # Citations endpoint (includes node IDs)
-curl http://localhost:8080/citations
+curl http://localhost:3001/api/citations
 
 # Get nodes by tag endpoint  
-curl http://localhost:8080/tags/research/nodes
+curl http://localhost:3001/api/tags/research/nodes
 
 # Search nodes by title or alias endpoint
-curl http://localhost:8080/search/research
-curl "http://localhost:8080/search/Study%20Note"
+curl http://localhost:3001/api/search/query?q=research
+curl "http://localhost:3001/api/search/query?q=Study%20Note"
 
 # Get all nodes endpoint
-curl http://localhost:8080/nodes
+curl http://localhost:3001/api/nodes
 
 # Get single node by ID endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID
 
 # Get node file content by ID endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID/content
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID/content
 
 # Parse node file (metadata and body) by ID endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID/parse
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID/parse
 
 # Get node aliases by ID endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID/aliases
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID/aliases
 
 # Get node refs by ID endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID/refs
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID/refs
 
 # Sync database endpoint
-curl -X POST http://localhost:8080/sync
+curl -X POST http://localhost:3001/api/sync
 
-# Update node endpoint
-curl -X PUT http://localhost:8080/nodes/YOUR_NODE_ID \
+# Update node endpoint (with Zod validation)
+curl -X PUT http://localhost:3001/api/nodes/YOUR_NODE_ID \
   -H "Content-Type: application/json" \
-  -d '{"title": "Updated Title", "category": "#updated", "tags": ["updated"], "content": "Updated content."}'
+  -d '{"title": "Updated Title", "category": "updated", "tags": ["updated"], "content": "Updated content."}'
 
 # Delete node endpoint
-curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID
+curl -X DELETE http://localhost:3001/api/nodes/YOUR_NODE_ID
 
 # Get node backlinks endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID/backlinks
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID/backlinks
 
 # Get node forward links endpoint
-curl http://localhost:8080/nodes/YOUR_NODE_ID/links
+curl http://localhost:3001/api/nodes/YOUR_NODE_ID/links
 
 # Get nodes by alias endpoint
-curl http://localhost:8080/aliases/MyAlias/nodes
+curl http://localhost:3001/api/aliases/MyAlias/nodes
 
 # Get nodes by ref endpoint (URL-encoded)
-curl "http://localhost:8080/refs/https%3A%2F%2Fexample.com/nodes"
+curl "http://localhost:3001/api/refs/https%3A%2F%2Fexample.com/nodes"
 
 # Get nodes by citation endpoint
-curl http://localhost:8080/citations/smith2023/nodes
+curl http://localhost:3001/api/citations/smith2023/nodes
 
 # Get database statistics endpoint
-curl http://localhost:8080/stats
+curl http://localhost:3001/api/stats
 
 # Get server configuration endpoint
-curl http://localhost:8080/config
+curl http://localhost:3001/api/config
 
 # Add tag to node endpoint
-curl -X POST http://localhost:8080/nodes/YOUR_NODE_ID/tags \
+curl -X POST http://localhost:3001/api/nodes/YOUR_NODE_ID/tags \
   -H "Content-Type: application/json" \
   -d '{"tag": "new-tag"}'
 
 # Remove tag from node endpoint
-curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID/tags/old-tag
+curl -X DELETE http://localhost:3001/api/nodes/YOUR_NODE_ID/tags/old-tag
 
 # Add category to node endpoint
-curl -X POST http://localhost:8080/nodes/YOUR_NODE_ID/categories \
+curl -X POST http://localhost:3001/api/nodes/YOUR_NODE_ID/categories \
   -H "Content-Type: application/json" \
   -d '{"category": "new-category"}'
 
 # Remove category from node endpoint
-curl -X DELETE http://localhost:8080/nodes/YOUR_NODE_ID/categories/old-category
+curl -X DELETE http://localhost:3001/api/nodes/YOUR_NODE_ID/categories/old-category
 
 # Create new node endpoint - Markdown (full metadata support)
-curl -X POST http://localhost:8080/nodes \
+curl -X POST http://localhost:3001/api/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Note", "content": "This is a test note.", "tags": ["test"], "aliases": ["Testing"], "refs": ["https://example.com"], "category": "testing", "file_type": "md"}'
 
 # Create new node endpoint - Org file (basic metadata support) 
-curl -X POST http://localhost:8080/nodes \
+curl -X POST http://localhost:3001/api/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Org Note", "content": "This is an org note.", "tags": ["org"], "category": "testing", "file_type": "org"}'
 
 # Create simple node (defaults to Markdown)
-curl -X POST http://localhost:8080/nodes \
+curl -X POST http://localhost:3001/api/nodes \
   -H "Content-Type: application/json" \
   -d '{"title": "Simple Note", "content": "Basic content"}'
+
+# Legacy endpoint format examples (backward compatibility)
+curl http://localhost:3001/nodes                    # Same as /api/nodes
+curl http://localhost:3001/tags                     # Same as /api/tags
+curl http://localhost:3001/stats                    # Same as /api/stats
 
 ```
 

@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -33,16 +33,16 @@ export async function setup() {
     }
 
     // Start both servers with test configuration
-    const env = { 
-      ...process.env, 
+    const env = {
+      ...process.env,
       MD_ROAM_CONFIG_FILE: testConfigPath,
       API_PORT: "3001",
-      EMACS_SERVER_URL: "http://localhost:8080"
+      EMACS_SERVER_URL: "http://localhost:8080",
     };
-    
+
     // First start the Emacs server on port 8080 using start.sh
     console.log("🔧 Starting Emacs server on port 8080...");
-    
+
     const emacsStartProcess = spawn("bash", ["./start.sh"], {
       cwd: projectRoot,
       env: { ...env, MD_ROAM_CONFIG_FILE: testConfigPath },
@@ -59,20 +59,20 @@ export async function setup() {
           reject(new Error(`Emacs server failed to start with code ${code}`));
         }
       });
-      
+
       emacsStartProcess.on("error", (error) => {
         reject(error);
       });
     });
-    
+
     // Give Emacs server a moment to be ready
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     // Then start the Hono API server on port 3001
     console.log("🔧 Starting Hono API server on port 3001...");
     console.log("Debug - Environment variables:", {
       API_PORT: env.API_PORT,
-      EMACS_SERVER_URL: env.EMACS_SERVER_URL
+      EMACS_SERVER_URL: env.EMACS_SERVER_URL,
     });
     serverProcess = spawn("bun", ["--watch", "src/app/api/index.ts"], {
       cwd: projectRoot,
@@ -112,30 +112,30 @@ export async function teardown() {
 
   try {
     // Stop server
-    if (serverProcess && serverProcess.pid && !serverProcess.killed) {
+    if (serverProcess?.pid && !serverProcess.killed) {
       console.log("🔧 Terminating server process...");
       serverProcess.kill("SIGTERM");
-      
+
       // Wait a bit for graceful shutdown
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Force kill if still running
       if (serverProcess.pid && !serverProcess.killed) {
         console.log("🔧 Force killing server process...");
         serverProcess.kill("SIGKILL");
       }
-      
+
       serverProcess = null;
     }
 
     // Also stop Emacs daemon
     console.log("🔧 Stopping Emacs daemon...");
-    const stopProcess = spawn("bash", ["./stop.sh"], {
+    const _stopProcess = spawn("bash", ["./stop.sh"], {
       cwd: join(process.cwd(), ".."),
       stdio: "pipe",
     });
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     console.log("✅ Server stopped successfully");
   } catch (error) {
@@ -155,22 +155,26 @@ async function checkServerHealth(): Promise<boolean> {
 
 async function waitForServer(maxAttempts = 45, delayMs = 1000): Promise<void> {
   console.log("⏳ Waiting for server to be ready...");
-  
+
   for (let i = 0; i < maxAttempts; i++) {
     try {
       if (await checkServerHealth()) {
         console.log(`✅ Server is ready after ${i + 1} attempts`);
         return;
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore connection errors while waiting
     }
-    
+
     if (i % 5 === 0 && i > 0) {
-      console.log(`⏳ Still waiting for server... (attempt ${i + 1}/${maxAttempts})`);
+      console.log(
+        `⏳ Still waiting for server... (attempt ${i + 1}/${maxAttempts})`,
+      );
     }
-    
+
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  throw new Error(`Server failed to start within ${maxAttempts * delayMs / 1000} seconds`);
+  throw new Error(
+    `Server failed to start within ${(maxAttempts * delayMs) / 1000} seconds`,
+  );
 }

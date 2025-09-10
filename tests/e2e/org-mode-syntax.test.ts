@@ -107,7 +107,9 @@ describe("Org-mode Syntax Comprehensive Test", () => {
 
     // 日本語コンテンツが正しく保存されていることを確認
     expect(retrievedContent).toContain("メインタイトル");
-    expect(retrievedContent).toContain("これはorg-modeの構文テストドキュメントです。");
+    expect(retrievedContent).toContain(
+      "これはorg-modeの構文テストドキュメントです。",
+    );
 
     console.log("=== ORG-MODE COMPREHENSIVE SYNTAX TEST COMPLETED ===");
 

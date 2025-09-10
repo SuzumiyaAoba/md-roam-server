@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { NodeFileService } from "@/shared/services/node-file-service";
 import { errorResponse, successResponse } from "@/shared/lib/response";
+import { NodeFileService } from "@/shared/services/node-file-service";
 
 const tagRouter = new Hono();
 const nodeFileService = new NodeFileService(
-  process.env.ORG_ROAM_DIRECTORY || "./tmp/org-roam"
+  process.env["ORG_ROAM_DIRECTORY"] || "./tmp/org-roam",
 );
 
 // GET / - Get all tags
@@ -33,11 +33,7 @@ tagRouter.get("/:tag/nodes", async (c) => {
   try {
     const tag = c.req.param("tag");
     const result = nodeFileService.getNodesByTag(tag);
-    return successResponse(
-      c,
-      "Tagged nodes retrieved successfully",
-      result,
-    );
+    return successResponse(c, "Tagged nodes retrieved successfully", result);
   } catch (error) {
     console.error("Error retrieving tagged nodes:", error);
     return errorResponse(

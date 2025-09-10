@@ -1,12 +1,12 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { NodeFileService } from "@/shared/services/node-file-service";
 import { errorResponse, successResponse } from "@/shared/lib/response";
+import { NodeFileService } from "@/shared/services/node-file-service";
 
 const searchRouter = new Hono();
 const nodeFileService = new NodeFileService(
-  process.env.ORG_ROAM_DIRECTORY || "./tmp/org-roam"
+  process.env["ORG_ROAM_DIRECTORY"] || "./tmp/org-roam",
 );
 
 // GET /tags/:tag/nodes - Get nodes by tag (define specific routes first)
@@ -22,11 +22,7 @@ searchRouter.get(
     try {
       const { tag } = c.req.valid("param");
       const result = nodeFileService.getNodesByTag(tag);
-      return successResponse(
-        c,
-        "Tagged nodes retrieved successfully",
-        result,
-      );
+      return successResponse(c, "Tagged nodes retrieved successfully", result);
     } catch (error) {
       console.error("Error retrieving tagged nodes:", error);
       return errorResponse(
@@ -50,15 +46,11 @@ searchRouter.get(
   ),
   async (c) => {
     try {
-      const { alias } = c.req.valid("param");
+      const { alias: _alias } = c.req.valid("param");
       // For now, return empty array since we don't have alias search implemented
       // TODO: Implement alias search in NodeFileService
-      const result: any[] = [];
-      return successResponse(
-        c,
-        "Aliased nodes retrieved successfully",
-        result,
-      );
+      const result: unknown[] = [];
+      return successResponse(c, "Aliased nodes retrieved successfully", result);
     } catch (error) {
       console.error("Error retrieving aliased nodes:", error);
       return errorResponse(
@@ -82,10 +74,10 @@ searchRouter.get(
   ),
   async (c) => {
     try {
-      const { ref } = c.req.valid("param");
+      const { ref: _ref } = c.req.valid("param");
       // For now, return empty array since we don't have ref search implemented
       // TODO: Implement ref search in NodeFileService
-      const result: any[] = [];
+      const result: unknown[] = [];
       return successResponse(
         c,
         "Referenced nodes retrieved successfully",
@@ -114,10 +106,10 @@ searchRouter.get(
   ),
   async (c) => {
     try {
-      const { citation } = c.req.valid("param");
+      const { citation: _citation } = c.req.valid("param");
       // For now, return empty array since we don't have citation search implemented
       // TODO: Implement citation search in NodeFileService
-      const result: any[] = [];
+      const result: unknown[] = [];
       return successResponse(
         c,
         "Citation nodes retrieved successfully",
@@ -141,17 +133,20 @@ searchRouter.get("/:query", async (c) => {
     const query = c.req.param("query");
 
     // Handle empty query - return 400 as expected by tests
-    if (!query || query.trim() === '') {
-      return c.json({
-        status: "error",
-        message: "Search query cannot be empty",
-        error: "Search query parameter is required",
-        timestamp: new Date().toISOString(),
-      }, 400);
+    if (!query || query.trim() === "") {
+      return c.json(
+        {
+          status: "error",
+          message: "Search query cannot be empty",
+          error: "Search query parameter is required",
+          timestamp: new Date().toISOString(),
+        },
+        400,
+      );
     }
 
     const results = nodeFileService.searchNodes(query);
-    
+
     // Return flattened structure expected by tests
     return c.json({
       status: "success",
@@ -163,12 +158,15 @@ searchRouter.get("/:query", async (c) => {
     });
   } catch (error) {
     console.error("Error searching nodes:", error);
-    return c.json({
-      status: "error",
-      message: "Failed to search nodes",
-      error: error instanceof Error ? error.message : "File system error",
-      timestamp: new Date().toISOString(),
-    }, 500);
+    return c.json(
+      {
+        status: "error",
+        message: "Failed to search nodes",
+        error: error instanceof Error ? error.message : "File system error",
+        timestamp: new Date().toISOString(),
+      },
+      500,
+    );
   }
 });
 
@@ -178,22 +176,21 @@ searchRouter.get("/", async (c) => {
   const path = c.req.path;
   if (path === "/search/" || path === "/api/search/") {
     // Handle empty search query - return 400 as expected by tests
-    return c.json({
-      status: "error",
-      message: "Search query cannot be empty",
-      error: "Search query parameter is required",
-      timestamp: new Date().toISOString(),
-    }, 400);
+    return c.json(
+      {
+        status: "error",
+        message: "Search query cannot be empty",
+        error: "Search query parameter is required",
+        timestamp: new Date().toISOString(),
+      },
+      400,
+    );
   }
-  
+
   // Otherwise, return all tags
   try {
     const result = nodeFileService.getAllTags();
-    return successResponse(
-      c,
-      "Tags retrieved successfully",
-      result,
-    );
+    return successResponse(c, "Tags retrieved successfully", result);
   } catch (error) {
     console.error("Error retrieving tags:", error);
     return errorResponse(

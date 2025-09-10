@@ -141,7 +141,7 @@ export function expectNodeResponse(
   // Handle both nested (data field) and flattened response formats
   const responseBody = response.body as { data?: NodeData } & NodeData;
   const nodeData = responseBody.data || responseBody;
-  
+
   expect(nodeData).toHaveProperty("id");
   expect(nodeData).toHaveProperty("title");
   expect(nodeData).toHaveProperty("file");
