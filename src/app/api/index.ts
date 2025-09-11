@@ -130,7 +130,7 @@ app.route("/", statsRouter); // Mount statsRouter at root to handle /stats, /con
 
 const port = process.env["API_PORT"]
   ? Number.parseInt(process.env["API_PORT"], 10)
-  : 8080;
+  : 3001;
 
 console.log(`🚀 MD-Roam Server API starting on port ${port}`);
 

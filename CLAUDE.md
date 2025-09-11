@@ -148,9 +148,9 @@ make shell           # Open shell in running container
 
 **Basic Testing:**
 ```bash
-curl http://localhost:8080/stats
-curl http://localhost:8080/nodes
-curl http://localhost:3001/health
+curl http://localhost:8080/stats  # Emacs server (backend)
+curl http://localhost:3001/nodes  # Hono API server (main API)
+curl http://localhost:3001/health # Hono API server health check
 ```
 
 ### Hono API Development
@@ -180,10 +180,10 @@ bun run typecheck      # TypeScript type checking (runs in pre-commit)
 
 **Unified API Testing:**
 ```bash
-# Health check
+# Health check (Hono API server - main interface)
 curl http://localhost:3001/health
 
-# All operations through unified Hono API server (port 3001)
+# All operations through unified Hono API server (port 3001 - main interface)
 # Node CRUD operations
 curl -X POST http://localhost:3001/api/nodes \
   -H "Content-Type: application/json" \
@@ -208,7 +208,7 @@ curl http://localhost:3001/api/tags
 curl http://localhost:3001/api/stats
 curl http://localhost:3001/api/files
 
-# Legacy endpoint compatibility
+# Legacy endpoint compatibility (Hono API server - port 3001)
 curl http://localhost:3001/nodes
 curl http://localhost:3001/tags  
 curl http://localhost:3001/stats

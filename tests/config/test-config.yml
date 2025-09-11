@@ -2,7 +2,8 @@
 # This configuration is used for testing and creates files in the project's tmp directory
 
 server:
-  port: 8080                    # REST API port
+  port: 8080                    # Emacs server port (backend/internal)
+                                # Test env: Hono API server uses port 3001
 
 org-roam:
   directory: ./tmp/org-roam     # Test data directory within project
