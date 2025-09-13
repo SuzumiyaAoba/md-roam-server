@@ -3,6 +3,7 @@
  * This service creates and manages org-roam files without relying on Emacs server
  */
 
+import { spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -714,6 +715,154 @@ export class NodeFileService {
       } catch {
         return false;
       }
+    });
+  }
+
+  // Advanced full-text search using ripgrep
+  async fullTextSearch(
+    query: string,
+    options: {
+      caseSensitive?: boolean;
+      regex?: boolean;
+      contextLines?: number;
+      fileTypes?: string[];
+      maxResults?: number;
+    } = {},
+  ): Promise<{
+    matches: Array<{
+      file: string;
+      nodeId?: string;
+      title?: string;
+      line: number;
+      content: string;
+      context?: { before: string[]; after: string[] };
+    }>;
+    totalMatches: number;
+    query: string;
+    searchTime: number;
+  }> {
+    const startTime = Date.now();
+    const allNodes = this.getAllNodes();
+    const nodeMap = new Map(allNodes.map((node) => [node.path, node]));
+
+    return new Promise((resolve, reject) => {
+      // Build ripgrep command
+      const args: string[] = [];
+
+      // Basic options
+      args.push("--json"); // JSON output for easier parsing
+      args.push("--with-filename");
+      args.push("--line-number");
+
+      if (!options.caseSensitive) {
+        args.push("--ignore-case");
+      }
+
+      if (options.contextLines && options.contextLines > 0) {
+        args.push(`--context=${options.contextLines}`);
+      }
+
+      // File type filtering
+      if (options.fileTypes && options.fileTypes.length > 0) {
+        for (const type of options.fileTypes) {
+          args.push(`--type=${type}`);
+        }
+      } else {
+        // Default to markdown and org files
+        args.push("--type=markdown");
+        args.push("--glob=*.org");
+      }
+
+      // Maximum results limit
+      if (options.maxResults && options.maxResults > 0) {
+        args.push(`--max-count=${options.maxResults}`);
+      }
+
+      // Search pattern
+      args.push(query);
+
+      // Search directory
+      args.push(this.orgRoamDir);
+
+      const rg = spawn("rg", args, {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      rg.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      rg.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      rg.on("close", (code) => {
+        const searchTime = Date.now() - startTime;
+
+        // Handle ripgrep not found
+        if (code === 127 || stderr.includes("command not found")) {
+          reject(
+            new Error(
+              "ripgrep (rg) not found. Please install ripgrep for full-text search functionality.",
+            ),
+          );
+          return;
+        }
+
+        // Code 1 means no matches found, which is not an error
+        if (code !== 0 && code !== 1) {
+          reject(new Error(`ripgrep search failed: ${stderr}`));
+          return;
+        }
+
+        const matches: Array<{
+          file: string;
+          nodeId?: string;
+          title?: string;
+          line: number;
+          content: string;
+          context?: { before: string[]; after: string[] };
+        }> = [];
+
+        if (stdout.trim()) {
+          // Parse JSON output from ripgrep
+          const lines = stdout.trim().split("\n");
+          for (const line of lines) {
+            try {
+              const result = JSON.parse(line);
+              if (result.type === "match") {
+                const filePath = result.data.path.text;
+                const node = nodeMap.get(filePath);
+
+                matches.push({
+                  file: filePath,
+                  nodeId: node?.id,
+                  title: node?.title,
+                  line: result.data.line_number,
+                  content: result.data.lines.text,
+                });
+              }
+            } catch (parseError) {
+              // Skip malformed JSON lines
+              console.warn("Failed to parse ripgrep JSON output:", line);
+            }
+          }
+        }
+
+        resolve({
+          matches,
+          totalMatches: matches.length,
+          query,
+          searchTime,
+        });
+      });
+
+      rg.on("error", (error) => {
+        reject(new Error(`Failed to start ripgrep: ${error.message}`));
+      });
     });
   }
 

@@ -120,6 +120,39 @@ export const SearchResponseSchema = SuccessResponseSchema(
   }),
 );
 
+// Full-text search schemas
+export const FullTextSearchRequestSchema = z.object({
+  query: z.string().min(1, "Search query is required"),
+  caseSensitive: z.boolean().default(false),
+  regex: z.boolean().default(false),
+  contextLines: z.number().int().min(0).max(10).default(0),
+  fileTypes: z.array(z.string()).default([]),
+  maxResults: z.number().int().min(1).max(1000).default(100),
+});
+
+export const FullTextSearchMatchSchema = z.object({
+  file: z.string(),
+  nodeId: z.string().optional(),
+  title: z.string().optional(),
+  line: z.number(),
+  content: z.string(),
+  context: z
+    .object({
+      before: z.array(z.string()),
+      after: z.array(z.string()),
+    })
+    .optional(),
+});
+
+export const FullTextSearchResponseSchema = SuccessResponseSchema(
+  z.object({
+    matches: z.array(FullTextSearchMatchSchema),
+    totalMatches: z.number(),
+    query: z.string(),
+    searchTime: z.number(),
+  }),
+);
+
 // Statistics schemas
 export const DatabaseStatsSchema = z.object({
   total_nodes: z.number(),
@@ -205,3 +238,8 @@ export type DatabaseStats = z.infer<typeof DatabaseStatsSchema>;
 export type TagInfo = z.infer<typeof TagInfoSchema>;
 export type Link = z.infer<typeof LinkSchema>;
 export type ServerInfo = z.infer<typeof ServerInfoSchema>;
+export type FullTextSearchRequest = z.infer<typeof FullTextSearchRequestSchema>;
+export type FullTextSearchMatch = z.infer<typeof FullTextSearchMatchSchema>;
+export type FullTextSearchResponse = z.infer<
+  typeof FullTextSearchResponseSchema
+>;

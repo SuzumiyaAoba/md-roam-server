@@ -2,6 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { errorResponse, successResponse } from "@/shared/lib/response";
+import { FullTextSearchRequestSchema } from "@/shared/lib/schemas";
 import { NodeFileService } from "@/shared/services/node-file-service";
 
 const searchRouter = new Hono();
@@ -126,6 +127,97 @@ searchRouter.get(
     }
   },
 );
+
+// POST /fulltext - Advanced full-text search using ripgrep
+searchRouter.post(
+  "/fulltext",
+  zValidator("json", FullTextSearchRequestSchema),
+  async (c) => {
+    try {
+      const {
+        query,
+        caseSensitive,
+        regex,
+        contextLines,
+        fileTypes,
+        maxResults,
+      } = c.req.valid("json");
+
+      const searchResults = await nodeFileService.fullTextSearch(query.trim(), {
+        caseSensitive,
+        regex,
+        contextLines,
+        fileTypes,
+        maxResults,
+      });
+
+      return c.json({
+        status: "success",
+        message: "Full-text search completed successfully",
+        ...searchResults,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error in full-text search:", error);
+      return errorResponse(
+        c,
+        "Full-text search failed",
+        error instanceof Error ? error.message : "Search engine error",
+        500,
+      );
+    }
+  },
+);
+
+// GET /fulltext/:query - Simple full-text search with GET
+searchRouter.get("/fulltext/:query", async (c) => {
+  try {
+    const query = c.req.param("query");
+
+    if (!query || query.trim() === "") {
+      return errorResponse(
+        c,
+        "Search query is required",
+        "Query parameter cannot be empty",
+        400,
+      );
+    }
+
+    // Parse query parameters
+    const caseSensitive = c.req.query("case") === "true";
+    const contextLines = Math.max(
+      0,
+      Math.min(parseInt(c.req.query("context") || "0", 10), 10),
+    );
+    const maxResults = Math.max(
+      1,
+      Math.min(parseInt(c.req.query("limit") || "100", 10), 1000),
+    );
+    const fileTypes = c.req.query("types")?.split(",").filter(Boolean) || [];
+
+    const searchResults = await nodeFileService.fullTextSearch(query.trim(), {
+      caseSensitive,
+      contextLines,
+      fileTypes,
+      maxResults,
+    });
+
+    return c.json({
+      status: "success",
+      message: "Full-text search completed successfully",
+      ...searchResults,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error in full-text search:", error);
+    return errorResponse(
+      c,
+      "Full-text search failed",
+      error instanceof Error ? error.message : "Search engine error",
+      500,
+    );
+  }
+});
 
 // GET /:query - Search nodes (define parameter routes after specific routes)
 searchRouter.get("/:query", async (c) => {

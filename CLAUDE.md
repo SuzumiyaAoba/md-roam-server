@@ -208,6 +208,13 @@ curl http://localhost:3001/api/tags
 curl http://localhost:3001/api/stats
 curl http://localhost:3001/api/files
 
+# Full-text search with ripgrep
+curl -X POST http://localhost:3001/api/search/fulltext \
+  -H "Content-Type: application/json" \
+  -d '{"query": "keyword", "caseSensitive": false, "maxResults": 10}'
+
+curl "http://localhost:3001/api/search/fulltext/keyword?case=true&limit=5"
+
 # Legacy endpoint compatibility (Hono API server - port 3001)
 curl http://localhost:3001/nodes
 curl http://localhost:3001/tags  
