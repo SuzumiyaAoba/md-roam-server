@@ -77,16 +77,20 @@ describe("Advanced Search API E2E Tests", () => {
     });
 
     it("should validate request parameters", async () => {
-      const emptyQueryResponse = await ApiHelpers.api.post("/search/fuzzy").send({
-        query: "",
-      });
+      const emptyQueryResponse = await ApiHelpers.api
+        .post("/search/fuzzy")
+        .send({
+          query: "",
+        });
 
       expect(emptyQueryResponse.status).toBe(400);
       expect(emptyQueryResponse.body).toHaveProperty("status", "error");
 
-      const missingQueryResponse = await ApiHelpers.api.post("/search/fuzzy").send({
-        threshold: 0.5,
-      });
+      const missingQueryResponse = await ApiHelpers.api
+        .post("/search/fuzzy")
+        .send({
+          threshold: 0.5,
+        });
 
       expect(missingQueryResponse.status).toBe(400);
       expect(missingQueryResponse.body).toHaveProperty("status", "error");
@@ -139,26 +143,31 @@ describe("Advanced Search API E2E Tests", () => {
     it("should handle case-sensitive phrase search", async () => {
       await TestCleanup.createTestNode({
         title: "AI and AI Applications",
-        content: "Artificial Intelligence (AI) and ai applications in business.",
+        content:
+          "Artificial Intelligence (AI) and ai applications in business.",
         tags: ["AI", "business"],
       });
 
-      const caseSensitiveResponse = await ApiHelpers.api.post("/search/phrase").send({
-        phrase: "AI",
-        caseSensitive: true,
-        fields: ["title", "content"],
-        maxResults: 10,
-      });
+      const caseSensitiveResponse = await ApiHelpers.api
+        .post("/search/phrase")
+        .send({
+          phrase: "AI",
+          caseSensitive: true,
+          fields: ["title", "content"],
+          maxResults: 10,
+        });
 
       expect(caseSensitiveResponse.status).toBe(200);
       expect(caseSensitiveResponse.body).toHaveProperty("status", "success");
 
-      const caseInsensitiveResponse = await ApiHelpers.api.post("/search/phrase").send({
-        phrase: "AI",
-        caseSensitive: false,
-        fields: ["title", "content"],
-        maxResults: 10,
-      });
+      const caseInsensitiveResponse = await ApiHelpers.api
+        .post("/search/phrase")
+        .send({
+          phrase: "AI",
+          caseSensitive: false,
+          fields: ["title", "content"],
+          maxResults: 10,
+        });
 
       expect(caseInsensitiveResponse.status).toBe(200);
       expect(caseInsensitiveResponse.body).toHaveProperty("status", "success");
@@ -322,7 +331,8 @@ describe("Advanced Search API E2E Tests", () => {
     it("should provide search results with highlights", async () => {
       await TestCleanup.createTestNode({
         title: "TypeScript Advanced Features",
-        content: "TypeScript provides type safety and modern JavaScript features for large-scale applications.",
+        content:
+          "TypeScript provides type safety and modern JavaScript features for large-scale applications.",
         tags: ["typescript", "javascript"],
       });
 
@@ -367,7 +377,8 @@ describe("Advanced Search API E2E Tests", () => {
     it("should handle multiple highlight positions", async () => {
       await TestCleanup.createTestNode({
         title: "Java Programming Java Tutorial",
-        content: "Java is a popular programming language. Java applications run on the JVM.",
+        content:
+          "Java is a popular programming language. Java applications run on the JVM.",
         tags: ["java", "programming"],
       });
 
@@ -394,7 +405,8 @@ describe("Advanced Search API E2E Tests", () => {
     it("should handle Japanese fuzzy search with character normalization", async () => {
       await TestCleanup.createTestNode({
         title: "プログラミング入門",
-        content: "プログラミングの基礎を学びます。コードを書く練習をしましょう。",
+        content:
+          "プログラミングの基礎を学びます。コードを書く練習をしましょう。",
         tags: ["プログラミング", "入門"],
       });
 
@@ -420,7 +432,8 @@ describe("Advanced Search API E2E Tests", () => {
     it("should handle Japanese phrase search", async () => {
       await TestCleanup.createTestNode({
         title: "人工知能の応用",
-        content: "人工知能技術は様々な分野で応用されています。機械学習や深層学習が注目されています。",
+        content:
+          "人工知能技術は様々な分野で応用されています。機械学習や深層学習が注目されています。",
         tags: ["人工知能", "応用"],
       });
 

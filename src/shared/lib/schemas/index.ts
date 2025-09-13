@@ -135,13 +135,17 @@ export const FuzzySearchRequestSchema = z.object({
   query: z.string().min(1, "Search query is required"),
   threshold: z.number().min(0).max(1).default(0.6),
   maxResults: z.number().int().min(1).max(1000).default(50),
-  fields: z.array(z.enum(["title", "content", "tags"])).default(["title", "content"]),
+  fields: z
+    .array(z.enum(["title", "content", "tags"]))
+    .default(["title", "content"]),
 });
 
 export const PhraseSearchRequestSchema = z.object({
   phrase: z.string().min(1, "Search phrase is required"),
   caseSensitive: z.boolean().default(false),
-  fields: z.array(z.enum(["title", "content", "tags"])).default(["title", "content"]),
+  fields: z
+    .array(z.enum(["title", "content", "tags"]))
+    .default(["title", "content"]),
   maxResults: z.number().int().min(1).max(1000).default(50),
 });
 
@@ -196,22 +200,26 @@ export const FuzzySearchResultSchema = z.object({
   title: z.string(),
   file: z.string(),
   score: z.number().min(0).max(1),
-  matches: z.array(z.object({
-    field: z.string(),
-    value: z.string(),
-    distance: z.number(),
-  })),
+  matches: z.array(
+    z.object({
+      field: z.string(),
+      value: z.string(),
+      distance: z.number(),
+    }),
+  ),
 });
 
 export const PhraseSearchResultSchema = z.object({
   id: z.string(),
   title: z.string(),
   file: z.string(),
-  matches: z.array(z.object({
-    field: z.string(),
-    snippet: z.string(),
-    position: z.number(),
-  })),
+  matches: z.array(
+    z.object({
+      field: z.string(),
+      snippet: z.string(),
+      position: z.number(),
+    }),
+  ),
 });
 
 export const FieldSearchResultSchema = z.object({
@@ -235,14 +243,18 @@ export const HighlightSearchResultSchema = z.object({
   title: z.string(),
   file: z.string(),
   snippet: z.string(),
-  highlights: z.array(z.object({
-    field: z.string(),
-    text: z.string(),
-    positions: z.array(z.object({
-      start: z.number(),
-      end: z.number(),
-    })),
-  })),
+  highlights: z.array(
+    z.object({
+      field: z.string(),
+      text: z.string(),
+      positions: z.array(
+        z.object({
+          start: z.number(),
+          end: z.number(),
+        }),
+      ),
+    }),
+  ),
 });
 
 export const FuzzySearchResponseSchema = SuccessResponseSchema(
@@ -388,7 +400,9 @@ export type FuzzySearchRequest = z.infer<typeof FuzzySearchRequestSchema>;
 export type PhraseSearchRequest = z.infer<typeof PhraseSearchRequestSchema>;
 export type FieldSearchRequest = z.infer<typeof FieldSearchRequestSchema>;
 export type SuggestionsRequest = z.infer<typeof SuggestionsRequestSchema>;
-export type HighlightSearchRequest = z.infer<typeof HighlightSearchRequestSchema>;
+export type HighlightSearchRequest = z.infer<
+  typeof HighlightSearchRequestSchema
+>;
 
 export type FuzzySearchResult = z.infer<typeof FuzzySearchResultSchema>;
 export type PhraseSearchResult = z.infer<typeof PhraseSearchResultSchema>;
@@ -400,4 +414,6 @@ export type FuzzySearchResponse = z.infer<typeof FuzzySearchResponseSchema>;
 export type PhraseSearchResponse = z.infer<typeof PhraseSearchResponseSchema>;
 export type FieldSearchResponse = z.infer<typeof FieldSearchResponseSchema>;
 export type SuggestionsResponse = z.infer<typeof SuggestionsResponseSchema>;
-export type HighlightSearchResponse = z.infer<typeof HighlightSearchResponseSchema>;
+export type HighlightSearchResponse = z.infer<
+  typeof HighlightSearchResponseSchema
+>;

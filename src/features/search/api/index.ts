@@ -2,16 +2,16 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { errorResponse, successResponse } from "@/shared/lib/response";
-import { 
+import {
+  FieldSearchRequestSchema,
   FullTextSearchRequestSchema,
   FuzzySearchRequestSchema,
-  PhraseSearchRequestSchema,
-  FieldSearchRequestSchema,
-  SuggestionsRequestSchema,
   HighlightSearchRequestSchema,
+  PhraseSearchRequestSchema,
+  SuggestionsRequestSchema,
 } from "@/shared/lib/schemas";
-import { NodeFileService } from "@/shared/services/node-file-service";
 import { AdvancedSearchService } from "@/shared/services/advanced-search-service";
+import { NodeFileService } from "@/shared/services/node-file-service";
 
 const searchRouter = new Hono();
 const orgRoamDir = process.env["ORG_ROAM_DIRECTORY"] || "./tmp/org-roam";
@@ -184,7 +184,7 @@ searchRouter.post(
   async (c) => {
     try {
       const request = c.req.valid("json");
-      const { results, totalResults, searchTime } = 
+      const { results, totalResults, searchTime } =
         await advancedSearchService.fuzzySearch(request);
 
       return c.json({
@@ -216,7 +216,7 @@ searchRouter.post(
   async (c) => {
     try {
       const request = c.req.valid("json");
-      const { results, totalResults, searchTime } = 
+      const { results, totalResults, searchTime } =
         await advancedSearchService.phraseSearch(request);
 
       return c.json({
@@ -247,7 +247,7 @@ searchRouter.post(
   async (c) => {
     try {
       const request = c.req.valid("json");
-      const { results, totalResults, searchTime } = 
+      const { results, totalResults, searchTime } =
         await advancedSearchService.fieldSearch(request);
 
       return c.json({
@@ -279,7 +279,7 @@ searchRouter.post(
   async (c) => {
     try {
       const request = c.req.valid("json");
-      const { suggestions, searchTime } = 
+      const { suggestions, searchTime } =
         await advancedSearchService.generateSuggestions(request);
 
       return c.json({
@@ -318,13 +318,15 @@ searchRouter.get("/suggestions/:query", async (c) => {
     }
 
     // Parse query parameters
-    const field = (c.req.query("field") as "title" | "content" | "tags" | "category") || "title";
+    const field =
+      (c.req.query("field") as "title" | "content" | "tags" | "category") ||
+      "title";
     const maxSuggestions = Math.max(
       1,
       Math.min(parseInt(c.req.query("limit") || "10", 10), 20),
     );
 
-    const { suggestions, searchTime } = 
+    const { suggestions, searchTime } =
       await advancedSearchService.generateSuggestions({
         query: query.trim(),
         field,
@@ -358,7 +360,7 @@ searchRouter.post(
   async (c) => {
     try {
       const request = c.req.valid("json");
-      const { results, totalResults, searchTime } = 
+      const { results, totalResults, searchTime } =
         await advancedSearchService.highlightSearch(request);
 
       return c.json({
