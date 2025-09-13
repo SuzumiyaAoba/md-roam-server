@@ -16,6 +16,10 @@ This project implements a **unified API architecture** with TypeScript/Hono as t
 - ✅ Support for both Markdown (.md) and Org (.org) files
 - ✅ Bidirectional link discovery and relationship mapping
 - ✅ Advanced search and metadata management (tags, aliases, refs, categories)
+- ✅ **High-performance full-text search using ripgrep**
+- ✅ **Advanced search capabilities** (fuzzy, phrase, field-specific, suggestions, highlights)
+- ✅ **Japanese language support** with proper character normalization
+- ✅ **Real-time search suggestions** with intelligent scoring
 - ✅ File content parsing and metadata extraction
 - ✅ Real-time validation with Zod schemas
 
@@ -93,8 +97,44 @@ curl -X PUT http://localhost:3001/api/nodes/NODE_ID \
 # Delete node
 curl -X DELETE http://localhost:3001/api/nodes/NODE_ID
 
-# Search nodes
+# Search nodes (basic)
 curl "http://localhost:3001/api/search/query?q=search+term"
+
+# Full-text search (advanced)
+curl -X POST http://localhost:3001/api/search/fulltext \
+  -H "Content-Type: application/json" \
+  -d '{"query": "search term", "caseSensitive": false, "maxResults": 10}'
+
+# Full-text search (simple GET)
+curl "http://localhost:3001/api/search/fulltext/search+term?case=true&limit=5"
+
+# Fuzzy search (Levenshtein distance)
+curl -X POST http://localhost:3001/api/search/fuzzy \
+  -H "Content-Type: application/json" \
+  -d '{"query": "machine learning", "threshold": 0.7, "fields": ["title", "content"]}'
+
+# Phrase search (exact match)
+curl -X POST http://localhost:3001/api/search/phrase \
+  -H "Content-Type: application/json" \
+  -d '{"phrase": "deep learning", "caseSensitive": false, "fields": ["title", "content"]}'
+
+# Field-specific search
+curl -X POST http://localhost:3001/api/search/field \
+  -H "Content-Type: application/json" \
+  -d '{"query": "python", "field": "title", "exact": false}'
+
+# Real-time search suggestions
+curl "http://localhost:3001/api/search/suggestions/mach?field=title&limit=5"
+
+# Search with highlights
+curl -X POST http://localhost:3001/api/search/highlight \
+  -H "Content-Type: application/json" \
+  -d '{"query": "typescript", "highlightTag": "mark", "snippetLength": 200}'
+
+# Japanese fuzzy search
+curl -X POST http://localhost:3001/api/search/fuzzy \
+  -H "Content-Type: application/json" \
+  -d '{"query": "機械学習", "threshold": 0.7, "fields": ["title", "content"]}'
 
 # Get tags
 curl http://localhost:3001/api/tags

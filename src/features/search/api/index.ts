@@ -2,13 +2,21 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { errorResponse, successResponse } from "@/shared/lib/response";
-import { FullTextSearchRequestSchema } from "@/shared/lib/schemas";
+import { 
+  FullTextSearchRequestSchema,
+  FuzzySearchRequestSchema,
+  PhraseSearchRequestSchema,
+  FieldSearchRequestSchema,
+  SuggestionsRequestSchema,
+  HighlightSearchRequestSchema,
+} from "@/shared/lib/schemas";
 import { NodeFileService } from "@/shared/services/node-file-service";
+import { AdvancedSearchService } from "@/shared/services/advanced-search-service";
 
 const searchRouter = new Hono();
-const nodeFileService = new NodeFileService(
-  process.env["ORG_ROAM_DIRECTORY"] || "./tmp/org-roam",
-);
+const orgRoamDir = process.env["ORG_ROAM_DIRECTORY"] || "./tmp/org-roam";
+const nodeFileService = new NodeFileService(orgRoamDir);
+const advancedSearchService = new AdvancedSearchService(orgRoamDir);
 
 // GET /tags/:tag/nodes - Get nodes by tag (define specific routes first)
 searchRouter.get(
@@ -162,6 +170,211 @@ searchRouter.post(
       return errorResponse(
         c,
         "Full-text search failed",
+        error instanceof Error ? error.message : "Search engine error",
+        500,
+      );
+    }
+  },
+);
+
+// POST /fuzzy - Fuzzy search using Levenshtein distance
+searchRouter.post(
+  "/fuzzy",
+  zValidator("json", FuzzySearchRequestSchema),
+  async (c) => {
+    try {
+      const request = c.req.valid("json");
+      const { results, totalResults, searchTime } = 
+        await advancedSearchService.fuzzySearch(request);
+
+      return c.json({
+        status: "success",
+        message: "Fuzzy search completed successfully",
+        results,
+        totalResults,
+        query: request.query,
+        threshold: request.threshold,
+        searchTime,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error in fuzzy search:", error);
+      return errorResponse(
+        c,
+        "Fuzzy search failed",
+        error instanceof Error ? error.message : "Search engine error",
+        500,
+      );
+    }
+  },
+);
+
+// POST /phrase - Phrase search for exact matches
+searchRouter.post(
+  "/phrase",
+  zValidator("json", PhraseSearchRequestSchema),
+  async (c) => {
+    try {
+      const request = c.req.valid("json");
+      const { results, totalResults, searchTime } = 
+        await advancedSearchService.phraseSearch(request);
+
+      return c.json({
+        status: "success",
+        message: "Phrase search completed successfully",
+        results,
+        totalResults,
+        phrase: request.phrase,
+        searchTime,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error in phrase search:", error);
+      return errorResponse(
+        c,
+        "Phrase search failed",
+        error instanceof Error ? error.message : "Search engine error",
+        500,
+      );
+    }
+  },
+);
+
+// POST /field - Field-specific search
+searchRouter.post(
+  "/field",
+  zValidator("json", FieldSearchRequestSchema),
+  async (c) => {
+    try {
+      const request = c.req.valid("json");
+      const { results, totalResults, searchTime } = 
+        await advancedSearchService.fieldSearch(request);
+
+      return c.json({
+        status: "success",
+        message: "Field search completed successfully",
+        results,
+        totalResults,
+        query: request.query,
+        field: request.field,
+        searchTime,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error in field search:", error);
+      return errorResponse(
+        c,
+        "Field search failed",
+        error instanceof Error ? error.message : "Search engine error",
+        500,
+      );
+    }
+  },
+);
+
+// POST /suggestions - Generate search suggestions
+searchRouter.post(
+  "/suggestions",
+  zValidator("json", SuggestionsRequestSchema),
+  async (c) => {
+    try {
+      const request = c.req.valid("json");
+      const { suggestions, searchTime } = 
+        await advancedSearchService.generateSuggestions(request);
+
+      return c.json({
+        status: "success",
+        message: "Search suggestions generated successfully",
+        suggestions,
+        query: request.query,
+        field: request.field,
+        searchTime,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error generating suggestions:", error);
+      return errorResponse(
+        c,
+        "Suggestion generation failed",
+        error instanceof Error ? error.message : "Search engine error",
+        500,
+      );
+    }
+  },
+);
+
+// GET /suggestions/:query - Simple suggestion endpoint
+searchRouter.get("/suggestions/:query", async (c) => {
+  try {
+    const query = c.req.param("query");
+
+    if (!query || query.trim() === "") {
+      return errorResponse(
+        c,
+        "Query is required",
+        "Query parameter cannot be empty",
+        400,
+      );
+    }
+
+    // Parse query parameters
+    const field = (c.req.query("field") as "title" | "content" | "tags" | "category") || "title";
+    const maxSuggestions = Math.max(
+      1,
+      Math.min(parseInt(c.req.query("limit") || "10", 10), 20),
+    );
+
+    const { suggestions, searchTime } = 
+      await advancedSearchService.generateSuggestions({
+        query: query.trim(),
+        field,
+        maxSuggestions,
+      });
+
+    return c.json({
+      status: "success",
+      message: "Search suggestions generated successfully",
+      suggestions,
+      query: query.trim(),
+      field,
+      searchTime,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error generating suggestions:", error);
+    return errorResponse(
+      c,
+      "Suggestion generation failed",
+      error instanceof Error ? error.message : "Search engine error",
+      500,
+    );
+  }
+});
+
+// POST /highlight - Search with highlight information
+searchRouter.post(
+  "/highlight",
+  zValidator("json", HighlightSearchRequestSchema),
+  async (c) => {
+    try {
+      const request = c.req.valid("json");
+      const { results, totalResults, searchTime } = 
+        await advancedSearchService.highlightSearch(request);
+
+      return c.json({
+        status: "success",
+        message: "Highlight search completed successfully",
+        results,
+        totalResults,
+        query: request.query,
+        searchTime,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error in highlight search:", error);
+      return errorResponse(
+        c,
+        "Highlight search failed",
         error instanceof Error ? error.message : "Search engine error",
         500,
       );

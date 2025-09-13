@@ -208,12 +208,45 @@ curl http://localhost:3001/api/tags
 curl http://localhost:3001/api/stats
 curl http://localhost:3001/api/files
 
-# Full-text search with ripgrep
+# Full-text search with ripgrep (high-performance search)
 curl -X POST http://localhost:3001/api/search/fulltext \
   -H "Content-Type: application/json" \
-  -d '{"query": "keyword", "caseSensitive": false, "maxResults": 10}'
+  -d '{"query": "keyword", "caseSensitive": false, "maxResults": 10, "contextLines": 2, "regex": false}'
 
-curl "http://localhost:3001/api/search/fulltext/keyword?case=true&limit=5"
+curl "http://localhost:3001/api/search/fulltext/keyword?case=true&limit=5&context=1&types=md,org"
+
+# Advanced search capabilities
+# Fuzzy search (Levenshtein distance)
+curl -X POST http://localhost:3001/api/search/fuzzy \
+  -H "Content-Type: application/json" \
+  -d '{"query": "machine learning", "threshold": 0.7, "fields": ["title", "content"]}'
+
+# Phrase search (exact match)
+curl -X POST http://localhost:3001/api/search/phrase \
+  -H "Content-Type: application/json" \
+  -d '{"phrase": "deep learning", "caseSensitive": false, "fields": ["title", "content"]}'
+
+# Field-specific search
+curl -X POST http://localhost:3001/api/search/field \
+  -H "Content-Type: application/json" \
+  -d '{"query": "python", "field": "title", "exact": false}'
+
+# Real-time search suggestions
+curl "http://localhost:3001/api/search/suggestions/mach?field=title&limit=5"
+
+curl -X POST http://localhost:3001/api/search/suggestions \
+  -H "Content-Type: application/json" \
+  -d '{"query": "prog", "field": "tags", "maxSuggestions": 5}'
+
+# Search with highlights
+curl -X POST http://localhost:3001/api/search/highlight \
+  -H "Content-Type: application/json" \
+  -d '{"query": "typescript", "highlightTag": "mark", "snippetLength": 200}'
+
+# Japanese language support
+curl -X POST http://localhost:3001/api/search/fuzzy \
+  -H "Content-Type: application/json" \
+  -d '{"query": "機械学習", "threshold": 0.7, "fields": ["title", "content"]}'
 
 # Legacy endpoint compatibility (Hono API server - port 3001)
 curl http://localhost:3001/nodes
@@ -402,6 +435,8 @@ cd tests && npm run test:quick    # Fast run (bail on first failure)
 
 **Test Categories (100% Pass Rate Achievement):**
 - **Core Tests**: `nodes.test.ts`, `search.test.ts`, `files.test.ts`, `server.test.ts`, `metadata.test.ts`
+- **Full-text Search**: `fulltext-search.test.ts` - comprehensive ripgrep integration testing
+- **Advanced Search**: `advanced-search.test.ts` - fuzzy, phrase, field, suggestions, highlights with Japanese support
 - **Bug Investigation**: `id-duplication-bug.test.ts`, `metadata-duplication-bug.test.ts`, `debug-file-detection.test.ts`
 - **Syntax Tests**: `org-mode-syntax.test.ts`, `org-mode-syntax-simple.test.ts` - comprehensive org-mode constructs
 - **Edge Cases**: `external-modification-bug.test.ts`, `no-content-change-bug.test.ts`

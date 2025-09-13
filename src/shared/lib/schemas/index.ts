@@ -130,6 +130,43 @@ export const FullTextSearchRequestSchema = z.object({
   maxResults: z.number().int().min(1).max(1000).default(100),
 });
 
+// Advanced search schemas
+export const FuzzySearchRequestSchema = z.object({
+  query: z.string().min(1, "Search query is required"),
+  threshold: z.number().min(0).max(1).default(0.6),
+  maxResults: z.number().int().min(1).max(1000).default(50),
+  fields: z.array(z.enum(["title", "content", "tags"])).default(["title", "content"]),
+});
+
+export const PhraseSearchRequestSchema = z.object({
+  phrase: z.string().min(1, "Search phrase is required"),
+  caseSensitive: z.boolean().default(false),
+  fields: z.array(z.enum(["title", "content", "tags"])).default(["title", "content"]),
+  maxResults: z.number().int().min(1).max(1000).default(50),
+});
+
+export const FieldSearchRequestSchema = z.object({
+  query: z.string().min(1, "Search query is required"),
+  field: z.enum(["title", "content", "tags", "category", "aliases", "refs"]),
+  caseSensitive: z.boolean().default(false),
+  exact: z.boolean().default(false),
+  maxResults: z.number().int().min(1).max(1000).default(50),
+});
+
+export const SuggestionsRequestSchema = z.object({
+  query: z.string().min(1, "Query string is required"),
+  field: z.enum(["title", "content", "tags", "category"]).default("title"),
+  maxSuggestions: z.number().int().min(1).max(20).default(10),
+});
+
+export const HighlightSearchRequestSchema = z.object({
+  query: z.string().min(1, "Search query is required"),
+  caseSensitive: z.boolean().default(false),
+  highlightTag: z.string().default("mark"),
+  maxResults: z.number().int().min(1).max(1000).default(50),
+  snippetLength: z.number().int().min(50).max(500).default(200),
+});
+
 export const FullTextSearchMatchSchema = z.object({
   file: z.string(),
   nodeId: z.string().optional(),
@@ -148,6 +185,108 @@ export const FullTextSearchResponseSchema = SuccessResponseSchema(
   z.object({
     matches: z.array(FullTextSearchMatchSchema),
     totalMatches: z.number(),
+    query: z.string(),
+    searchTime: z.number(),
+  }),
+);
+
+// Advanced search response schemas
+export const FuzzySearchResultSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  file: z.string(),
+  score: z.number().min(0).max(1),
+  matches: z.array(z.object({
+    field: z.string(),
+    value: z.string(),
+    distance: z.number(),
+  })),
+});
+
+export const PhraseSearchResultSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  file: z.string(),
+  matches: z.array(z.object({
+    field: z.string(),
+    snippet: z.string(),
+    position: z.number(),
+  })),
+});
+
+export const FieldSearchResultSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  file: z.string(),
+  field: z.string(),
+  value: z.string(),
+  matchType: z.enum(["exact", "partial", "fuzzy"]),
+});
+
+export const SuggestionSchema = z.object({
+  text: z.string(),
+  type: z.enum(["title", "content", "tag", "category"]),
+  nodeId: z.string().optional(),
+  score: z.number().optional(),
+});
+
+export const HighlightSearchResultSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  file: z.string(),
+  snippet: z.string(),
+  highlights: z.array(z.object({
+    field: z.string(),
+    text: z.string(),
+    positions: z.array(z.object({
+      start: z.number(),
+      end: z.number(),
+    })),
+  })),
+});
+
+export const FuzzySearchResponseSchema = SuccessResponseSchema(
+  z.object({
+    results: z.array(FuzzySearchResultSchema),
+    totalResults: z.number(),
+    query: z.string(),
+    threshold: z.number(),
+    searchTime: z.number(),
+  }),
+);
+
+export const PhraseSearchResponseSchema = SuccessResponseSchema(
+  z.object({
+    results: z.array(PhraseSearchResultSchema),
+    totalResults: z.number(),
+    phrase: z.string(),
+    searchTime: z.number(),
+  }),
+);
+
+export const FieldSearchResponseSchema = SuccessResponseSchema(
+  z.object({
+    results: z.array(FieldSearchResultSchema),
+    totalResults: z.number(),
+    query: z.string(),
+    field: z.string(),
+    searchTime: z.number(),
+  }),
+);
+
+export const SuggestionsResponseSchema = SuccessResponseSchema(
+  z.object({
+    suggestions: z.array(SuggestionSchema),
+    query: z.string(),
+    field: z.string(),
+    searchTime: z.number(),
+  }),
+);
+
+export const HighlightSearchResponseSchema = SuccessResponseSchema(
+  z.object({
+    results: z.array(HighlightSearchResultSchema),
+    totalResults: z.number(),
     query: z.string(),
     searchTime: z.number(),
   }),
@@ -243,3 +382,22 @@ export type FullTextSearchMatch = z.infer<typeof FullTextSearchMatchSchema>;
 export type FullTextSearchResponse = z.infer<
   typeof FullTextSearchResponseSchema
 >;
+
+// Advanced search type exports
+export type FuzzySearchRequest = z.infer<typeof FuzzySearchRequestSchema>;
+export type PhraseSearchRequest = z.infer<typeof PhraseSearchRequestSchema>;
+export type FieldSearchRequest = z.infer<typeof FieldSearchRequestSchema>;
+export type SuggestionsRequest = z.infer<typeof SuggestionsRequestSchema>;
+export type HighlightSearchRequest = z.infer<typeof HighlightSearchRequestSchema>;
+
+export type FuzzySearchResult = z.infer<typeof FuzzySearchResultSchema>;
+export type PhraseSearchResult = z.infer<typeof PhraseSearchResultSchema>;
+export type FieldSearchResult = z.infer<typeof FieldSearchResultSchema>;
+export type Suggestion = z.infer<typeof SuggestionSchema>;
+export type HighlightSearchResult = z.infer<typeof HighlightSearchResultSchema>;
+
+export type FuzzySearchResponse = z.infer<typeof FuzzySearchResponseSchema>;
+export type PhraseSearchResponse = z.infer<typeof PhraseSearchResponseSchema>;
+export type FieldSearchResponse = z.infer<typeof FieldSearchResponseSchema>;
+export type SuggestionsResponse = z.infer<typeof SuggestionsResponseSchema>;
+export type HighlightSearchResponse = z.infer<typeof HighlightSearchResponseSchema>;

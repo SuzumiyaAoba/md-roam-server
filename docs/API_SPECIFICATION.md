@@ -27,6 +27,7 @@ curl http://localhost:3001/nodes
 ## API Features
 
 - ✅ **Complete CRUD Operations** for org-roam nodes
+- ✅ **High-Performance Full-Text Search** using ripgrep
 - ✅ **Runtime Validation** using Zod schemas
 - ✅ **Type Safety** with TypeScript strict mode
 - ✅ **Structured Error Handling** with consistent JSON responses
@@ -68,6 +69,8 @@ The server provides a comprehensive REST API with the following categories of en
 
 ### Search & Discovery
 - `GET /search/:query` - Search nodes by title or alias
+- `POST /search/fulltext` - Advanced full-text search using ripgrep
+- `GET /search/fulltext/:query` - Simple full-text search
 - `GET /tags/:tag/nodes` - Get nodes with specific tag
 - `GET /aliases/:alias/nodes` - Get nodes with specific alias
 - `GET /refs/:ref/nodes` - Get nodes with specific reference
@@ -354,6 +357,370 @@ Search for nodes by title or alias matching the query string (case-insensitive p
   "count": 0
 }
 ```
+
+### POST /search/fulltext
+Advanced full-text search using ripgrep for high-performance content discovery.
+
+**Request Body:**
+```json
+{
+  "query": "search term",
+  "caseSensitive": false,
+  "regex": false,
+  "contextLines": 2,
+  "fileTypes": ["md", "org"],
+  "maxResults": 50
+}
+```
+
+**Parameters:**
+- `query` (required) - Search query string
+- `caseSensitive` (optional, default: false) - Case-sensitive search
+- `regex` (optional, default: false) - Enable regex pattern matching
+- `contextLines` (optional, default: 0, max: 10) - Number of context lines around matches
+- `fileTypes` (optional, default: ["md", "org"]) - File types to search
+- `maxResults` (optional, default: 100, max: 1000) - Maximum number of results
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Full-text search completed successfully",
+  "matches": [
+    {
+      "file": "/path/to/file.md",
+      "nodeId": "uuid-1234",
+      "title": "Node Title",
+      "line": 15,
+      "content": "Line content with search term highlighted"
+    }
+  ],
+  "totalMatches": 5,
+  "query": "search term",
+  "searchTime": 45,
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+**Response (Error - ripgrep not available):**
+```json
+{
+  "status": "error",
+  "message": "Full-text search failed",
+  "error": "ripgrep (rg) not found. Please install ripgrep for full-text search functionality.",
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### GET /search/fulltext/:query
+Simple full-text search via GET request.
+
+**Parameters:**
+- `query` (path parameter) - Search query string
+- `case` (query parameter) - "true" for case-sensitive search
+- `context` (query parameter) - Number of context lines (0-10)
+- `limit` (query parameter) - Maximum results (1-1000)
+- `types` (query parameter) - Comma-separated file types (e.g., "md,org")
+
+**Example:**
+```bash
+curl "http://localhost:3001/api/search/fulltext/search%20term?case=true&limit=10&context=2"
+```
+
+## Advanced Search Endpoints
+
+### POST /search/fuzzy
+Fuzzy search using Levenshtein distance for approximate string matching with Japanese language support.
+
+**Request Body:**
+```json
+{
+  "query": "machine learning",
+  "threshold": 0.7,
+  "maxResults": 50,
+  "fields": ["title", "content", "tags"]
+}
+```
+
+**Parameters:**
+- `query` (required) - Search query string
+- `threshold` (optional, default: 0.6, range: 0-1) - Similarity threshold (1 = exact match)
+- `maxResults` (optional, default: 50, max: 1000) - Maximum number of results
+- `fields` (optional, default: ["title", "content"]) - Fields to search in
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Fuzzy search completed successfully",
+  "results": [
+    {
+      "id": "uuid-1234",
+      "title": "Machine Learning Basics",
+      "file": "ml-basics.md",
+      "score": 0.85,
+      "matches": [
+        {
+          "field": "title",
+          "value": "Machine Learning Basics",
+          "distance": 2
+        }
+      ]
+    }
+  ],
+  "totalResults": 3,
+  "query": "machine learning",
+  "threshold": 0.7,
+  "searchTime": 25,
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+**Japanese Example:**
+```bash
+curl -X POST http://localhost:3001/api/search/fuzzy \
+  -H "Content-Type: application/json" \
+  -d '{"query": "機械学習", "threshold": 0.7, "fields": ["title", "content"]}'
+```
+
+### POST /search/phrase
+Exact phrase search for finding complete phrases within text content.
+
+**Request Body:**
+```json
+{
+  "phrase": "deep learning",
+  "caseSensitive": false,
+  "fields": ["title", "content", "tags"],
+  "maxResults": 50
+}
+```
+
+**Parameters:**
+- `phrase` (required) - Exact phrase to search for
+- `caseSensitive` (optional, default: false) - Case-sensitive matching
+- `fields` (optional, default: ["title", "content"]) - Fields to search in
+- `maxResults` (optional, default: 50, max: 1000) - Maximum number of results
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Phrase search completed successfully",
+  "results": [
+    {
+      "id": "uuid-1234",
+      "title": "Deep Learning Tutorial",
+      "file": "deep-learning.md",
+      "matches": [
+        {
+          "field": "title",
+          "snippet": "Deep Learning Tutorial",
+          "position": 0
+        },
+        {
+          "field": "content",
+          "snippet": "This guide covers deep learning techniques...",
+          "position": 23
+        }
+      ]
+    }
+  ],
+  "totalResults": 2,
+  "phrase": "deep learning",
+  "searchTime": 18,
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### POST /search/field
+Field-specific search targeting individual metadata fields or content areas.
+
+**Request Body:**
+```json
+{
+  "query": "python",
+  "field": "title",
+  "caseSensitive": false,
+  "exact": false,
+  "maxResults": 50
+}
+```
+
+**Parameters:**
+- `query` (required) - Search query string
+- `field` (required) - Field to search: "title", "content", "tags", "category", "aliases", "refs"
+- `caseSensitive` (optional, default: false) - Case-sensitive matching
+- `exact` (optional, default: false) - Exact match only
+- `maxResults` (optional, default: 50, max: 1000) - Maximum number of results
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Field search completed successfully",
+  "results": [
+    {
+      "id": "uuid-1234",
+      "title": "Python Programming Guide",
+      "file": "python-guide.md",
+      "field": "title",
+      "value": "Python Programming Guide",
+      "matchType": "partial"
+    }
+  ],
+  "totalResults": 1,
+  "query": "python",
+  "field": "title",
+  "searchTime": 12,
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### POST /search/suggestions
+Generate intelligent search suggestions based on existing content with relevance scoring.
+
+**Request Body:**
+```json
+{
+  "query": "mach",
+  "field": "title",
+  "maxSuggestions": 10
+}
+```
+
+**Parameters:**
+- `query` (required) - Partial query string for suggestions
+- `field` (optional, default: "title") - Field to generate suggestions from: "title", "content", "tags", "category"
+- `maxSuggestions` (optional, default: 10, max: 20) - Maximum number of suggestions
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Search suggestions generated successfully",
+  "suggestions": [
+    {
+      "text": "Machine Learning",
+      "type": "title",
+      "nodeId": "uuid-1234",
+      "score": 0.92
+    },
+    {
+      "text": "machine-learning",
+      "type": "tags",
+      "nodeId": "uuid-5678",
+      "score": 0.87
+    }
+  ],
+  "query": "mach",
+  "field": "title",
+  "searchTime": 8,
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### GET /search/suggestions/:query
+Simple suggestion endpoint via GET request.
+
+**Parameters:**
+- `query` (path parameter) - Partial query string
+- `field` (query parameter) - Field to search: "title", "content", "tags", "category"
+- `limit` (query parameter) - Maximum suggestions (1-20)
+
+**Example:**
+```bash
+curl "http://localhost:3001/api/search/suggestions/mach?field=title&limit=5"
+```
+
+### POST /search/highlight
+Search with detailed highlight information showing exact match positions and context.
+
+**Request Body:**
+```json
+{
+  "query": "typescript",
+  "caseSensitive": false,
+  "highlightTag": "mark",
+  "maxResults": 50,
+  "snippetLength": 200
+}
+```
+
+**Parameters:**
+- `query` (required) - Search query string
+- `caseSensitive` (optional, default: false) - Case-sensitive matching
+- `highlightTag` (optional, default: "mark") - HTML tag for highlighting
+- `maxResults` (optional, default: 50, max: 1000) - Maximum number of results
+- `snippetLength` (optional, default: 200, range: 50-500) - Character length of snippets
+
+**Response (Success):**
+```json
+{
+  "status": "success",
+  "message": "Highlight search completed successfully",
+  "results": [
+    {
+      "id": "uuid-1234",
+      "title": "TypeScript Advanced Features",
+      "file": "typescript-guide.md",
+      "snippet": "TypeScript provides type safety and modern JavaScript features...",
+      "highlights": [
+        {
+          "field": "title",
+          "text": "TypeScript Advanced Features",
+          "positions": [
+            {
+              "start": 0,
+              "end": 10
+            }
+          ]
+        },
+        {
+          "field": "content",
+          "text": "TypeScript provides type safety...",
+          "positions": [
+            {
+              "start": 0,
+              "end": 10
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "totalResults": 1,
+  "query": "typescript",
+  "searchTime": 15,
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+## Japanese Language Support
+
+All advanced search endpoints support Japanese text with proper character normalization:
+
+- **Character Normalization**: Full-width to half-width conversion
+- **Kana Conversion**: Hiragana to Katakana for broader matching
+- **Unicode Support**: Complete UTF-8 character handling
+
+**Japanese Search Examples:**
+```bash
+# Japanese fuzzy search
+curl -X POST http://localhost:3001/api/search/fuzzy \
+  -H "Content-Type: application/json" \
+  -d '{"query": "機械学習", "threshold": 0.7}'
+
+# Japanese phrase search
+curl -X POST http://localhost:3001/api/search/phrase \
+  -H "Content-Type: application/json" \
+  -d '{"phrase": "人工知能", "fields": ["title", "content"]}'
+
+# Japanese suggestions
+curl "http://localhost:3001/api/search/suggestions/データ?field=title"
+```
+
+**Response:** Same format as POST endpoint.
 
 ### GET /nodes
 Returns a list of all org-roam nodes with metadata, ordered by title.
